@@ -1,0 +1,337 @@
+# PRESTAMISTAS RD — Plan Maestro v4 (23-09-2026)
+
+**Stack:** Flutter (Web; Android pendiente) + Supabase (proyecto `twhwjttwpliudqkkgzsq`)
+**Publicada en:** https://prestamistas-rd.netlify.app — link de clientes: `/s/{slug}`
+**Admin de la app:** applej904@gmail.com
+**Pruebas automáticas:** 252, todas pasan (`flutter test`)
+
+> ⚠️ **Nombre comercial:** "PRESTAMISTAS RD BY MITCHELL CASTILLO" está registrado en ONAPI (2020, préstamos personales y comerciales). Antes de **vender u ofrecer** la app hay que elegir otro nombre, buscarlo en ONAPI, registrarlo y comprar el dominio. Para uso propio se puede seguir usando.
+
+---
+
+## Resumen
+
+| Área | Estado |
+|---|---|
+| Solicitudes por link | ✅ Completo |
+| Clientes (ficha, crear a mano, corregir, buscar) | ✅ Completo |
+| Prestar (4 frecuencias, calculadora) | ✅ Completo |
+| Cobrar (cuotas, mora, recibos PDF, WhatsApp, anular) | ✅ Completo |
+| Reportes (ganancia, atrasados, saldados, caja por día, Excel) | ✅ Completo |
+| Ruta de cobro en mapa | ✅ Completo |
+| Seguridad (fotos privadas, datos por prestamista) | ✅ Completo |
+| Venta a otros prestamistas (registro con aprobación, planes) | ✅ Con activación manual; falta el cobro en línea |
+| Nombre, dominio y términos | ⬜ Pendiente (espera el nombre nuevo) |
+| Respaldo de datos (Supabase Pro) | ⬜ Pendiente (lo contrata el dueño) |
+| Historial de cambios del cliente (y cambiar fotos) | ✅ Completo |
+| Gestiones y acuerdos de cobro (promesas de pago) | ✅ Completo |
+| Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados | ✅ Hecho |
+| Gráficas del negocio | ✅ Completo |
+| Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); siguen contrato y APK |
+| Login por WhatsApp | ⬜ Pendiente (puede esperar) |
+
+---
+
+## ✅ Lo que ya está hecho
+
+### Solicitudes (el link del prestamista)
+- Registro del prestamista → genera su link `/s/{slug}`. Inicio de sesión por **enlace al correo**.
+- Formulario público de 5 pasos, rediseñado:
+  - pasos conectados;
+  - tarjetas de fotos anchas (en iPhone abre el menú del teléfono);
+  - sello "Datos seguros y privados";
+  - en la computadora se ve del ancho de un celular.
+- Datos: fotos de cara y cédula, datos personales, casa propia o alquilada, trabajo, "supervisor o Recursos Humanos", cuánto gana, otros ingresos, **evidencias de ingresos** (hasta 5 fotos), 2 referencias, monto, capacidad de pago y cómo quiere el dinero.
+- Validación:
+  - cédula de 11 dígitos con guiones automáticos, y aviso si el dígito verificador no cuadra;
+  - teléfono de RD (809/829/849);
+  - montos solo números;
+  - nombre y apellido.
+- El prestamista puede **exigir evidencias de ingresos** desde su Perfil.
+- Solicitudes nuevas en vivo: foto, monto, Aprobar, Rechazar, Ver ficha.
+  - Avisa si la persona **ya es cliente** o si hay **otra solicitud** con la misma cédula o teléfono.
+  - Al aprobar a un cliente existente, usa su ficha y no lo duplica.
+
+### Clientes
+- **Ficha del cliente:**
+  - datos de la solicitud, fotos y evidencias (se amplían al tocarlas);
+  - todos sus préstamos (activos, saldados y cancelados) y sus recibos;
+  - WhatsApp y llamar;
+  - **Nuevo préstamo** cuando salda;
+  - ubicación: **"Marcar aquí"** con el GPS y **"Cómo llegar"**.
+- **Crear cliente a mano:** para quien no puede llenar el link. Busca clientes existentes mientras se escribe para no repetirlos; fotos opcionales.
+- **Corregir datos del cliente** (el lápiz en la ficha), con las mismas validaciones. También se pueden **cambiar las 3 fotos** (cara y cédula por los dos lados).
+- **Historial de cambios:** cada vez que se guarda, la base de datos anota qué dato cambió, lo que decía antes, lo que dice ahora, quién y cuándo (un trigger, así que ningún cambio se lo salta). En la ficha, "Historial de cambios": cada "Guardar" con lo viejo tachado y lo nuevo al lado; las fotos, la vieja y la nueva lado a lado. La foto vieja no se borra. El historial no se puede editar ni borrar.
+- Buscador en Clientes (por nombre, cédula o teléfono, sin importar acentos).
+- **Repetidos:** cédula repetida **bloquea**; teléfono o nombre repetido pide confirmar.
+
+### Prestar
+- Monto, interés **mensual**, frecuencia **diario / semanal / quincenal / mensual**, plazo en días, mora diaria y días de gracia.
+- Cuotas en pesos enteros; la última absorbe el redondeo.
+- **Calculadora:**
+  - las 4 frecuencias lado a lado, con fechas de pago;
+  - "Mandar cotización por WhatsApp";
+  - "Prestar con esto" (cliente nuevo o existente).
+- **Cancelar un préstamo** hecho por error (solo si no tiene cobros).
+
+### Cobrar
+- Cronograma con fechas, pagos parciales y mora por atraso.
+- Cada pago cubre en orden: cuota #1, su mora, cuota #2, su mora…
+- **Recibos PDF** numerados por prestamista (formato de rollo de 80 mm), con reenvío desde el historial.
+- **WhatsApp de cobro** con mensaje según el caso: vence hoy, atrasado con mora, próxima cuota o balance pendiente.
+- **Anular un cobro mal digitado:**
+  - queda tachado con fecha y motivo; no se borra y su número de recibo no se reusa;
+  - se recalculan el balance, la mora y el próximo pago;
+  - si había quedado saldado por error, vuelve a la calle.
+
+### Inicio y ruta
+- Totales: En la calle / Por cobrar hoy / Atrasados.
+- Cobros del día con etiquetas **AL DÍA / VENCE HOY / ATRASADO** y WhatsApp directo.
+- WhatsApp y mapa **solo en "Cobros del día" y "Atrasados"**. En "En la calle" la lista es solo informativa (tocar un cliente sigue abriendo su cobro).
+- **Ruta de cobro en el mapa** (OpenStreetMap, sin clave):
+  - colores por estado;
+  - ruta ordenada de cerca a lejos desde tu ubicación;
+  - "Cómo llegar" y "Armar ruta" en Google Maps, hasta 10 paradas por tramo.
+
+### Gestiones y acuerdos de cobro
+- En la hoja de cobro: **"Anotar gestión"**, con:
+  - cómo fue: visita, llamada, WhatsApp u otro;
+  - qué pasó: pagó, **prometió pagar**, no estaba, se negó u otro;
+  - **el acuerdo por escrito** (o una nota);
+  - si prometió pagar: **fecha y monto prometidos** (el monto sale ya puesto con lo que debe hoy).
+- Cada gestión guarda la fecha, la hora y quién la hizo. **No se editan ni se borran**: son el historial.
+- Estado de la promesa, calculado solo con los cobros hechos después de prometer (sin contar los anulados):
+  - **PENDIENTE**: todavía no llega el día;
+  - **PROMETIÓ HOY**: el día es hoy;
+  - **CUMPLIÓ**: pagó lo prometido, aunque sea en varios pagos o tarde;
+  - **NO CUMPLIÓ**: pasó el día y no pagó.
+
+  Si pagó una parte, dice cuánto ha dado.
+- **Inicio** avisa las promesas de hoy y las no cumplidas; al tocar una se abre el cobro de ese cliente. Una promesa no cumplida deja de avisarse cuando se anota otra gestión después del día prometido, porque ya se le dio seguimiento.
+- También se ve en la fila de cada cliente en Inicio, en la hoja de cobro y en la ficha del cliente, con el botón "Gestiones (n)" en cada préstamo.
+
+### Reportes
+- Ganancia del mes con **% contra el mes anterior** (datos reales); la mora cobrada, en una línea aparte.
+- **Caja por día:**
+  - cuánto entró cada día (cuotas y mora, sin anulados) y el detalle de cada cobro;
+  - **Cerrar caja** con nota, que queda hasta que el prestamista lo borre (borrarlo no toca los cobros);
+  - compartir por WhatsApp;
+  - avisa si hubo cambios después del cierre.
+- Atrasados ("No han pagado hoy"): al tocar uno se abre su cobro.
+- **Préstamos saldados** con el capital recuperado y la ganancia.
+- Excel: Al día, Atrasados y Saldados.
+- **Gráficas del negocio** (datos reales, con detalle al tocar y "Ver números" en tabla):
+  - **cómo está el dinero en la calle**: al día, vence hoy y atrasado, con monto y %;
+  - **lo que entró cada día** en los últimos 30 días (cuotas y mora);
+  - **ganancia de cada mes** en los últimos 6 meses (interés de lo cobrado y mora);
+  - **prestado contra cobrado** por mes.
+
+### Venta a otros prestamistas
+- **Registro con aprobación:** las cuentas nuevas quedan "en revisión" hasta que el admin las aprueba (se puede apagar).
+- **Planes:**
+
+  | Plan | Precio | Clientes |
+  |---|---|---|
+  | Gratis | — | 10 |
+  | Básico | RD$390 | 60 |
+  | Pro | RD$690 | 200 |
+  | Premium | RD$1,190 | sin límite |
+
+  - Los topes se editan en la tabla `planes`.
+  - **El límite lo aplica la base de datos**, así que nadie se lo salta.
+  - Plan vencido = Gratis: no se borra nada, solo no deja agregar clientes.
+- **Pagar 1, 3 o 12 meses:** 3 meses con 10% menos y 12 meses con 2 meses gratis (se cambian en Administrar → Ajustes). Precios con descuento redondeados a RD$10.
+- **Pedir el plan por WhatsApp:** el prestamista escoge el plan y los meses, y "Lo quiero" te escribe: *"Quiero el plan Pro por 12 meses (RD$6,900). ¿A qué cuenta te deposito?"*. **La cuenta no se publica en la app:** se manda por WhatsApp o se cobra en efectivo si queda cerca. El texto de "Cómo pagar" es opcional.
+- **Registrar pago** (Administrar): plan, meses, monto ya puesto, transferencia / depósito / efectivo y nota. La base de datos extiende el plan en un solo paso; si paga el mismo plan antes de vencer, no pierde días.
+- **Por renovar:** arriba en Administrar salen los que vencen en 7 días o vencieron hace menos de 30, con "Recordarle" por WhatsApp y "Registrar pago".
+- **Mensualidades cobradas:** el total del mes y los últimos pagos (se puede borrar uno registrado por error). El prestamista ve "Mis pagos" en su pantalla de planes.
+- **WhatsApp del prestamista:** se pide al registrarse.
+- **Perfil → Administrar prestamistas** (solo el admin): aprobar o suspender, cambiar plan, registrar pago, WhatsApp, y ajustes (WhatsApp de soporte, cómo pagar, registro con aprobación).
+
+### Seguridad
+- **Fotos privadas:** bucket privado, una carpeta por prestamista, enlaces que vencen en 1 hora.
+- Cada prestamista solo ve sus propios datos.
+- Nadie puede ponerse un plan, aprobarse ni hacerse admin por su cuenta.
+
+---
+
+## ⬜ Lo que falta, en orden de importancia
+
+### ⭐ Pedido por el dueño (23-09-2026) — todo hecho
+- ✅ Historial de cambios del cliente y cambiar fotos — hecho el 24-09-2026 (ver "Clientes").
+- ✅ Gestiones y acuerdos de cobro — hecho el 24-09-2026 (ver "Lo que ya está hecho").
+- ✅ Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados — hecho el 24-09-2026.
+
+### ⚠️ Urgente (24-09-2026)
+- ✅ **Sitio fijo en Netlify** — hecho el 26/29-09-2026: **https://prestamistas-rd.netlify.app**, puesto en `kDominioPublicado`, en *Site URL* y en *Redirect URLs* (`https://prestamistas-rd.netlify.app/**`) de Supabase. Se publica arrastrando el .zip en el proyecto **prestamistas-rd** de la cuenta de Netlify.
+- ✅ **Correos con código** — hecho el 29-09-2026. Supabase usa dos plantillas (Authentication → Emails): **"Confirm sign up"** para cuentas nuevas y **"Magic link or OTP"** para las que ya existen. Las dos deben traer `{{ .Token }}`, porque la app pide el código. "Confirm sign up" solo traía el link, y por eso a la gente nueva no le llegaba el código.
+- **Correo propio para entrar (SMTP)**, con Resend o Brevo. El correo de prueba de Supabase manda muy pocos por hora, en proyectos nuevos solo llega a los miembros del equipo y cae en spam. Necesita el dominio propio (punto 4). Mientras tanto, a quien vaya a probar la app se le invita como miembro del equipo en Supabase.
+
+### 🏁 Plan para ser competitivos (26-09-2026) — siguiente a construir
+Comparamos con **PrestaCOP** (app de Colombia que usan prestamistas cerca del dueño) y con **Prestapp / CobrApp**:
+
+| App | Precio | Qué da |
+|---|---|---|
+| PrestaCOP Gratis | $0 | Clientes y cobradores sin límite; datos en el teléfono, copia manual en OneDrive; sin web ni sincronización |
+| PrestaCOP Bronce | US$15 **al año** (~RD$900) | Lo de Gratis + diseño del recibo, balances y gastos |
+| PrestaCOP Oro | US$10 de suscripción + US$0.03 por cliente al mes (mínimo US$3, máximo US$30) | Lo de Bronce + contrato, **web y sincronización en tiempo real** |
+| Prestapp / CobrApp | Gratis hasta 10 clientes; Premium US$5.99 al mes o US$59.99 al año | Clientes sin límite, rutas, reportes |
+
+Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de RD$790 por 30 clientes queda caro.
+
+**PrestamosCloud** (prestamoscloud.com, revisado el 29-09-2026) — **dominicana**, competidor grande (dicen estar en 18 países). Es para **financieras medianas**, no para el prestamista de calle:
+
+| Plan | Al mes (15% menos al año) | Usuarios | Clientes |
+|---|---|---|---|
+| ECO | US$15 (~RD$900) | 1 | 100 |
+| Emprendedor | US$20 (~RD$1,200) | 2 | 500 |
+| Bronze | US$30 (~RD$1,800) | 3 | 3,000 |
+| Plata | US$50 (~RD$3,000) | 8 | 6,000 |
+| Oro | US$90 (~RD$5,400) | 15 | sin límite |
+
+- **Qué da:**
+  - cobros y recordatorios automáticos por WhatsApp;
+  - **cobradores con GPS en tiempo real** y rutas asignadas;
+  - **app en Google Play y App Store que funciona sin internet**;
+  - impresoras térmicas (Bluetooth y USB) y PDA con impresora;
+  - contabilidad, cuadre bancario, facturación electrónica y documentos legales;
+  - inventario y punto de venta;
+  - **DataPréstamos** (buró de crédito entre prestamistas);
+  - **importar datos desde Excel** con IA.
+- **Prueba:** solo 7 días gratis.
+- **Dónde les ganamos:**
+  - precio: nuestro Básico propuesto cuesta menos de la mitad de su ECO;
+  - simplicidad;
+  - el link de solicitud con foto de cédula que llena el mismo cliente;
+  - las promesas de pago con aviso;
+  - un plan gratis que no se vence.
+- **Conclusión:** no competir en funciones, sino ser **la opción barata y fácil** para el que empieza. Esto confirma los precios nuevos y que cobradores e impresora son prioridad. Para más adelante: **importar clientes desde Excel** (punto 2.8).
+
+**1. Precios nuevos — ✅ confirmados el 29-09-2026 (Gratis con 10 clientes, no 20). Se aplican con `migracion_2026_09_29_precios_nuevos.sql`:**
+
+| Plan | Precio al mes | Clientes | Cobradores |
+|---|---|---|---|
+| Gratis | — | 10 | — |
+| Básico | RD$390 | 60 | 1 |
+| Pro | RD$690 | 200 | 3 |
+| Premium | RD$1,190 | sin límite | sin límite |
+
+- 12 meses con 2 meses gratis (Básico anual: RD$3,900). 3 meses con 10% menos.
+- **Todo incluido desde Gratis** (nube, web, link de solicitudes, mora, WhatsApp, recibos, gestiones, gráficas). Entre planes solo cambian **clientes y cobradores**.
+- **Precio de fundador:** los primeros 20 que paguen se quedan con su precio para siempre. A cada cuenta nueva, **un mes de Pro gratis** (al aprobarla: Cambiar plan → Pro).
+- Con unos 6 clientes en Básico se paga Supabase Pro (US$25 al mes).
+- Se cambia con un SQL en la tabla `planes` (precio y `max_clientes`); los cobradores por plan llegan con el punto 2.3.
+
+**2. Lo que hay que agregar, en este orden:**
+1. ✅ **Recibo personalizado** — hecho el 29-09-2026. En Perfil → "Personalizar mi recibo": logo, nombre del negocio, teléfono (si está vacío, su WhatsApp), dirección y mensaje al pie, con "Ver cómo queda". El logo va en la carpeta privada del prestamista. Los emojis se quitan solos del PDF porque su letra no los trae.
+2. ✅ **Gastos y ganancia real** — hecho el 29-09-2026. Reportes → "Gastos y ganancia real": anotar gastos por categoría (gasolina, pago al cobrador, teléfono y recargas, comida, transporte, otro) con nota y fecha; ver la ganancia real del mes (interés cobrado + mora − gastos), en qué se fue el dinero y meses anteriores. Un gasto mal anotado se puede borrar (no toca préstamos ni cobros). En la caja del día salen los gastos, "Te queda" y "Anotar gasto", y el resumen por WhatsApp los incluye.
+3. ✅ **Cobradores** — hecho y probado el 29-09-2026 (`migracion_2026_09_30_cobradores.sql`). Decidido con el dueño: el cobrador **no** registra clientes ni presta, **no** anula cobros (le avisa al jefe) y **sí** ve el balance de cada cliente.
+   - ✅ **Invitar:** Perfil → "Mis cobradores" → Agregar (nombre, correo, WhatsApp) y "Cómo entrar" por WhatsApp. El cobrador entra con su correo y el código; la base de datos lo amarra a su jefe (`aceptar_invitacion_cobrador`). "Quitar acceso" lo corta al instante. Límite por plan en `planes.max_cobradores` (Gratis 0, Básico 1, Pro 3, Premium sin límite), aplicado por la base de datos.
+   - ✅ **Repartir:** "Repartir clientes" (marcar varios, buscar sin acentos) y "Le cobra:" en la ficha del cliente. Sin cobrador, lo cobra el prestamista.
+   - ✅ **App del cobrador:** Mi ruta (Inicio con solo sus clientes, mapa, cobrar, recibo, WhatsApp, gestiones), Mi caja de hoy y Yo. No ve fotos de los clientes. El recibo dice "Cobrado por". El número de recibo sigue siendo el del jefe (el trigger ahora es `security definer` para no repetir números).
+   - ✅ **Caja por cobrador y cuadre** (`migracion_2026_09_30_entregas.sql`): en la Caja del día, "Por cobrador" dice cuánto cobró cada uno (y tú); al tocarlo se anota "¿Cuánto te entregó?" y dice Cuadra / Falta / Sobra, con nota, y avisa si después se anuló o agregó un cobro. El cobrador ve en "Mi caja" si su jefe ya recibió. El resumen por WhatsApp trae lo de cada cobrador.
+   - ⬜ Más adelante: que el cobrador vea las fotos de sus clientes (hoy la regla de las fotos no se lo permite).
+4. 🔨 **Impresora de tickets** — hecha el 29-09-2026, **falta probarla con una impresora real** (el dueño no tiene todavía). "Imprimir ticket" en el cobro y en cada recibo: papel de 58 u 80 mm (se recuerda en el teléfono) y dos formas:
+   - **Bluetooth directo** (Web Bluetooth, `web/impresora.js`): solo Chrome en Android y solo impresoras **BLE**; la primera vez se elige la impresora.
+   - **App RawBT** (Android, gratis): funciona con casi cualquier impresora Bluetooth (también las "clásicas", que Chrome no ve). Si no está instalada, Android abre Google Play.
+   - El ticket es texto ESC/POS (`lib/logic/ticket.dart`) con tabla PC850 para acentos y ñ, igual al recibo PDF. En iPhone no hay forma: se usa el PDF.
+   - Al comprar impresora: preferir una que diga **BLE** o "Bluetooth 4.0" (sirve de las dos formas).
+5. **Contrato o pagaré en PDF** para firmar, con el texto revisado por un abogado. *(Mediano.)*
+6. **App en Google Play (APK).** *(Mediano.)*
+7. **GPS de cobradores.** *(Grande; más adelante.)*
+8. ✅ **Importar clientes y préstamos desde Excel** — hecho el 29-09-2026. Clientes → ícono de subir archivo: "Descargar plantilla" (nombre, cédula, teléfono, dirección y, si tiene préstamo en la calle, monto, interés, frecuencia, plazo, fecha y lo que ya pagó), "Elegir archivo" (.xlsx o CSV). Antes de guardar muestra cada fila: lista, ya existe (misma cédula) o con errores en palabras. Lo ya pagado se guarda como un cobro "importado" del día del préstamo: cubre las primeras cuotas (las atrasadas que falten generan mora desde su fecha) y **no cuenta en la caja ni en las gráficas**. Respeta el límite de clientes del plan. Solo en la web por ahora (el APK necesita otra forma de elegir archivos).
+
+**3. Cómo venderla (lo que ellos no dan, o solo en el plan caro):**
+> "Tus datos en la nube: si pierdes el celular, no pierdes tu cartera. Tus clientes te piden préstamos por un link con foto de cédula. La mora se calcula sola y cobras por WhatsApp con un toque. Anota las promesas de pago y la app te avisa si no cumplen."
+
+**4. Averiguar en la calle:** preguntarles a los prestamistas que usan PrestaCOP qué no les gusta y qué les hace falta.
+
+### A. Antes de manejar la cartera real
+1. **Plan Pro de Supabase (US$25/mes)**, lo contrata el dueño en *Billing*. El plan gratis se pausa tras una semana sin uso y **no tiene copias de seguridad**.
+2. **Préstamos de prueba sin cronograma** (creados en las primeras fases, como los de john y aquiles): no tienen fechas, así que nunca salen atrasados ni cobran mora. Cancelarlos, si no tienen cobros, y hacerlos de nuevo con "Nuevo préstamo". Si alguno es real, pasarle las fechas.
+
+### B. Antes de vender u ofrecer la app
+3. **Nombre nuevo:** buscar en ONAPI (Nombre comercial y Marca) y registrarlo. Después se cambia en toda la app: título, ícono, encabezado, recibos, mensajes de WhatsApp y sello del formulario.
+4. **Dominio propio** con el nombre nuevo (unos US$10–15 al año). Al cambiarlo, actualizar:
+   - Supabase → Authentication → URL Configuration;
+   - `kDominioPublicado` en `lib/screens/link_generado_screen.dart`.
+5. **Términos de uso y aviso de privacidad** (Ley 172-13), revisados por un abogado. El sello del formulario **no** dice que se cumple la ley hasta confirmarlo.
+6. ~~Cobro de planes en línea~~ — **decidido el 24-09-2026: por ahora NO.** Se cobra por **depósito o transferencia** a la cuenta del dueño, o **en efectivo** si el cliente queda cerca, y el admin activa el plan a mano. Azul o CardNET se piensan cuando haya volumen (piden RNC, cuenta de negocio y términos publicados).
+
+### C. Útil, puede esperar
+7. **APK de Android** (ver "Plan para ser competitivos", 2.6): adaptar la descarga de Excel (hoy usa `dart:html`, que solo existe en la web). Mientras tanto sirve "Agregar a pantalla de inicio".
+8. **Cobradores o socios** → pasó a "Plan para ser competitivos", punto 2.3.
+9. **Entrar con código por WhatsApp o SMS** en vez del correo. Twilio cobra por mensaje y la entrega en RD falla a veces.
+10. ✅ **Gráficas** — hechas el 24-09-2026 (Reportes → "Gráficas del negocio").
+11. **Pagaré o contrato en PDF** → pasó a "Plan para ser competitivos", punto 2.5.
+12. **Nota en el formulario:** "¿No se abre la cámara? Abre el link en Safari o Chrome" (Brave con Shields la bloquea en iPhone).
+
+### Descartado (y por qué)
+- **Selector de "tipo de tasa"** (mensual, semanal o diaria): la app ya reparte la tasa mensual por días. Dos formas de escribir la misma tasa confunden.
+- **Recibo por WhatsApp automático:** requiere la API de WhatsApp Business (pagada, con aprobación de Meta). Hoy es un toque.
+- **Borrar cobros:** de ellos depende lo que debe cada cliente. Se **anulan** (quedan tachados) y lo que se borra son los **cierres de caja**.
+
+---
+
+## Decisiones tomadas
+
+| Tema | Regla |
+|---|---|
+| Interés | La tasa es **mensual** y se reparte por días (30 días = 1 mes). |
+| Tasa semanal | Se deja como está: `20% × 7 ÷ 30 = 4.67%` por semana (RD$10,000 a 4 semanas = RD$1,867). La regla `20% ÷ 4 = 5%` daría RD$2,000. |
+| Plazo que no cuadra | Se completa el período: 30 días semanal = 5 semanas (35 días de interés); 45 días mensual = 2 meses. |
+| Mensual | Mismo día de cada mes; si el mes es más corto, el último día (31 ene → 28 feb). |
+| Quincenal | Cada 15 días. |
+| Redondeo | Total y cuotas en pesos enteros; la última cuota absorbe la diferencia. |
+| Mora | % diario sobre lo que falta de la cuota vencida, redondeado a pesos, **sin tope**. Días de gracia configurables (por defecto 5% y 1 día). Se fija en cada préstamo. |
+| Orden de un pago | Cuota #1, su mora, cuota #2, su mora… Si no alcanza para la cuota, es un abono a la cuota. |
+| Saldado | Cuando se cubren cuotas **y** mora. Sale de Inicio y pasa a "Préstamos saldados". |
+| "Ya llevas" (ganancia) | Parte de interés proporcional de cada cuota cobrada. La mora va aparte. |
+| Cobro anulado | No cuenta para nada, pero queda tachado con fecha y motivo. |
+| Repetidos | Cédula repetida bloquea; teléfono o nombre repetido pide confirmar. En el link público no se le avisa al cliente, para que nadie averigüe quién es cliente. |
+| Planes | Plan vencido = Gratis. Límite aplicado por la base de datos. Activación manual por el admin. |
+| Cobro de planes | Depósito o transferencia a la cuenta del dueño, o efectivo si queda cerca. Sin cobro en línea por ahora. |
+| Mapas | OpenStreetMap para ver; Google Maps solo para navegar. |
+
+## Decisiones abiertas
+- **Nombre comercial** (ver el aviso de arriba).
+- **Ley 172-13:** confirmar si se cumple antes de decirlo en el formulario.
+
+---
+
+## Migraciones de Supabase
+
+En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin problema.
+
+| # | Archivo | Qué hace |
+|---|---|---|
+| 1 | `migracion_2026_09_22_monto_total.sql` | Total prometido del préstamo |
+| 2 | `migracion_2026_09_23_mora.sql` | Mora y días de gracia |
+| 3 | `migracion_2026_09_23_recibos.sql` | Número de recibo consecutivo |
+| 4 | `migracion_2026_09_24_ingresos_vivienda.sql` | Ingreso mensual y tipo de vivienda |
+| 5 | `migracion_2026_09_24_evidencias.sql` | Evidencias de ingresos (ya incluida en la 6) |
+| 6 | `migracion_2026_09_24_fotos_privadas.sql` | Fotos privadas por prestamista |
+| 7 | `migracion_2026_09_23_anular_pagos.sql` | Anular cobros |
+| 8 | `migracion_2026_09_23_cierres_caja.sql` | Cierres de caja |
+| 9 | `migracion_2026_09_23_planes.sql` | Registro con aprobación, planes y admin (applej904@gmail.com) |
+| 10 | `migracion_2026_09_24_gestiones.sql` | Gestiones y acuerdos de cobro (promesas de pago) |
+| 11 | `migracion_2026_09_24_historial_clientes.sql` | Historial de cambios del cliente (trigger) |
+| 12 | `migracion_2026_09_24_pagos_planes.sql` | Pagos de planes (1, 3 o 12 meses), descuentos y WhatsApp del prestamista |
+| 13 | `migracion_2026_09_29_precios_nuevos.sql` | Precios nuevos: Gratis 10, Básico RD$390 (60), Pro RD$690 (200), Premium RD$1,190 |
+| 14 | `migracion_2026_09_29_recibo_personalizado.sql` | Recibo personalizado: logo, teléfono, dirección y mensaje al pie |
+| 15 | `migracion_2026_09_29_gastos.sql` | Gastos del negocio (ganancia real) |
+| 16 | `migracion_2026_09_30_cobradores.sql` | Cobradores: invitación, ruta, reglas de quién ve qué, límite por plan |
+| 17 | `migracion_2026_09_30_entregas.sql` | Entregas de los cobradores (cuadre de caja) |
+
+`schema.sql` refleja el esquema completo al día.
+
+## Cómo publicar una versión nueva
+1. `flutter build web --release`
+2. En app.netlify.com → proyecto **prestamistas-rd** → arrastrar el .zip de `build\web` en el recuadro de subir.
+3. En el celular, cerrar la pestaña y abrir de nuevo.
+4. Si se agregó una librería nueva, en la computadora hay que detener y volver a correr `flutter run` (la `R` no alcanza).
+
+## Cómo probar
+- `flutter test` corre las 252 pruebas automáticas: cálculo, mora, recibos, anulación, gestiones y promesas, historial de cambios, gráficas, caja, gastos, cobradores, ticket, importar, planes, ruta, validación, búsqueda, WhatsApp, fotos y pantallas en celular angosto.
+- La ubicación (GPS) solo funciona en la versión publicada (`https`) o en `localhost`.
+- En iPhone, **Brave con los Shields activados** puede bloquear la cámara. En Safari y WhatsApp funciona.
