@@ -44,7 +44,7 @@ jobs:
           # La contraseña puede traer @, # o / y hay que escaparlos en la URL.
           clave=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["CLAVE"], safe=""))')
           echo "::add-mask::$clave"
-          for servidor in aws-1-us-east-1 aws-0-us-east-1; do
+          for servidor in aws-0-us-east-1 aws-1-us-east-1; do
             url="postgresql://postgres.twhwjttwpliudqkkgzsq:$clave@$servidor.pooler.supabase.com:5432/postgres"
             if supabase db dump --db-url "$url" -f copia/roles.sql --role-only; then
               echo "Conectó por $servidor"
