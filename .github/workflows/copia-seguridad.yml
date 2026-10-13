@@ -33,7 +33,13 @@ jobs:
       - name: Sacar la copia
         env:
           CLAVE: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          CANDADO: ${{ secrets.BACKUP_PASSWORD }}
         run: |
+          # Sin la contraseña del candado la copia quedaría sin cifrar: no se saca.
+          if [ -z "$CANDADO" ]; then
+            echo "Falta el secreto BACKUP_PASSWORD: no se saca la copia."
+            exit 1
+          fi
           mkdir copia
           # La contraseña puede traer @, # o / y hay que escaparlos en la URL.
           clave=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["CLAVE"], safe=""))')
