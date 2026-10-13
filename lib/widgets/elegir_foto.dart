@@ -7,6 +7,12 @@ import 'package:image_picker/image_picker.dart';
 /// pueden pesar más de 5 MB aun convertidas.
 const maxBytesFoto = 10 * 1024 * 1024;
 
+/// Ancho y calidad con que se achican las fotos antes de subirlas. Con
+/// 1280 px la cédula se sigue leyendo bien y cada foto pesa como la mitad
+/// que con 1600 px y 80% (así rinde más el 1 GB gratis de Supabase).
+const anchoFoto = 1280.0;
+const calidadFoto = 70;
+
 /// Pide UNA foto (cámara o galería) y devuelve sus bytes, o null si el
 /// usuario cancela o algo falla (en ese caso avisa con un mensaje).
 ///
@@ -16,7 +22,7 @@ const maxBytesFoto = 10 * 1024 * 1024;
 /// menú propio de la app. En Android/iOS nativos sí se muestra el menú.
 ///
 /// [maxWidth] achica la foto a ese ancho (un logo no necesita más de 400).
-Future<Uint8List?> elegirFoto(BuildContext context, {double maxWidth = 1600}) async {
+Future<Uint8List?> elegirFoto(BuildContext context, {double maxWidth = anchoFoto}) async {
   final mensajero = ScaffoldMessenger.of(context);
   try {
     final ImageSource? origen =
@@ -24,7 +30,7 @@ Future<Uint8List?> elegirFoto(BuildContext context, {double maxWidth = 1600}) as
     if (origen == null) return null;
     final foto = await ImagePicker().pickImage(
       source: origen,
-      imageQuality: 80,
+      imageQuality: calidadFoto,
       maxWidth: maxWidth,
     );
     if (foto == null) return null;
@@ -52,9 +58,9 @@ Future<List<Uint8List>> elegirVariasFotos(BuildContext context, {required int ma
     if (origen == null) return const [];
     final picker = ImagePicker();
     final elegidas = origen == ImageSource.gallery
-        ? await picker.pickMultiImage(imageQuality: 80, maxWidth: 1600, limit: maximo)
+        ? await picker.pickMultiImage(imageQuality: calidadFoto, maxWidth: anchoFoto, limit: maximo)
         : [
-            if (await picker.pickImage(source: origen, imageQuality: 80, maxWidth: 1600)
+            if (await picker.pickImage(source: origen, imageQuality: calidadFoto, maxWidth: anchoFoto)
                 case final foto?)
               foto,
           ];
