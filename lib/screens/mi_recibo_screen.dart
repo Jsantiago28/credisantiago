@@ -13,7 +13,8 @@ import '../widgets/foto_privada.dart';
 import '../widgets/ui.dart';
 
 /// Perfil → Mi recibo: logo, nombre del negocio, teléfono, dirección y
-/// mensaje al pie de los recibos. Todo es opcional.
+/// mensaje al pie de los recibos, y la cédula o RNC y la ciudad que salen
+/// en los contratos. Todo es opcional.
 class MiReciboScreen extends StatefulWidget {
   final Map<String, dynamic> perfil;
   const MiReciboScreen({super.key, required this.perfil});
@@ -28,6 +29,8 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
   late final _telefono = TextEditingController(text: _valor('recibo_telefono'));
   late final _direccion = TextEditingController(text: _valor('recibo_direccion'));
   late final _mensaje = TextEditingController(text: _valor('recibo_mensaje'));
+  late final _cedula = TextEditingController(text: _valor('contrato_cedula'));
+  late final _ciudad = TextEditingController(text: _valor('contrato_ciudad'));
 
   /// Logo guardado (ubicación en el bucket); null si no tiene o lo quitó.
   late String? _logoGuardado = _valor('recibo_logo').isEmpty ? null : _valor('recibo_logo');
@@ -38,7 +41,7 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
 
   @override
   void dispose() {
-    for (final c in [_negocio, _telefono, _direccion, _mensaje]) {
+    for (final c in [_negocio, _telefono, _direccion, _mensaje, _cedula, _ciudad]) {
       c.dispose();
     }
     super.dispose();
@@ -107,6 +110,8 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
         'recibo_direccion': texto(_direccion),
         'recibo_mensaje': texto(_mensaje),
         'recibo_logo': logo,
+        'contrato_cedula': texto(_cedula),
+        'contrato_ciudad': texto(_ciudad),
       };
       await servicio.guardarMiRecibo(id, cambios);
       widget.perfil.addAll(cambios);
@@ -126,7 +131,7 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
   Widget build(BuildContext context) {
     final whatsapp = _valor('whatsapp');
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi recibo')),
+      appBar: AppBar(title: const Text('Mi recibo y contrato')),
       body: Form(
         key: _form,
         child: ListView(
@@ -155,6 +160,20 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
                     'Si lo dejas vacío, dice "${NegocioRecibo.mensajeDeSiempre}"',
                 largo: 120,
                 lineas: 2),
+            const SizedBox(height: 8),
+            const Text('PARA TUS CONTRATOS',
+                style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
+            const SizedBox(height: 4),
+            const Text(
+              'Salen en el contrato de cada préstamo. Si los dejas vacíos, el contrato '
+              'trae una raya para llenarlos a mano.',
+              style: TextStyle(color: AppColors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            _campo(_cedula, 'Tu cédula o RNC',
+                ayuda: 'Ej.: 001-0000000-1 o el RNC de tu negocio.', largo: 20),
+            _campo(_ciudad, 'Ciudad donde firmas los contratos',
+                ayuda: 'Ej.: Santo Domingo Este.', largo: 40, mayusculas: true),
             const SizedBox(height: 4),
             OutlinedButton.icon(
               onPressed: _guardando ? null : _verEjemplo,

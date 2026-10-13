@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/historial.dart';
 import '../logic/ruta.dart';
+import '../recibos/contrato_pdf.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cobro_prestamo.dart';
@@ -376,20 +377,38 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                 ),
             ],
           ),
-          // Préstamo hecho por error: sin cobros se puede cancelar.
-          if (!saldado && validos.isEmpty)
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(foregroundColor: AppColors.red),
-                onPressed: () => _cancelar(p),
-                icon: const Icon(Icons.close, size: 18),
-                label: const Text('Cancelar préstamo'),
+          Wrap(
+            alignment: WrapAlignment.end,
+            children: [
+              TextButton.icon(
+                onPressed: () => _contrato(p),
+                icon: const Icon(Icons.description_rounded, size: 18),
+                label: const Text('Contrato'),
               ),
-            ),
+              // Préstamo hecho por error: sin cobros se puede cancelar.
+              if (!saldado && validos.isEmpty)
+                TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: AppColors.red),
+                  onPressed: () => _cancelar(p),
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Cancelar préstamo'),
+                ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  /// Contrato del préstamo en PDF, para imprimir y firmar.
+  Future<void> _contrato(Map<String, dynamic> prestamo) async {
+    final mensajero = ScaffoldMessenger.of(context);
+    mensajero.showSnackBar(const SnackBar(content: Text('Preparando el contrato...')));
+    try {
+      await compartirContrato(prestamo);
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo hacer el contrato: $e')));
+    }
   }
 
   /// Cancela un préstamo sin cobros (hecho por error), con confirmación.

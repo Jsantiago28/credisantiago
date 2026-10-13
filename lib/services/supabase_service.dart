@@ -1124,11 +1124,11 @@ class SupabaseService {
     return client.auth.signOut();
   }
 
-  /// Cliente de un préstamo (para el recibo).
+  /// Cliente de un préstamo (para el recibo y el contrato).
   Future<Map<String, dynamic>?> obtenerClienteDePrestamo(Map<String, dynamic> prestamo) {
     return client
         .from('clientes')
-        .select('nombre, cedula, telefono')
+        .select('nombre, cedula, telefono, direccion')
         .eq('id', prestamo['cliente_id'])
         .maybeSingle();
   }

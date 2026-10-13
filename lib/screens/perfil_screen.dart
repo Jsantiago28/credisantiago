@@ -153,7 +153,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text('MI RECIBO',
+          const Text('MI RECIBO Y CONTRATO',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           Panel(
@@ -167,8 +167,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Personalizar mi recibo', style: TextStyle(fontWeight: FontWeight.w800)),
-                      Text('Logo, nombre del negocio, teléfono y mensaje al pie',
+                      Text('Personalizar mi recibo y contrato',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                      Text('Logo, nombre del negocio, teléfono, cédula o RNC y mensaje al pie',
                           style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     ],
                   ),

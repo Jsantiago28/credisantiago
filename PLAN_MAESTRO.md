@@ -3,7 +3,7 @@
 **Stack:** Flutter (Web; Android pendiente) + Supabase (proyecto `twhwjttwpliudqkkgzsq`)
 **Publicada en:** https://prestamistas-rd.netlify.app — link de clientes: `/s/{slug}`
 **Admin de la app:** applej904@gmail.com
-**Pruebas automáticas:** 252, todas pasan (`flutter test`)
+**Pruebas automáticas:** 260, todas pasan (`flutter test`)
 
 > ⚠️ **Nombre comercial:** "PRESTAMISTAS RD BY MITCHELL CASTILLO" está registrado en ONAPI (2020, préstamos personales y comerciales). Antes de **vender u ofrecer** la app hay que elegir otro nombre, buscarlo en ONAPI, registrarlo y comprar el dominio. Para uso propio se puede seguir usando.
 
@@ -27,7 +27,7 @@
 | Gestiones y acuerdos de cobro (promesas de pago) | ✅ Completo |
 | Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados | ✅ Hecho |
 | Gráficas del negocio | ✅ Completo |
-| Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); siguen contrato y APK |
+| Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); contrato hecho (13-10-2026); sigue el APK |
 | Login por WhatsApp | ⬜ Pendiente (puede esperar) |
 
 ---
@@ -237,7 +237,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
    - **App RawBT** (Android, gratis): funciona con casi cualquier impresora Bluetooth (también las "clásicas", que Chrome no ve). Si no está instalada, Android abre Google Play.
    - El ticket es texto ESC/POS (`lib/logic/ticket.dart`) con tabla PC850 para acentos y ñ, igual al recibo PDF. En iPhone no hay forma: se usa el PDF.
    - Al comprar impresora: preferir una que diga **BLE** o "Bluetooth 4.0" (sirve de las dos formas).
-5. **Contrato o pagaré en PDF** para firmar, con el texto revisado por un abogado. *(Mediano.)*
+5. ✅ **Contrato de préstamo en PDF** — hecho el 13-10-2026 (`migracion_2026_10_13_contrato.sql`). En la ficha del cliente, cada préstamo tiene "Contrato": papel carta con las partes, el monto en números y en letras, la tabla de condiciones (tasa, total, cuotas, frecuencia, primer y último pago, mora) y el calendario de pagos al final. Todo sale de la app; solo las firmas van a mano. La cédula o RNC y la ciudad del prestamista se ponen en Perfil → "Personalizar mi recibo y contrato" (si faltan, sale una raya). ⬜ **Falta que un abogado revise el texto** (`lib/recibos/contrato_pdf.dart`) antes de venderlo.
 6. **App en Google Play (APK).** *(Mediano.)*
 7. **GPS de cobradores.** *(Grande; más adelante.)*
 8. ✅ **Importar clientes y préstamos desde Excel** — hecho el 29-09-2026. Clientes → ícono de subir archivo: "Descargar plantilla" (nombre, cédula, teléfono, dirección y, si tiene préstamo en la calle, monto, interés, frecuencia, plazo, fecha y lo que ya pagó), "Elegir archivo" (.xlsx o CSV). Antes de guardar muestra cada fila: lista, ya existe (misma cédula) o con errores en palabras. Lo ya pagado se guarda como un cobro "importado" del día del préstamo: cubre las primeras cuotas (las atrasadas que falten generan mora desde su fecha) y **no cuenta en la caja ni en las gráficas**. Respeta el límite de clientes del plan. Solo en la web por ahora (el APK necesita otra forma de elegir archivos).
@@ -264,7 +264,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 8. **Cobradores o socios** → pasó a "Plan para ser competitivos", punto 2.3.
 9. **Entrar con código por WhatsApp o SMS** en vez del correo. Twilio cobra por mensaje y la entrega en RD falla a veces.
 10. ✅ **Gráficas** — hechas el 24-09-2026 (Reportes → "Gráficas del negocio").
-11. **Pagaré o contrato en PDF** → pasó a "Plan para ser competitivos", punto 2.5.
+11. ✅ **Contrato en PDF** — hecho el 13-10-2026 ("Plan para ser competitivos", punto 2.5).
 12. **Nota en el formulario:** "¿No se abre la cámara? Abre el link en Safari o Chrome" (Brave con Shields la bloquea en iPhone).
 
 ### Descartado (y por qué)
@@ -324,6 +324,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 16 | `migracion_2026_09_30_cobradores.sql` | Cobradores: invitación, ruta, reglas de quién ve qué, límite por plan |
 | 17 | `migracion_2026_09_30_entregas.sql` | Entregas de los cobradores (cuadre de caja) |
 | 18 | `migracion_2026_10_12_limite_fotos.sql` | La carpeta de fotos solo acepta imágenes de hasta 10 MB |
+| 19 | `migracion_2026_10_13_contrato.sql` | Cédula o RNC y ciudad del prestamista para el contrato |
 
 `schema.sql` refleja el esquema completo al día.
 
