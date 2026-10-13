@@ -1,0 +1,53 @@
+# Copia de la base de datos cada semana (Supabase gratis no hace copias).
+#
+# Queda en GitHub → Actions → la corrida → "Artifacts", cifrada con la
+# contraseña BACKUP_PASSWORD (tiene cédulas y teléfonos de clientes).
+# Las fotos NO entran: esas siguen solo en Supabase Storage.
+#
+# Necesita dos secretos (GitHub → Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL  la cadena "Session pooler" de Supabase (Connect → Session
+#                    pooler), con la contraseña de la base de datos puesta.
+#                    No sirve la "Direct connection": GitHub no llega a ella.
+#   BACKUP_PASSWORD  una contraseña que tú inventes para cifrar la copia.
+#                    Guárdala bien: sin ella la copia no se puede abrir.
+#
+# Para abrir una copia:  gpg --decrypt copia.tar.gz.gpg > copia.tar.gz
+name: Copia de seguridad semanal
+
+on:
+  schedule:
+    - cron: '0 9 * * 0'   # domingos, 5:00 a. m. de RD
+  workflow_dispatch:
+
+jobs:
+  copia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Sacar la copia
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir copia
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/esquema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/datos.sql --use-copy --data-only
+
+      - name: Cifrar
+        env:
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          nombre="copia-$(date +%Y-%m-%d).tar.gz"
+          tar -czf "$nombre" copia
+          gpg --batch --yes --symmetric --cipher-algo AES256 \
+            --passphrase "$BACKUP_PASSWORD" -o "$nombre.gpg" "$nombre"
+          echo "ARCHIVO=$nombre.gpg" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARCHIVO }}
+          path: ${{ env.ARCHIVO }}
+          retention-days: 60

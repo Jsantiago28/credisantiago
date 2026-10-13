@@ -1,0 +1,22 @@
+# Supabase gratis pausa el proyecto si pasa 7 días sin uso. Esta tarea le
+# hace una consulta cada 3 días para que nunca llegue a pausarse.
+# No necesita secretos: la URL y la clave publishable ya son públicas
+# (están en la app, lib/services/supabase_service.dart).
+name: Mantener Supabase despierto
+
+on:
+  schedule:
+    - cron: '0 12 */3 * *'   # cada 3 días, 8:00 a. m. de RD
+  workflow_dispatch:          # botón "Run workflow" para probarla a mano
+
+jobs:
+  despertar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar la base de datos
+        run: |
+          curl --fail --silent --show-error \
+            "https://twhwjttwpliudqkkgzsq.supabase.co/rest/v1/planes?select=id&limit=1" \
+            -H "apikey: sb_publishable_zWnZxJRX53T5SHyOd1Uamg_-pL2imoD"
+          echo
+          echo "Supabase respondió: sigue despierto."

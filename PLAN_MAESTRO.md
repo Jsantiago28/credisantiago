@@ -152,6 +152,7 @@
 - **Fotos privadas:** bucket privado, una carpeta por prestamista, enlaces que vencen en 1 hora.
 - Cada prestamista solo ve sus propios datos.
 - Nadie puede ponerse un plan, aprobarse ni hacerse admin por su cuenta.
+- **Fotos livianas:** se achican a 1280 px y 70% antes de subirlas, y la carpeta solo acepta imágenes de hasta 10 MB (12-10-2026).
 
 ---
 
@@ -247,7 +248,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 **4. Averiguar en la calle:** preguntarles a los prestamistas que usan PrestaCOP qué no les gusta y qué les hace falta.
 
 ### A. Antes de manejar la cartera real
-1. **Plan Pro de Supabase (US$25/mes)**, lo contrata el dueño en *Billing*. El plan gratis se pausa tras una semana sin uso y **no tiene copias de seguridad**.
+1. **Plan Pro de Supabase (US$25/mes ≈ 4 clientes del Básico)**, lo contrata el dueño en *Billing* cuando haya unos 5 prestamistas pagando o las fotos se acerquen a 1 GB. Mientras tanto (12-10-2026), dos tareas gratis de GitHub Actions (`.github/workflows/`) cubren lo del plan gratis: `mantener-despierto.yml` consulta Supabase cada 3 días para que no se pause, y `copia-seguridad.yml` saca cada domingo una copia cifrada de la base de datos (no de las fotos). La copia necesita los secretos `SUPABASE_DB_URL` y `BACKUP_PASSWORD` en GitHub.
 2. **Préstamos de prueba sin cronograma** (creados en las primeras fases, como los de john y aquiles): no tienen fechas, así que nunca salen atrasados ni cobran mora. Cancelarlos, si no tienen cobros, y hacerlos de nuevo con "Nuevo préstamo". Si alguno es real, pasarle las fechas.
 
 ### B. Antes de vender u ofrecer la app
@@ -259,7 +260,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 6. ~~Cobro de planes en línea~~ — **decidido el 24-09-2026: por ahora NO.** Se cobra por **depósito o transferencia** a la cuenta del dueño, o **en efectivo** si el cliente queda cerca, y el admin activa el plan a mano. Azul o CardNET se piensan cuando haya volumen (piden RNC, cuenta de negocio y términos publicados).
 
 ### C. Útil, puede esperar
-7. **APK de Android** (ver "Plan para ser competitivos", 2.6): adaptar la descarga de Excel (hoy usa `dart:html`, que solo existe en la web). Mientras tanto sirve "Agregar a pantalla de inicio".
+7. **APK de Android** (ver "Plan para ser competitivos", 2.6): Reportes ya descarga el Excel con `lib/archivos/` (12-10-2026); falta la versión Android de `lib/archivos/` (elegir y descargar archivos), que hoy solo funciona en la web. Mientras tanto sirve "Agregar a pantalla de inicio".
 8. **Cobradores o socios** → pasó a "Plan para ser competitivos", punto 2.3.
 9. **Entrar con código por WhatsApp o SMS** en vez del correo. Twilio cobra por mensaje y la entrega en RD falla a veces.
 10. ✅ **Gráficas** — hechas el 24-09-2026 (Reportes → "Gráficas del negocio").
@@ -291,7 +292,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 | Repetidos | Cédula repetida bloquea; teléfono o nombre repetido pide confirmar. En el link público no se le avisa al cliente, para que nadie averigüe quién es cliente. |
 | Planes | Plan vencido = Gratis. Límite aplicado por la base de datos. Activación manual por el admin. |
 | Cobro de planes | Depósito o transferencia a la cuenta del dueño, o efectivo si queda cerca. Sin cobro en línea por ahora. |
-| Mapas | OpenStreetMap para ver; Google Maps solo para navegar. |
+| Mapas | OpenStreetMap para ver (gratis con uso justo; si un día hay cientos de usuarios, cambiar a MapTiler); Google Maps solo para navegar, abriendo la app de Google. El paquete `google_maps_flutter` se quitó el 12-10-2026 porque no se usaba. |
 
 ## Decisiones abiertas
 - **Nombre comercial** (ver el aviso de arriba).
@@ -322,6 +323,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 15 | `migracion_2026_09_29_gastos.sql` | Gastos del negocio (ganancia real) |
 | 16 | `migracion_2026_09_30_cobradores.sql` | Cobradores: invitación, ruta, reglas de quién ve qué, límite por plan |
 | 17 | `migracion_2026_09_30_entregas.sql` | Entregas de los cobradores (cuadre de caja) |
+| 18 | `migracion_2026_10_12_limite_fotos.sql` | La carpeta de fotos solo acepta imágenes de hasta 10 MB |
 
 `schema.sql` refleja el esquema completo al día.
 
