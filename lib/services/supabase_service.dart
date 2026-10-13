@@ -588,7 +588,7 @@ class SupabaseService {
     try {
       return await consulta();
     } on PostgrestException catch (e) {
-      if (!_hayCobradorEnPagos || !'${e.message}'.contains('cobrador_id')) rethrow;
+      if (!_hayCobradorEnPagos || !e.message.contains('cobrador_id')) rethrow;
       _hayCobradorEnPagos = false;
       return consulta();
     }

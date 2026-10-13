@@ -1,5 +1,6 @@
 /// Reglas para que los datos queden bien puestos (cédula, teléfono, nombre)
 /// y para detectar clientes digitados dos veces.
+library;
 
 String soloDigitos(String? texto) => (texto ?? '').replaceAll(RegExp(r'\D'), '');
 

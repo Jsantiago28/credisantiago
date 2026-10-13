@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -588,7 +587,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
                       // Alto mínimo 84, pero crece si el texto baja de línea
                       // (letra grande en el teléfono del cliente).
                       : CustomPaint(
-                          painter: _BordePunteado(color: _azul, radio: 10),
+                          painter: const _BordePunteado(color: _azul, radio: 10),
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(minHeight: 84),
                             child: Padding(
@@ -830,27 +829,27 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
             tipo: TextInputType.number, formato: [soloNumeros], validar: errorMonto),
         const Text('¿Cómo prefieres pagar?', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: RadioListTile<String>(
-                value: 'diario',
-                groupValue: _frecuenciaPago,
-                title: const Text('Diario'),
-                contentPadding: EdgeInsets.zero,
-                onChanged: (v) => setState(() => _frecuenciaPago = v!),
+        RadioGroup<String>(
+          groupValue: _frecuenciaPago,
+          onChanged: (v) => setState(() => _frecuenciaPago = v!),
+          child: const Row(
+            children: [
+              Expanded(
+                child: RadioListTile<String>(
+                  value: 'diario',
+                  title: Text('Diario'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-            ),
-            Expanded(
-              child: RadioListTile<String>(
-                value: 'semanal',
-                groupValue: _frecuenciaPago,
-                title: const Text('Semanal'),
-                contentPadding: EdgeInsets.zero,
-                onChanged: (v) => setState(() => _frecuenciaPago = v!),
+              Expanded(
+                child: RadioListTile<String>(
+                  value: 'semanal',
+                  title: Text('Semanal'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         _campo(
           _capacidadPagoCtrl,
@@ -875,48 +874,51 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        RadioListTile<String>(
-          value: 'transferencia',
+        RadioGroup<String>(
           groupValue: _metodoCobro,
-          title: const Text('Transferencia bancaria'),
           onChanged: (v) => setState(() => _metodoCobro = v!),
-        ),
-        if (_metodoCobro == 'transferencia') ...[
-          DropdownButtonFormField<String>(
-            value: _banco,
-            items: ['Banreservas', 'Popular', 'BHD', 'Scotia', 'Otro']
-                .map((b) => DropdownMenuItem(value: b, child: Text(b)))
-                .toList(),
-            onChanged: (v) => setState(() => _banco = v),
-            decoration: const InputDecoration(labelText: 'Banco'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const RadioListTile<String>(
+                value: 'transferencia',
+                title: Text('Transferencia bancaria'),
+              ),
+              if (_metodoCobro == 'transferencia') ...[
+                DropdownButtonFormField<String>(
+                  initialValue: _banco,
+                  items: ['Banreservas', 'Popular', 'BHD', 'Scotia', 'Otro']
+                      .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _banco = v),
+                  decoration: const InputDecoration(labelText: 'Banco'),
+                ),
+                _campo(_numeroCuentaCtrl, 'Número de cuenta',
+                    tipo: TextInputType.number, formato: [soloNumeros]),
+              ],
+              const RadioListTile<String>(
+                value: 'billetera',
+                title: Text('Billetera (Qik / MIO)'),
+              ),
+              if (_metodoCobro == 'billetera')
+                DropdownButtonFormField<String>(
+                  initialValue: _billetera,
+                  items: ['Qik', 'MIO']
+                      .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _billetera = v),
+                  decoration: const InputDecoration(labelText: 'Billetera'),
+                ),
+              const RadioListTile<String>(
+                value: 'efectivo',
+                title: Text('Prefiero que venga a mi casa/trabajo'),
+              ),
+              const RadioListTile<String>(
+                value: 'sin_definir',
+                title: Text('Dejar en blanco por ahora'),
+              ),
+            ],
           ),
-          _campo(_numeroCuentaCtrl, 'Número de cuenta',
-              tipo: TextInputType.number, formato: [soloNumeros]),
-        ],
-        RadioListTile<String>(
-          value: 'billetera',
-          groupValue: _metodoCobro,
-          title: const Text('Billetera (Qik / MIO)'),
-          onChanged: (v) => setState(() => _metodoCobro = v!),
-        ),
-        if (_metodoCobro == 'billetera')
-          DropdownButtonFormField<String>(
-            value: _billetera,
-            items: ['Qik', 'MIO'].map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
-            onChanged: (v) => setState(() => _billetera = v),
-            decoration: const InputDecoration(labelText: 'Billetera'),
-          ),
-        RadioListTile<String>(
-          value: 'efectivo',
-          groupValue: _metodoCobro,
-          title: const Text('Prefiero que venga a mi casa/trabajo'),
-          onChanged: (v) => setState(() => _metodoCobro = v!),
-        ),
-        RadioListTile<String>(
-          value: 'sin_definir',
-          groupValue: _metodoCobro,
-          title: const Text('Dejar en blanco por ahora'),
-          onChanged: (v) => setState(() => _metodoCobro = v!),
         ),
       ],
     );

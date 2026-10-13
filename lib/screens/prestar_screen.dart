@@ -111,6 +111,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('No pudimos guardar el préstamo')));
     } finally {

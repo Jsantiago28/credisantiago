@@ -373,14 +373,14 @@ Uint8List plantillaExcel() {
     TextCellValue('001-1234567-8'),
     TextCellValue('809-555-1234'),
     TextCellValue('C/ Duarte #12, Santiago'),
-    IntCellValue(10000),
-    IntCellValue(20),
+    const IntCellValue(10000),
+    const IntCellValue(20),
     TextCellValue('semanal'),
-    IntCellValue(60),
+    const IntCellValue(60),
     TextCellValue('01/09/2026'),
-    IntCellValue(4000),
-    IntCellValue(5),
-    IntCellValue(1),
+    const IntCellValue(4000),
+    const IntCellValue(5),
+    const IntCellValue(1),
   ]);
   hoja.appendRow([
     TextCellValue('María Gómez'), // sin préstamo en la calle

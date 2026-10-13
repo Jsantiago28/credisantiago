@@ -9,7 +9,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(
       theme: ThemeData.dark(),
-      home: MiReciboScreen(perfil: {
+      home: const MiReciboScreen(perfil: {
         'id': 'abc',
         'nombre': 'Mitchell Castillo',
         'negocio': 'Inversiones Castillo',

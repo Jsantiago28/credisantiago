@@ -168,15 +168,15 @@ void main() {
     testWidgets('repartir: marca los suyos y avisa de quién es cada cliente', (tester) async {
       await enTelefono(
         tester,
-        RepartirClientesScreen(
+        const RepartirClientesScreen(
           prestamistaId: 'p1',
           cobrador: juan,
-          clientes: const [
+          clientes: [
             {'id': 'a', 'nombre': 'Ana Rosario', 'direccion': 'Los Jardines', 'cobrador_id': 'c1'},
             {'id': 'b', 'nombre': 'Bernardo Núñez', 'direccion': 'Gurabo', 'cobrador_id': 'c2'},
             {'id': 'c', 'nombre': 'Carmen Peña', 'direccion': null, 'cobrador_id': null},
           ],
-          cobradores: const [juan, pedro],
+          cobradores: [juan, pedro],
         ),
       );
       expect(tester.takeException(), isNull);
@@ -199,10 +199,10 @@ void main() {
         (tester) async {
       await enTelefono(
         tester,
-        Scaffold(
+        const Scaffold(
           body: SelectorCobrador(
             cliente: {'id': 'a', 'prestamista_id': 'p1', 'cobrador_id': 'c3'},
-            cobradores: const [juan, pedro, luis],
+            cobradores: [juan, pedro, luis],
           ),
         ),
       );
@@ -216,10 +216,10 @@ void main() {
     testWidgets('ficha: sin cobradores no sale nada', (tester) async {
       await enTelefono(
         tester,
-        Scaffold(
+        const Scaffold(
           body: SelectorCobrador(
             cliente: {'id': 'a', 'prestamista_id': 'p1', 'cobrador_id': null},
-            cobradores: const [luis],
+            cobradores: [luis],
           ),
         ),
       );

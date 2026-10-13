@@ -1,6 +1,6 @@
-import 'dart:html' as html;
 import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
+import '../archivos/archivos.dart';
 import '../logic/caja.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/gastos.dart';
@@ -332,16 +332,11 @@ class _ReportesScreenState extends State<ReportesScreen> {
     final bytes = excel.encode();
     if (bytes == null) return;
 
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
     final fecha = DateTime.now();
     final sufijo = hoja.toLowerCase().replaceAll(' ', '_');
     final nombreArchivo =
         'prestamistas_rd_${sufijo}_${fecha.year}${fecha.month.toString().padLeft(2, '0')}${fecha.day.toString().padLeft(2, '0')}.xlsx';
-    html.AnchorElement(href: url)
-      ..setAttribute('download', nombreArchivo)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    descargarArchivo(nombreArchivo, bytes);
   }
 
   @override

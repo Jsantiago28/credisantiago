@@ -15,7 +15,7 @@ Future<void> main() async {
   usePathUrlStrategy();
   await Supabase.initialize(
     url: SupabaseConfig.url,
-    anonKey: SupabaseConfig.anonKey,
+    publishableKey: SupabaseConfig.anonKey,
   );
   runApp(const PrestamistasRDApp());
 }

@@ -24,7 +24,7 @@ void main() {
       expect(cedulaDigitoVerificadorOk(valida), isTrue);
       expect(avisoCedula(valida), isNull);
       final ultimo = int.parse(valida[valida.length - 1]);
-      final mala = valida.substring(0, valida.length - 1) + '${(ultimo + 1) % 10}';
+      final mala = '${valida.substring(0, valida.length - 1)}${(ultimo + 1) % 10}';
       expect(cedulaDigitoVerificadorOk(mala), isFalse);
       expect(avisoCedula(mala), 'Revisa la cédula: puede tener un número equivocado');
     });

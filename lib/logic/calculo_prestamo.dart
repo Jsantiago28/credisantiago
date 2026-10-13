@@ -1,6 +1,7 @@
 /// Cálculos de dinero de un préstamo, como funciones puras (sin Supabase ni
 /// Flutter). Prestar, Cobrar y Reportes usan SOLO estas funciones, para que
 /// los tres muestren siempre los mismos números y se puedan probar.
+library;
 
 /// Tolerancia para comparar montos (sumas de doubles).
 const _centavo = 0.005;
