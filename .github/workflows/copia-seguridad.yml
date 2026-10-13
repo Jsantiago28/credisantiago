@@ -5,11 +5,14 @@
 # Las fotos NO entran: esas siguen solo en Supabase Storage.
 #
 # Necesita dos secretos (GitHub → Settings → Secrets and variables → Actions):
-#   SUPABASE_DB_URL  la cadena "Session pooler" de Supabase (Connect → Session
-#                    pooler), con la contraseña de la base de datos puesta.
-#                    No sirve la "Direct connection": GitHub no llega a ella.
-#   BACKUP_PASSWORD  una contraseña que tú inventes para cifrar la copia.
-#                    Guárdala bien: sin ella la copia no se puede abrir.
+#   SUPABASE_DB_PASSWORD  la contraseña de la base de datos de Supabase
+#                         (se cambia en Database → Settings → Reset password).
+#   BACKUP_PASSWORD       una contraseña que tú inventes para cifrar la copia.
+#                         Guárdala bien: sin ella la copia no se puede abrir.
+#
+# Se conecta por el "Session pooler" de us-east-1 (la conexión directa no
+# llega desde GitHub). Supabase usa aws-0 o aws-1 según el proyecto: se
+# prueban los dos.
 #
 # Para abrir una copia:  gpg --decrypt copia.tar.gz.gpg > copia.tar.gz
 name: Copia de seguridad semanal
@@ -29,12 +32,26 @@ jobs:
 
       - name: Sacar la copia
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          CLAVE: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           mkdir copia
-          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/roles.sql --role-only
-          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/esquema.sql
-          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/datos.sql --use-copy --data-only
+          # La contraseña puede traer @, # o / y hay que escaparlos en la URL.
+          clave=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["CLAVE"], safe=""))')
+          echo "::add-mask::$clave"
+          for servidor in aws-1-us-east-1 aws-0-us-east-1; do
+            url="postgresql://postgres.twhwjttwpliudqkkgzsq:$clave@$servidor.pooler.supabase.com:5432/postgres"
+            if supabase db dump --db-url "$url" -f copia/roles.sql --role-only; then
+              echo "Conectó por $servidor"
+              break
+            fi
+            url=""
+          done
+          if [ -z "$url" ]; then
+            echo "No se pudo conectar. Revisa el secreto SUPABASE_DB_PASSWORD."
+            exit 1
+          fi
+          supabase db dump --db-url "$url" -f copia/esquema.sql
+          supabase db dump --db-url "$url" -f copia/datos.sql --use-copy --data-only
 
       - name: Cifrar
         env:

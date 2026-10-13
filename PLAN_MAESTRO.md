@@ -248,7 +248,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 **4. Averiguar en la calle:** preguntarles a los prestamistas que usan PrestaCOP qué no les gusta y qué les hace falta.
 
 ### A. Antes de manejar la cartera real
-1. **Plan Pro de Supabase (US$25/mes ≈ 4 clientes del Básico)**, lo contrata el dueño en *Billing* cuando haya unos 5 prestamistas pagando o las fotos se acerquen a 1 GB. Mientras tanto (12-10-2026), dos tareas gratis de GitHub Actions (`.github/workflows/`) cubren lo del plan gratis: `mantener-despierto.yml` consulta Supabase cada 3 días para que no se pause, y `copia-seguridad.yml` saca cada domingo una copia cifrada de la base de datos (no de las fotos). La copia necesita los secretos `SUPABASE_DB_URL` y `BACKUP_PASSWORD` en GitHub.
+1. **Plan Pro de Supabase (US$25/mes ≈ 4 clientes del Básico)**, lo contrata el dueño en *Billing* cuando haya unos 5 prestamistas pagando o las fotos se acerquen a 1 GB. Mientras tanto (12-10-2026), dos tareas gratis de GitHub Actions (`.github/workflows/`) cubren lo del plan gratis: `mantener-despierto.yml` consulta Supabase cada 3 días para que no se pause, y `copia-seguridad.yml` saca cada domingo una copia cifrada de la base de datos (no de las fotos). La copia necesita los secretos `SUPABASE_DB_PASSWORD` y `BACKUP_PASSWORD` en GitHub.
 2. **Préstamos de prueba sin cronograma** (creados en las primeras fases, como los de john y aquiles): no tienen fechas, así que nunca salen atrasados ni cobran mora. Cancelarlos, si no tienen cobros, y hacerlos de nuevo con "Nuevo préstamo". Si alguno es real, pasarle las fechas.
 
 ### B. Antes de vender u ofrecer la app
