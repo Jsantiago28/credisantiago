@@ -21,17 +21,27 @@ const calidadFoto = 70;
 /// mismo toque: Safari en iPhone no abre el selector si antes se mostró un
 /// menú propio de la app. En Android/iOS nativos sí se muestra el menú.
 ///
+/// Con [origen] no se pregunta nada: [ImageSource.camera] abre la cámara
+/// directo, también en la web. Hace falta en Chrome de Android, cuyo selector
+/// de fotos no trae botón de cámara. [frontal] usa la cámara de adelante
+/// (para la foto de la cara).
+///
 /// [maxWidth] achica la foto a ese ancho (un logo no necesita más de 400).
-Future<Uint8List?> elegirFoto(BuildContext context, {double maxWidth = anchoFoto}) async {
+Future<Uint8List?> elegirFoto(
+  BuildContext context, {
+  double maxWidth = anchoFoto,
+  ImageSource? origen,
+  bool frontal = false,
+}) async {
   final mensajero = ScaffoldMessenger.of(context);
   try {
-    final ImageSource? origen =
-        kIsWeb ? ImageSource.gallery : await _preguntarOrigen(context);
+    origen ??= kIsWeb ? ImageSource.gallery : await _preguntarOrigen(context);
     if (origen == null) return null;
     final foto = await ImagePicker().pickImage(
       source: origen,
       imageQuality: calidadFoto,
       maxWidth: maxWidth,
+      preferredCameraDevice: frontal ? CameraDevice.front : CameraDevice.rear,
     );
     if (foto == null) return null;
     final bytes = await foto.readAsBytes();

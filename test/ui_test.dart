@@ -158,24 +158,38 @@ void main() {
   });
 
   for (final ancho in [360.0, 412.0, 1280.0]) {
-    testWidgets('link público, paso 1: tarjetas de fotos caben a $ancho px', (tester) async {
+    testWidgets('link público, último paso: tarjetas de fotos caben a $ancho px', (tester) async {
       tester.view.physicalSize = Size(ancho, 1800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(const MaterialApp(home: SolicitudPublicaScreen(slug: 'prueba')));
+      await tester.pumpWidget(
+          const MaterialApp(home: SolicitudPublicaScreen(slug: 'prueba', pasoInicial: 4)));
       await tester.pump();
       expect(tester.takeException(), isNull);
       expect(find.text('Foto de tu cara'), findsOneWidget);
       expect(find.text('Cédula - Frente'), findsOneWidget);
       expect(find.text('Cédula - Reverso'), findsOneWidget);
-      expect(find.text('Toca para subir'), findsNWidgets(3));
+      expect(find.text('Tomar foto'), findsNWidgets(3));
+      expect(find.text('Galería'), findsNWidgets(3));
+      expect(find.text('Paso 5 de 5 - Fotos'), findsOneWidget);
       expect(find.text('Datos seguros y privados'), findsOneWidget);
       // En pantallas anchas no se estira: máximo 560 px.
       if (ancho > 560) {
-        expect(tester.getSize(find.text('Continuar').first).width, lessThan(560));
+        expect(tester.getSize(find.text('Enviar solicitud').first).width, lessThan(560));
       }
     });
   }
+
+  testWidgets('link público: empieza por los datos y las fotos van de último', (tester) async {
+    tester.view.physicalSize = const Size(412, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(const MaterialApp(home: SolicitudPublicaScreen(slug: 'prueba')));
+    await tester.pump();
+    expect(find.text('Paso 1 de 5 - Datos'), findsOneWidget);
+    expect(find.text('Tomar foto'), findsNothing);
+    expect(find.text('5 Fotos'), findsOneWidget); // en la barra de pasos
+  });
 
   test('nombre del día en la caja', () {
     final hoy = DateTime(2026, 9, 23, 15);

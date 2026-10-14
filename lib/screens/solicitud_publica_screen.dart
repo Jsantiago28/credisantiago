@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart' show ImageSource;
 import '../widgets/elegir_foto.dart';
 import '../logic/validacion.dart';
 import '../logic/whatsapp.dart';
@@ -11,17 +12,40 @@ import '../widgets/evidencias.dart';
 import '../widgets/formato_campos.dart';
 
 /// Pantalla pública: prestamistacalle.com/s/{slug}
-/// El cliente NO necesita login. Llena 5 pasos y envía.
+/// El cliente NO necesita login. Llena 5 pasos y envía. Las fotos van de
+/// último: cuando ya escribió sus datos confía más y es menos probable que
+/// abandone.
 class SolicitudPublicaScreen extends StatefulWidget {
   final String slug;
-  const SolicitudPublicaScreen({super.key, required this.slug});
+
+  /// Para las pruebas: en qué paso abre (0 = el primero).
+  @visibleForTesting
+  final int pasoInicial;
+  const SolicitudPublicaScreen({super.key, required this.slug, this.pasoInicial = 0});
 
   @override
   State<SolicitudPublicaScreen> createState() => _SolicitudPublicaScreenState();
 }
 
+// Cada paso del formulario.
+const _fotos = 0, _datos = 1, _trabajo = 2, _referencias = 3, _pago = 4;
+
+/// Orden en que el cliente llena los pasos.
+const _orden = [_datos, _trabajo, _referencias, _pago, _fotos];
+const _nombresPasos = {
+  _fotos: 'Fotos',
+  _datos: 'Datos',
+  _trabajo: 'Trabajo',
+  _referencias: 'Referencias',
+  _pago: 'Pago',
+};
+
 class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
-  int _paso = 0;
+  /// Posición en [_orden] (0 = el primer paso que ve el cliente).
+  late int _paso = widget.pasoInicial;
+
+  /// Qué paso es el que se ve ahora.
+  int get _pasoId => _orden[_paso];
   bool _enviando = false;
   bool _enviado = false;
   Map<String, dynamic>? _prestamista;
@@ -88,10 +112,14 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     }
   }
 
-  /// Pide la foto (en iPhone abre el menú del teléfono: tomar foto o
-  /// elegir de la fototeca) y avisa si algo falla.
-  Future<void> _tomarFoto({required void Function(Uint8List bytes) onTomada}) async {
-    final bytes = await elegirFoto(context);
+  /// Pide la foto con la cámara (directo, también en Chrome de Android) o de
+  /// la galería, y avisa si algo falla. [frontal]: la cámara de adelante.
+  Future<void> _tomarFoto({
+    required ImageSource origen,
+    bool frontal = false,
+    required void Function(Uint8List bytes) onTomada,
+  }) async {
+    final bytes = await elegirFoto(context, origen: origen, frontal: frontal);
     if (bytes != null && mounted) setState(() => onTomada(bytes));
   }
 
@@ -136,17 +164,17 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
       };
 
   void _siguiente() {
-    if (_paso == 0 && !_paso1Valido) {
-      _mostrarError('Toma las 3 fotos para continuar');
+    if (_pasoId == _fotos && !_paso1Valido) {
+      _mostrarError('Toma las 3 fotos para enviar tu solicitud');
       return;
     }
-    if (_erroresDelPaso(_paso).any((e) => e != null)) {
+    if (_erroresDelPaso(_pasoId).any((e) => e != null)) {
       setState(() => _mostrarErrores = true);
       _mostrarError('Revisa los datos marcados en rojo');
       return;
     }
     _mostrarErrores = false;
-    if (_paso == 2 && _exigeEvidencias && _evidencias.isEmpty) {
+    if (_pasoId == _trabajo && _exigeEvidencias && _evidencias.isEmpty) {
       _mostrarError('Sube al menos una foto de evidencia de tus ingresos');
       return;
     }
@@ -298,7 +326,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   }
 
   Widget _buildFormulario() {
-    const pasos = ['Foto cédula', 'Datos', 'Trabajo', 'Referencias', 'Pago'];
+    final pasos = [for (final id in _orden) _nombresPasos[id]!];
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
@@ -434,13 +462,13 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   }
 
   /// Título grande de cada paso.
-  Widget _encabezadoPaso(int numero, String nombre, String titulo, String descripcion) {
+  Widget _encabezadoPaso(String titulo, String descripcion) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Paso $numero de 5 - $nombre',
+          Text('Paso ${_paso + 1} de ${_orden.length} - ${_nombresPasos[_pasoId]}',
               style: const TextStyle(
                   fontSize: 30, fontWeight: FontWeight.w900, color: _azulOscuro, height: 1.1)),
           Text(titulo,
@@ -511,119 +539,117 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   }
 
   Widget _buildPasoActual() {
-    switch (_paso) {
-      case 0:
+    switch (_pasoId) {
+      case _fotos:
         return _paso1Fotos();
-      case 1:
+      case _datos:
         return _paso2Datos();
-      case 2:
+      case _trabajo:
         return _paso3Trabajo();
-      case 3:
+      case _referencias:
         return _paso4Referencias();
-      case 4:
+      case _pago:
         return _paso5Pago();
       default:
         return const SizedBox();
     }
   }
 
-  /// Tarjeta ancha para subir una foto: ícono, título y ayuda a la
-  /// izquierda; recuadro "Toca para subir" (o la foto ya tomada) a la derecha.
+  /// Tarjeta ancha para una foto: ícono, título y ayuda (y la foto ya
+  /// tomada), con dos botones: "Tomar foto" abre la cámara directo (en Chrome
+  /// de Android el selector de fotos no trae cámara) y "Galería" elige una
+  /// que ya tenga. Cada botón abre el selector en el mismo toque, como pide
+  /// Safari en iPhone.
   Widget _tarjetaFoto({
     required IconData icono,
     required String titulo,
     required String ayuda,
-    required String ayudaSubir,
     required Uint8List? bytes,
-    required VoidCallback onTap,
+    bool frontal = false,
+    required void Function(Uint8List bytes) onTomada,
   }) {
     final lista = bytes != null;
+    void pedir(ImageSource origen) =>
+        _tomarFoto(origen: origen, frontal: frontal, onTomada: onTomada);
+    final forma = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
+    const letraBoton = TextStyle(fontSize: 15, fontWeight: FontWeight.w800);
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: CustomPaint(
-          painter: _BordePunteado(color: lista ? _verde : _azul, radio: 16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: lista ? const Color(0xFFF0FAF4) : _azulClaro,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: lista ? const Color(0xFFD5F2E0) : const Color(0xFFDCE6FF),
-                  child: Icon(lista ? Icons.check_rounded : icono,
-                      color: lista ? _verde : _azul, size: 32),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(titulo,
-                          style: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w800, color: _azulOscuro)),
-                      const SizedBox(height: 2),
-                      Text(lista ? 'Lista. Toca para cambiarla.' : ayuda,
-                          style: const TextStyle(fontSize: 14, color: Color(0xFF333A45))),
-                    ],
+      child: CustomPaint(
+        painter: _BordePunteado(color: lista ? _verde : _azul, radio: 16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: lista ? const Color(0xFFF0FAF4) : _azulClaro,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: lista ? const Color(0xFFD5F2E0) : const Color(0xFFDCE6FF),
+                    child: Icon(lista ? Icons.check_rounded : icono,
+                        color: lista ? _verde : _azul, size: 30),
                   ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 118,
-                  child: lista
-                      ? SizedBox(
-                          height: 84,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.memory(bytes, fit: BoxFit.cover),
-                          ),
-                        )
-                      // Alto mínimo 84, pero crece si el texto baja de línea
-                      // (letra grande en el teléfono del cliente).
-                      : CustomPaint(
-                          painter: const _BordePunteado(color: _azul, radio: 10),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(minHeight: 84),
-                            child: Padding(
-                              padding: const EdgeInsets.all(6),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.add_photo_alternate_outlined,
-                                          color: _azul, size: 18),
-                                      SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text('Toca para subir',
-                                            style: TextStyle(
-                                                color: _azul,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 12)),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(ayudaSubir,
-                                      textAlign: TextAlign.center,
-                                      style:
-                                          const TextStyle(fontSize: 10, color: Color(0xFF5B6472))),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(titulo,
+                            style: const TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.w800, color: _azulOscuro)),
+                        const SizedBox(height: 2),
+                        Text(lista ? 'Lista. Si quieres, tómala otra vez.' : ayuda,
+                            style: const TextStyle(fontSize: 14, color: Color(0xFF333A45))),
+                      ],
+                    ),
+                  ),
+                  if (lista) ...[
+                    const SizedBox(width: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(bytes, width: 84, height: 84, fit: BoxFit.cover),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Wrap: con letra grande en el teléfono, un botón baja de línea.
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: () => pedir(ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera_rounded),
+                    label: const Text('Tomar foto'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _azul,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(150, 48),
+                      shape: forma,
+                      textStyle: letraBoton,
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => pedir(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_rounded),
+                    label: const Text('Galería'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _azul,
+                      side: const BorderSide(color: _azul, width: 1.5),
+                      minimumSize: const Size(130, 48),
+                      shape: forma,
+                      textStyle: letraBoton,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -634,37 +660,30 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _encabezadoPaso(
-            1, 'Fotos', 'Tus fotos', 'Sube tres fotos claras para verificar tu identidad'),
+        _encabezadoPaso('Tus fotos',
+            'Último paso: tres fotos claras para verificar tu identidad. Toca "Tomar foto" '
+                'para usar la cámara.'),
         _tarjetaFoto(
-          icono: Icons.photo_camera_outlined,
+          icono: Icons.face_rounded,
           titulo: 'Foto de tu cara',
-          ayuda: 'Que se vea clara',
-          ayudaSubir: 'JPG, PNG · Máx 10MB',
+          ayuda: 'Que se vea clara, sin lentes oscuros',
           bytes: _fotoCaraBytes,
-          onTap: () => _tomarFoto(onTomada: (b) {
-            _fotoCaraBytes = b;
-          }),
+          frontal: true,
+          onTomada: (b) => _fotoCaraBytes = b,
         ),
         _tarjetaFoto(
           icono: Icons.badge_outlined,
           titulo: 'Cédula - Frente',
-          ayuda: 'Parte frontal de tu cédula de identidad',
-          ayudaSubir: 'Asegúrate que sea legible',
+          ayuda: 'Parte frontal de tu cédula, que se lea bien',
           bytes: _fotoCedulaFrenteBytes,
-          onTap: () => _tomarFoto(onTomada: (b) {
-            _fotoCedulaFrenteBytes = b;
-          }),
+          onTomada: (b) => _fotoCedulaFrenteBytes = b,
         ),
         _tarjetaFoto(
           icono: Icons.flip_to_back_outlined,
           titulo: 'Cédula - Reverso',
-          ayuda: 'Parte posterior de tu cédula de identidad',
-          ayudaSubir: 'Asegúrate que sea legible',
+          ayuda: 'Parte de atrás de tu cédula, que se lea bien',
           bytes: _fotoCedulaReversoBytes,
-          onTap: () => _tomarFoto(onTomada: (b) {
-            _fotoCedulaReversoBytes = b;
-          }),
+          onTomada: (b) => _fotoCedulaReversoBytes = b,
         ),
       ],
     );
@@ -718,7 +737,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _encabezadoPaso(2, 'Datos', 'Tus datos', 'Escríbelos como aparecen en tu cédula'),
+        _encabezadoPaso('Tus datos', 'Escríbelos como aparecen en tu cédula'),
         _campo(_nombreCtrl, 'Nombre completo',
             validar: errorNombre, ejemplo: 'Ej. José Pérez Díaz'),
         _campo(_cedulaCtrl, 'Cédula',
@@ -762,7 +781,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _encabezadoPaso(3, 'Trabajo', 'Dónde trabajas', 'Así sabemos cómo vas a pagar'),
+        _encabezadoPaso('Dónde trabajas', 'Así sabemos cómo vas a pagar'),
         _campo(_trabajoLugarCtrl, 'Lugar de trabajo'),
         _campo(_trabajoDireccionCtrl, 'Dirección del trabajo'),
         _campo(_jefeNombreCtrl, 'Nombre del supervisor o de Recursos Humanos'),
@@ -797,7 +816,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _encabezadoPaso(4, 'Referencias', '2 referencias personales',
+        _encabezadoPaso('2 referencias personales',
             'Personas que te conozcan y que podamos llamar'),
         const Text('Referencia 1', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
@@ -824,7 +843,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _encabezadoPaso(5, 'Pago', '¿Cuánto necesitas?', 'Ya casi terminas'),
+        _encabezadoPaso('¿Cuánto necesitas?', 'Ya casi terminas: solo faltan tus fotos'),
         _campo(_montoCtrl, 'Monto que solicitas (RD\$)',
             tipo: TextInputType.number, formato: [soloNumeros], validar: errorMonto),
         const Text('¿Cómo prefieres pagar?', style: TextStyle(fontWeight: FontWeight.bold)),
