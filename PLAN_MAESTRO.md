@@ -1,13 +1,13 @@
 # CREDISANTIAGO (antes Prestamistas RD) — Plan Maestro v4 (23-09-2026)
 
 **Stack:** Flutter (Web; Android pendiente) + Supabase (proyecto `twhwjttwpliudqkkgzsq`)
-**Publicada en:** https://prestamistas-rd.netlify.app — link de clientes: `/s/{slug}`
+**Publicada en:** https://credisantiago.netlify.app — link de clientes: `/s/{slug}`
 **Admin de la app:** applej904@gmail.com
 **Pruebas automáticas:** 264, todas pasan (`flutter test`)
 
 > ⚠️ **Nombre comercial:** "PRESTAMISTAS RD BY MITCHELL CASTILLO" está registrado en ONAPI (2020, préstamos personales y comerciales). Antes de **vender u ofrecer** la app hay que elegir otro nombre, buscarlo en ONAPI, registrarlo y comprar el dominio. Para uso propio se puede seguir usando.
 >
-> ✅ **Nombre nuevo: CrediSantiago** (decidido el 14-10-2026). En internet no apareció nadie usándolo. **Falta buscarlo y registrarlo en ONAPI** (https://www.onapi.gob.do/index.php/busqueda-de-signos-nombres-y-marcas: CREDISANTIAGO, CREDI SANTIAGO) antes de venderla. Ya está cambiado en la app (título, encabezado, login, nombre al instalarla, mensajes y archivos Excel). Fuera del código faltan: las plantillas de correo y el remitente en Supabase, y la dirección de Netlify (se dejó prestamistas-rd.netlify.app para no romper los links /s/... ya enviados). El código interno (paquete prestamistas_rd, repositorio) no se cambia.
+> ✅ **Nombre nuevo: CrediSantiago** (decidido el 14-10-2026). En internet no apareció nadie usándolo. **Falta buscarlo y registrarlo en ONAPI** (https://www.onapi.gob.do/index.php/busqueda-de-signos-nombres-y-marcas: CREDISANTIAGO, CREDI SANTIAGO) antes de venderla. Ya está cambiado en la app (título, encabezado, login, nombre al instalarla, mensajes y archivos Excel). Fuera del código faltan: las plantillas de correo y el remitente en Supabase, y la dirección de Netlify (se dejó credisantiago.netlify.app para no romper los links /s/... ya enviados). El código interno (paquete prestamistas_rd, repositorio) no se cambia.
 
 ---
 
@@ -167,7 +167,7 @@
 - ✅ Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados — hecho el 24-09-2026.
 
 ### ⚠️ Urgente (24-09-2026)
-- ✅ **Sitio fijo en Netlify** — hecho el 26/29-09-2026: **https://prestamistas-rd.netlify.app**, puesto en `kDominioPublicado`, en *Site URL* y en *Redirect URLs* (`https://prestamistas-rd.netlify.app/**`) de Supabase. Se publica arrastrando el .zip en el proyecto **prestamistas-rd** de la cuenta de Netlify.
+- ✅ **Sitio fijo en Netlify** — hecho el 26/29-09-2026: **https://credisantiago.netlify.app**, puesto en `kDominioPublicado`, en *Site URL* y en *Redirect URLs* (`https://credisantiago.netlify.app/**`) de Supabase. Se publica arrastrando el .zip en el proyecto **prestamistas-rd** de la cuenta de Netlify.
 - ✅ **Correos con código** — hecho el 29-09-2026. Supabase usa dos plantillas (Authentication → Emails): **"Confirm sign up"** para cuentas nuevas y **"Magic link or OTP"** para las que ya existen. Las dos deben traer `{{ .Token }}`, porque la app pide el código. "Confirm sign up" solo traía el link, y por eso a la gente nueva no le llegaba el código.
 - 🔨 **Correo para entrar (SMTP)** — desde el 13-10-2026 sale por **Gmail** (`smtp.gmail.com`, puerto 587, usuario applej904@gmail.com, con una **contraseña de aplicación** de Google). Llega a cualquier correo, hasta unos 500 al día. ⚠️ Si se cambia la contraseña de Google, la contraseña de aplicación deja de servir: hay que crear otra en myaccount.google.com/apppasswords y ponerla en Authentication → Emails → SMTP Settings. Si se apaga el SMTP propio, Supabase vuelve a su correo (solo link, sin código) y **borra las plantillas**: hay que volver a poner `{{ .Token }}` en "Magic link or OTP" y "Confirm sign up". Más adelante, con el dominio propio (punto 4), pasar a Resend o Brevo para que no caiga en spam.
 

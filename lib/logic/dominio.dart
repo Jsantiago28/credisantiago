@@ -7,4 +7,4 @@ import 'package:flutter/foundation.dart';
 String get kDominioBase => kIsWeb ? Uri.base.origin : kDominioPublicado;
 
 /// Cambiar por la dirección real cuando se publique (Netlify / dominio propio).
-const kDominioPublicado = 'https://prestamistas-rd.netlify.app';
+const kDominioPublicado = 'https://credisantiago.netlify.app';
