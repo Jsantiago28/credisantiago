@@ -156,7 +156,7 @@ String mensajeRecordatorioPlan({
           : dias == 0
               ? 'vence hoy'
               : 'venció hace ${-dias} día${dias == -1 ? '' : 's'}';
-  return 'Hola $nombre, tu plan $plan de Prestamistas RD $cuando. '
+  return 'Hola $nombre, tu plan $plan de CrediSantiago $cuando. '
       'Para renovarlo por 1, 3 o 12 meses escríbeme y te paso la cuenta. ¡Gracias!';
 }
 

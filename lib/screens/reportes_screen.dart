@@ -335,7 +335,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
     final fecha = DateTime.now();
     final sufijo = hoja.toLowerCase().replaceAll(' ', '_');
     final nombreArchivo =
-        'prestamistas_rd_${sufijo}_${fecha.year}${fecha.month.toString().padLeft(2, '0')}${fecha.day.toString().padLeft(2, '0')}.xlsx';
+        'credisantiago_${sufijo}_${fecha.year}${fecha.month.toString().padLeft(2, '0')}${fecha.day.toString().padLeft(2, '0')}.xlsx';
     descargarArchivo(nombreArchivo, bytes);
   }
 

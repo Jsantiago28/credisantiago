@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Prestamistas RD',
+                        'CrediSantiago',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             color: AppColors.green,
                             fontWeight: FontWeight.bold),

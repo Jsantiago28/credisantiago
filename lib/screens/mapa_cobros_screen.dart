@@ -224,7 +224,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.prestamistasrd.app',
+                  userAgentPackageName: 'com.credisantiago.app',
                 ),
                 if (puntos.length > 1)
                   PolylineLayer(polylines: [

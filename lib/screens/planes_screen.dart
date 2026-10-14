@@ -429,7 +429,7 @@ class CuentaEnRevisionScreen extends StatelessWidget {
                       return ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: verdeWhatsApp),
                         onPressed: () => abrirWhatsApp(context, soporte,
-                            'Hola, soy ${perfil['nombre']}. Me registré en Prestamistas RD y espero la aprobación de mi cuenta.'),
+                            'Hola, soy ${perfil['nombre']}. Me registré en CrediSantiago y espero la aprobación de mi cuenta.'),
                         icon: const Icon(Icons.chat_rounded),
                         label: const Text('Escribir al administrador'),
                       );

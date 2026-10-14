@@ -1,4 +1,4 @@
-# PRESTAMISTAS RD — Plan Maestro v4 (23-09-2026)
+# CREDISANTIAGO (antes Prestamistas RD) — Plan Maestro v4 (23-09-2026)
 
 **Stack:** Flutter (Web; Android pendiente) + Supabase (proyecto `twhwjttwpliudqkkgzsq`)
 **Publicada en:** https://prestamistas-rd.netlify.app — link de clientes: `/s/{slug}`
@@ -6,6 +6,8 @@
 **Pruebas automáticas:** 264, todas pasan (`flutter test`)
 
 > ⚠️ **Nombre comercial:** "PRESTAMISTAS RD BY MITCHELL CASTILLO" está registrado en ONAPI (2020, préstamos personales y comerciales). Antes de **vender u ofrecer** la app hay que elegir otro nombre, buscarlo en ONAPI, registrarlo y comprar el dominio. Para uso propio se puede seguir usando.
+>
+> ✅ **Nombre nuevo: CrediSantiago** (decidido el 14-10-2026). En internet no apareció nadie usándolo. **Falta buscarlo y registrarlo en ONAPI** (https://www.onapi.gob.do/index.php/busqueda-de-signos-nombres-y-marcas: CREDISANTIAGO, CREDI SANTIAGO) antes de venderla. Ya está cambiado en la app (título, encabezado, login, nombre al instalarla, mensajes y archivos Excel). Fuera del código faltan: las plantillas de correo y el remitente en Supabase, y la dirección de Netlify (se dejó prestamistas-rd.netlify.app para no romper los links /s/... ya enviados). El código interno (paquete prestamistas_rd, repositorio) no se cambia.
 
 ---
 
@@ -21,7 +23,7 @@
 | Ruta de cobro en mapa | ✅ Completo |
 | Seguridad (fotos privadas, datos por prestamista) | ✅ Completo |
 | Venta a otros prestamistas (registro con aprobación, planes) | ✅ Con activación manual; falta el cobro en línea |
-| Nombre, dominio y términos | ⬜ Pendiente (espera el nombre nuevo) |
+| Nombre, dominio y términos | 🔨 Nombre elegido: CrediSantiago (14-10-2026); faltan ONAPI, dominio y términos |
 | Respaldo de datos (Supabase Pro) | ⬜ Pendiente (lo contrata el dueño) |
 | Historial de cambios del cliente (y cambiar fotos) | ✅ Completo |
 | Gestiones y acuerdos de cobro (promesas de pago) | ✅ Completo |
@@ -253,7 +255,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 2. **Préstamos de prueba sin cronograma** (creados en las primeras fases, como los de john y aquiles): no tienen fechas, así que nunca salen atrasados ni cobran mora. Cancelarlos, si no tienen cobros, y hacerlos de nuevo con "Nuevo préstamo". Si alguno es real, pasarle las fechas.
 
 ### B. Antes de vender u ofrecer la app
-3. **Nombre nuevo:** buscar en ONAPI (Nombre comercial y Marca) y registrarlo. Después se cambia en toda la app: título, ícono, encabezado, recibos, mensajes de WhatsApp y sello del formulario.
+3. **Nombre nuevo: CrediSantiago** (elegido el 14-10-2026; ya cambiado en la app). Falta: buscar en ONAPI (Nombre comercial y Marca) y registrarlo. Después se cambia en toda la app: título, ícono, encabezado, recibos, mensajes de WhatsApp y sello del formulario.
 4. **Dominio propio** con el nombre nuevo (unos US$10–15 al año). Al cambiarlo, actualizar:
    - Supabase → Authentication → URL Configuration;
    - `kDominioPublicado` en `lib/screens/link_generado_screen.dart`.
@@ -297,7 +299,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 | Colores | Dos modos: **Claro** (fondo gris claro, tarjetas blancas; el de siempre, se lee mejor al sol) y **Oscuro** (el original). Cada quien lo elige en Perfil → Apariencia (el cobrador en "Yo") y se guarda en ese teléfono. Los colores se piden a `AppColors` (`lib/theme/app_theme.dart`), nunca fijos: así salen bien en los dos modos. El formulario público del cliente siempre es claro y azul. |
 
 ## Decisiones abiertas
-- **Nombre comercial** (ver el aviso de arriba).
+- **Nombre comercial:** CrediSantiago, falta confirmarlo y registrarlo en ONAPI.
 - **Ley 172-13:** confirmar si se cumple antes de decirlo en el formulario.
 
 ---

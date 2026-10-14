@@ -473,7 +473,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
     final perfil = await SupabaseService.instance.obtenerMiPerfil();
     await Share.share(resumenCajaTexto(
       _d,
-      negocio: (perfil?['nombre'] as String?) ?? 'Prestamistas RD',
+      negocio: (perfil?['nombre'] as String?) ?? 'CrediSantiago',
       nota: _cierre?['nota'] as String?,
       gastos: _gastos,
       nombresCobradores: _nombres,

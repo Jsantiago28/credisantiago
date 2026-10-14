@@ -35,7 +35,7 @@ class PrestamistasRDApp extends StatelessWidget {
 
   Widget _app() {
     return MaterialApp(
-      title: 'Prestamistas RD',
+      title: 'CrediSantiago',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.app(),
       onGenerateRoute: (settings) {

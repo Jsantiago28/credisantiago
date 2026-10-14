@@ -192,7 +192,7 @@ class _InicioScreenState extends State<InicioScreen> {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(widget.modoCobrador ? 'Mi ruta\nde cobro' : 'Prestamistas\nRD',
+              child: Text(widget.modoCobrador ? 'Mi ruta\nde cobro' : 'Credi\nSantiago',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.05)),
             ),
             if (widget.onBuscar != null)
