@@ -143,8 +143,12 @@ class SupabaseService {
     return s.isEmpty ? 'prestamista' : s;
   }
 
+  /// Prestamista del link de solicitudes. Lo abre un cliente sin sesión: la
+  /// función solo entrega id, nombre, negocio, teléfono y si exige evidencias
+  /// (ver migracion_2026_10_13_link_publico.sql).
   Future<Map<String, dynamic>?> obtenerPerfilPorSlug(String slug) async {
-    return client.from('profiles').select().eq('slug', slug).maybeSingle();
+    final filas = await client.rpc('prestamista_del_link', params: {'p_slug': slug}) as List;
+    return filas.isEmpty ? null : Map<String, dynamic>.from(filas.first as Map);
   }
 
   Future<Map<String, dynamic>?> obtenerMiPerfil() async {

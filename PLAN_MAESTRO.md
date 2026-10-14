@@ -327,6 +327,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 17 | `migracion_2026_09_30_entregas.sql` | Entregas de los cobradores (cuadre de caja) |
 | 18 | `migracion_2026_10_12_limite_fotos.sql` | La carpeta de fotos solo acepta imágenes de hasta 10 MB |
 | 19 | `migracion_2026_10_13_contrato.sql` | Cédula o RNC y ciudad del prestamista para el contrato |
+| 20 | `migracion_2026_10_13_link_publico.sql` | El link de solicitudes encuentra al prestamista sin sesión (solo id, nombre, negocio, teléfono y si exige evidencias) |
 
 `schema.sql` refleja el esquema completo al día.
 
