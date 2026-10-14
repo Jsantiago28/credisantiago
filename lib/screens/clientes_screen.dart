@@ -11,7 +11,10 @@ import 'prestar_screen.dart';
 
 class ClientesScreen extends StatefulWidget {
   final String prestamistaId;
-  const ClientesScreen({super.key, required this.prestamistaId});
+
+  /// Se abrió con la lupa del Inicio: el buscador sale listo para escribir.
+  final bool enfocarBusqueda;
+  const ClientesScreen({super.key, required this.prestamistaId, this.enfocarBusqueda = false});
 
   @override
   State<ClientesScreen> createState() => _ClientesScreenState();
@@ -147,6 +150,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
               children: [
                 TextField(
                   controller: _buscar,
+                  autofocus: widget.enfocarBusqueda,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: 'Buscar por nombre, cédula o teléfono',

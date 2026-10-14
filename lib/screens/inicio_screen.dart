@@ -23,6 +23,9 @@ class InicioScreen extends StatefulWidget {
   final VoidCallback onVerSolicitudes;
   final VoidCallback onVerPerfil;
 
+  /// La lupa del encabezado: buscar un cliente. Sin ella (cobrador) no sale.
+  final VoidCallback? onBuscar;
+
   /// Para la app del cobrador: [perfil] trae el id del jefe y el nombre del
   /// cobrador, y la base de datos solo le manda los clientes de su ruta.
   /// Sin calculadora (no presta).
@@ -37,6 +40,7 @@ class InicioScreen extends StatefulWidget {
     required this.solicitudesNuevas,
     required this.onVerSolicitudes,
     required this.onVerPerfil,
+    this.onBuscar,
     this.modoCobrador = false,
     this.negocioDelJefe,
   });
@@ -155,8 +159,26 @@ class _InicioScreenState extends State<InicioScreen> {
   Widget _encabezado() {
     final nombre = (widget.perfil['nombre'] as String?) ?? '';
     final primerNombre = nombre.split(' ').first;
+    // La ciudad que puso para sus contratos (Perfil → Mi recibo y contrato).
+    final ciudad = ((widget.perfil['contrato_ciudad'] as String?) ?? '').trim();
     return Column(
       children: [
+        if (ciudad.isNotEmpty) ...[
+          Row(
+            children: [
+              Icon(Icons.location_on_rounded, color: AppColors.green, size: 18),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(ciudad,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: AppColors.green, fontWeight: FontWeight.w700, fontSize: 13)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
         Row(
           children: [
             Container(
@@ -173,6 +195,12 @@ class _InicioScreenState extends State<InicioScreen> {
               child: Text(widget.modoCobrador ? 'Mi ruta\nde cobro' : 'Prestamistas\nRD',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, height: 1.05)),
             ),
+            if (widget.onBuscar != null)
+              IconButton(
+                tooltip: 'Buscar cliente',
+                icon: Icon(Icons.search_rounded, color: AppColors.texto, size: 28),
+                onPressed: widget.onBuscar,
+              ),
             if (!widget.modoCobrador)
               IconButton(
                 tooltip: 'Calculadora de préstamos',

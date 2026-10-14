@@ -35,6 +35,23 @@ void main() {
     expect(EstadoCobro.atrasado.color, Paleta.oscura.red);
   });
 
+  testWidgets('las tarjetas tienen sombra suave solo en el modo claro', (tester) async {
+    List<BoxShadow>? sombra() => (tester
+            .widget<DecoratedBox>(find
+                .ancestor(of: find.text('tarjeta'), matching: find.byType(DecoratedBox))
+                .last)
+            .decoration as BoxDecoration)
+        .boxShadow;
+
+    await ModoColor.elegir(ModoColor.claro);
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: Panel(child: Text('tarjeta')))));
+    expect(sombra(), isNotEmpty);
+
+    await ModoColor.elegir(ModoColor.oscuro);
+    await tester.pumpAndSettle();
+    expect(sombra(), isNull);
+  });
+
   testWidgets('el selector cambia de claro a oscuro y redibuja', (tester) async {
     await ModoColor.elegir(ModoColor.claro);
     await tester.pumpWidget(ValueListenableBuilder<ModoColor>(

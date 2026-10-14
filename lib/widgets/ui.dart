@@ -20,7 +20,8 @@ String fechaLarga(DateTime f) => '${f.day} ${_meses[f.month - 1]} ${f.year}';
 /// "23 sep"
 String fechaCorta(DateTime f) => '${f.day} ${_meses[f.month - 1]}';
 
-/// Tarjeta base: superficie oscura, borde tenue, esquinas redondeadas.
+/// Tarjeta base: superficie, borde tenue, esquinas redondeadas y, en el modo
+/// claro, una sombra suave para que se vea "flotando" sobre el fondo.
 class Panel extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -40,18 +41,30 @@ class Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final forma = BorderRadius.circular(18);
+    final claro = AppColors.paleta.brillo == Brightness.light;
     return Padding(
       padding: margin,
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: forma,
-          side: BorderSide(color: borde ?? AppColors.border),
+          // En el modo oscuro una sombra no se ve: solo en el claro.
+          boxShadow: claro
+              ? const [
+                  BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 4)),
+                ]
+              : null,
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(padding: padding, child: child),
+        child: Material(
+          color: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: forma,
+            side: BorderSide(color: borde ?? AppColors.border),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(padding: padding, child: child),
+          ),
         ),
       ),
     );

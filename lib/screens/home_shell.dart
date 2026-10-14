@@ -78,9 +78,13 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  void _ir(int tab) => setState(() {
+  /// Si Clientes se abrió con la lupa del Inicio: el buscador sale listo.
+  bool _buscarCliente = false;
+
+  void _ir(int tab, {bool buscar = false}) => setState(() {
         if (tab == _reportes && _tab != _reportes) _versionReportes++;
-        if (tab == _clientes && _tab != _clientes) _versionClientes++;
+        if (tab == _clientes && (_tab != _clientes || buscar)) _versionClientes++;
+        _buscarCliente = buscar;
         _tab = tab;
       });
 
@@ -106,6 +110,7 @@ class _HomeShellState extends State<HomeShell> {
             solicitudesNuevas: _solicitudesNuevas,
             onVerSolicitudes: () => _ir(_solicitudes),
             onVerPerfil: () => _ir(_perfil),
+            onBuscar: () => _ir(_clientes, buscar: true),
           ),
           SolicitudesScreen(
             prestamistaId: id,
@@ -116,7 +121,10 @@ class _HomeShellState extends State<HomeShell> {
               _escucharSolicitudes(id);
             },
           ),
-          ClientesScreen(key: ValueKey(_versionClientes), prestamistaId: id),
+          ClientesScreen(
+              key: ValueKey(_versionClientes),
+              prestamistaId: id,
+              enfocarBusqueda: _buscarCliente),
           ReportesScreen(key: ValueKey(_versionReportes), prestamistaId: id),
           PerfilScreen(perfil: perfil),
         ],
