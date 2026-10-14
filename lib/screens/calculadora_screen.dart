@@ -105,7 +105,7 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
           const Text('Cómo quedaría',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          const Text('Toca una opción para ver sus fechas de pago.',
+          Text('Toca una opción para ver sus fechas de pago.',
               style: TextStyle(color: AppColors.grey, fontSize: 13)),
           const SizedBox(height: 12),
           for (final f in frecuencias) _opcion(f),
@@ -148,7 +148,7 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
       onTap: p == null ? null : () => setState(() => _elegida = f),
       child: p == null
           ? Text('${_titulo(f)}: no aplica con estos datos',
-              style: const TextStyle(color: AppColors.grey))
+              style: TextStyle(color: AppColors.grey))
           : Row(
               children: [
                 Icon(seleccionada ? Icons.radio_button_checked : Icons.radio_button_off,
@@ -163,13 +163,13 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
                       Text(
                         '${p.cantidadCuotas} ${nombreCuotas(f, plural: p.cantidadCuotas != 1)}'
                         '${p.ultimaCuota != p.cuota ? ' · última ${rd(p.ultimaCuota)}' : ''}',
-                        style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                        style: TextStyle(color: AppColors.grey, fontSize: 12),
                       ),
                       Text(
                         'Total ${rd(p.montoTotal)} · interés ${rd(p.interesTotal)}\n'
                         'Último pago ${fechaLarga(fechaCuota(hoy, f, p.cantidadCuotas))}'
                         '${p.diasCobrados != _diasValor ? ' (${p.diasCobrados} días)' : ''}',
-                        style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                        style: TextStyle(color: AppColors.grey, fontSize: 12),
                       ),
                     ],
                   ),
@@ -182,9 +182,9 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: seleccionada ? AppColors.green : AppColors.white)),
+                            color: seleccionada ? AppColors.green : AppColors.texto)),
                     Text('por ${nombrePeriodo(f)}',
-                        style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                        style: TextStyle(color: AppColors.grey, fontSize: 12)),
                   ],
                 ),
               ],
@@ -207,8 +207,8 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
           const SizedBox(height: 8),
           for (final numero in mostrar) ...[
             if (numero == n && n > 8)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 2),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Text('…', style: TextStyle(color: AppColors.grey)),
               ),
             Padding(
@@ -217,7 +217,7 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
                 children: [
                   SizedBox(
                       width: 44,
-                      child: Text('#$numero', style: const TextStyle(color: AppColors.grey))),
+                      child: Text('#$numero', style: TextStyle(color: AppColors.grey))),
                   Expanded(child: Text(fechaLarga(fechaCuota(hoy, f, numero)))),
                   Text(rd(numero == n ? p.ultimaCuota : p.cuota),
                       style: const TextStyle(fontWeight: FontWeight.w700)),

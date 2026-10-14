@@ -102,15 +102,26 @@ class AvatarIniciales extends StatelessWidget {
 
 /// Estado de cobro de un cliente, con sus colores.
 enum EstadoCobro {
-  alDia('AL DÍA', AppColors.green, AppColors.greenDark, Icons.check_circle),
-  venceHoy('VENCE HOY', AppColors.amber, AppColors.amberDark, Icons.schedule),
-  atrasado('ATRASADO', AppColors.red, AppColors.redDark, Icons.warning_amber_rounded);
+  alDia('AL DÍA', Icons.check_circle),
+  venceHoy('VENCE HOY', Icons.schedule),
+  atrasado('ATRASADO', Icons.warning_amber_rounded);
 
   final String texto;
-  final Color color;
-  final Color fondo;
   final IconData icono;
-  const EstadoCobro(this.texto, this.color, this.fondo, this.icono);
+  const EstadoCobro(this.texto, this.icono);
+
+  /// Los colores salen de la paleta elegida (clara u oscura).
+  Color get color => switch (this) {
+        alDia => AppColors.green,
+        venceHoy => AppColors.amber,
+        atrasado => AppColors.red,
+      };
+
+  Color get fondo => switch (this) {
+        alDia => AppColors.greenDark,
+        venceHoy => AppColors.amberDark,
+        atrasado => AppColors.redDark,
+      };
 }
 
 /// Etiqueta de estado tipo píldora (AL DÍA / VENCE HOY / ATRASADO).
@@ -143,18 +154,21 @@ class EtiquetaEstado extends StatelessWidget {
 /// Píldora pequeña de texto (ej. "HOY • 3").
 class Pildora extends StatelessWidget {
   final String texto;
-  final Color color;
-  final Color fondo;
-  const Pildora(this.texto,
-      {super.key, this.color = AppColors.green, this.fondo = AppColors.greenDark});
+
+  /// Si no se da, verde (y su fondo suave).
+  final Color? color;
+  final Color? fondo;
+  const Pildora(this.texto, {super.key, this.color, this.fondo});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+          color: fondo ?? AppColors.greenDark, borderRadius: BorderRadius.circular(20)),
       child: Text(texto,
-          style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 13)),
+          style: TextStyle(
+              color: color ?? AppColors.green, fontWeight: FontWeight.w800, fontSize: 13)),
     );
   }
 }
@@ -207,7 +221,7 @@ class TarjetaTotal extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(titulo,
-                style: const TextStyle(color: AppColors.grey, fontSize: 11, letterSpacing: 0.3)),
+                style: TextStyle(color: AppColors.grey, fontSize: 11, letterSpacing: 0.3)),
           ),
           const SizedBox(height: 4),
           FittedBox(
@@ -290,7 +304,7 @@ class Vacio extends StatelessWidget {
         children: [
           Icon(icono, size: 40, color: AppColors.grey),
           const SizedBox(height: 12),
-          Text(texto, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.grey)),
+          Text(texto, textAlign: TextAlign.center, style: TextStyle(color: AppColors.grey)),
         ],
       ),
     );

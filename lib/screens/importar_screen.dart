@@ -125,12 +125,12 @@ class _ImportarScreenState extends State<ImportarScreen> {
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Text(_error!, style: const TextStyle(color: AppColors.red)),
+                child: Text(_error!, style: TextStyle(color: AppColors.red)),
               ),
             if (_leyendo) const Center(child: CircularProgressIndicator()),
             if (filas != null && filas.isNotEmpty) ...[
               if (_archivo != null)
-                Text(_archivo!, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                Text(_archivo!, style: TextStyle(color: AppColors.grey, fontSize: 12)),
               const SizedBox(height: 4),
               ResumenImportacion(filas: filas),
               const SizedBox(height: 12),
@@ -161,7 +161,7 @@ class _ImportarScreenState extends State<ImportarScreen> {
         children: [
           const Text('1. Baja la plantilla y llénala con tus clientes.',
               style: TextStyle(fontWeight: FontWeight.w700)),
-          const Text(
+          Text(
             'Nombre, cédula y teléfono son obligatorios. Si el cliente tiene un préstamo en la '
             'calle, llena también monto, interés, frecuencia, plazo, fecha y lo que ya pagó. '
             'Borra las filas de ejemplo.',
@@ -175,7 +175,7 @@ class _ImportarScreenState extends State<ImportarScreen> {
           const SizedBox(height: 4),
           const Text('2. Elige el archivo (Excel o CSV).',
               style: TextStyle(fontWeight: FontWeight.w700)),
-          const Text('Antes de guardar nada, te mostramos qué filas están bien.',
+          Text('Antes de guardar nada, te mostramos qué filas están bien.',
               style: TextStyle(color: AppColors.grey, fontSize: 12)),
           TextButton.icon(
             onPressed: _leyendo || _hechas != null ? null : _elegir,
@@ -196,11 +196,11 @@ class _ImportarScreenState extends State<ImportarScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.check_circle, color: AppColors.green, size: 36),
+              Icon(Icons.check_circle, color: AppColors.green, size: 36),
               const SizedBox(height: 8),
               Text('Listo: $_importados cliente(s) importado(s)',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              const Text(
+              Text(
                 'Lo que ya habían pagado cuenta para su balance, pero no como dinero de la caja.',
                 style: TextStyle(color: AppColors.grey, fontSize: 12),
               ),
@@ -209,12 +209,12 @@ class _ImportarScreenState extends State<ImportarScreen> {
         ),
         if (_fallidos.isNotEmpty) ...[
           Text('${_fallidos.length} no se pudieron importar',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.red)),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.red)),
           for (final (f, motivo) in _fallidos)
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('Fila ${f.fila}: ${f.nombre}'),
-              subtitle: Text(motivo, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+              subtitle: Text(motivo, style: TextStyle(color: AppColors.grey, fontSize: 12)),
             ),
         ],
         const SizedBox(height: 12),

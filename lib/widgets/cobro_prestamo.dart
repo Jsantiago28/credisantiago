@@ -163,7 +163,7 @@ class CobroPrestamo {
                         style: TextStyle(
                             color: cuota.moraPendiente > 0 ? AppColors.red : AppColors.grey)),
                     trailing: alDia
-                        ? const Text('Pagada',
+                        ? Text('Pagada',
                             style: TextStyle(color: AppColors.green, fontSize: 12))
                         : TextButton(
                             onPressed: () {
@@ -208,7 +208,7 @@ class CobroPrestamo {
                 estado.moraPendiente > 0
                     ? 'Debe ${rd(estado.balance)} (incluye ${rd(estado.moraPendiente)} de mora)'
                     : 'Balance actual: ${rd(estado.balance)}',
-                style: const TextStyle(color: AppColors.grey)),
+                style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 16),
             TextField(
               controller: ctrl,
@@ -280,7 +280,7 @@ class CobroPrestamo {
           children: [
             Row(
               children: [
-                const Icon(Icons.check_circle, color: AppColors.green, size: 28),
+                Icon(Icons.check_circle, color: AppColors.green, size: 28),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text('Cobrado ${rd(pago.monto)} a $_nombre',
@@ -290,10 +290,10 @@ class CobroPrestamo {
             ),
             const SizedBox(height: 8),
             Text('Recibo ${numeroReciboTexto(pago.numeroRecibo)}',
-                style: const TextStyle(color: AppColors.grey)),
+                style: TextStyle(color: AppColors.grey)),
             if (pago.montoMora > 0)
               Text('Cuota ${rd(pago.montoCuota)} + mora ${rd(pago.montoMora)}',
-                  style: const TextStyle(color: AppColors.grey)),
+                  style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => _compartirRecibo(pago),
@@ -321,7 +321,7 @@ class CobroPrestamo {
                 label: const Text('¿Te equivocaste? Anular este cobro'),
               )
             else
-              const Text('¿Te equivocaste? Avísale a tu jefe para que lo anule.',
+              Text('¿Te equivocaste? Avísale a tu jefe para que lo anule.',
                   style: TextStyle(color: AppColors.grey, fontSize: 12)),
           ],
         ),
@@ -345,7 +345,7 @@ class CobroPrestamo {
               Text(
                 'El cobro de ${rd(pago.monto)} del ${fechaLarga(pago.fecha)} deja de contar: '
                 'vuelve a subir lo que debe $_nombre. No se borra: queda anulado con el motivo.',
-                style: const TextStyle(color: AppColors.grey),
+                style: TextStyle(color: AppColors.grey),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -364,7 +364,7 @@ class CobroPrestamo {
                 onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
             TextButton(
               onPressed: motivo.text.trim().length < 3 ? null : () => Navigator.of(ctx).pop(true),
-              child: const Text('Anular cobro', style: TextStyle(color: AppColors.red)),
+              child: Text('Anular cobro', style: TextStyle(color: AppColors.red)),
             ),
           ],
         ),
@@ -418,21 +418,21 @@ class CobroPrestamo {
                     // Queda a la vista, tachado, para que haya rastro.
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.block_rounded, color: AppColors.red),
+                      leading: Icon(Icons.block_rounded, color: AppColors.red),
                       title: Text('${numeroReciboTexto(pago.numeroRecibo)} — ${rd(pago.monto)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.grey, decoration: TextDecoration.lineThrough)),
                       subtitle: Text(
                         'ANULADO'
                         '${pago.anuladoEn != null ? ' el ${fechaLarga(pago.anuladoEn!)}' : ''}'
                         '${pago.motivoAnulacion != null ? ' · ${pago.motivoAnulacion}' : ''}',
-                        style: const TextStyle(color: AppColors.red, fontSize: 12),
+                        style: TextStyle(color: AppColors.red, fontSize: 12),
                       ),
                     );
                   }
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.receipt_long, color: AppColors.grey),
+                    leading: Icon(Icons.receipt_long, color: AppColors.grey),
                     title: Text('${numeroReciboTexto(pago.numeroRecibo)} — ${rd(pago.monto)}',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(fechaLarga(pago.fecha) +
@@ -442,12 +442,12 @@ class CobroPrestamo {
                       children: [
                         IconButton(
                           tooltip: 'Compartir PDF',
-                          icon: const Icon(Icons.picture_as_pdf, color: AppColors.green),
+                          icon: Icon(Icons.picture_as_pdf, color: AppColors.green),
                           onPressed: () => _compartirRecibo(pago),
                         ),
                         IconButton(
                           tooltip: 'Imprimir ticket',
-                          icon: const Icon(Icons.print_rounded, color: AppColors.grey),
+                          icon: Icon(Icons.print_rounded, color: AppColors.grey),
                           onPressed: () =>
                               imprimirTicket(context, prestamo: _prestamo, pago: pago),
                         ),
@@ -455,18 +455,18 @@ class CobroPrestamo {
                           PopupMenuButton<String>(
                             tooltip: 'Más opciones',
                             color: AppColors.surfaceAlt,
-                            icon: const Icon(Icons.more_vert, color: AppColors.grey),
+                            icon: Icon(Icons.more_vert, color: AppColors.grey),
                             onSelected: (_) async {
                               if (await _anular(pago) && ctx.mounted) Navigator.of(ctx).pop();
                             },
-                            itemBuilder: (_) => const [
+                            itemBuilder: (_) => [
                               PopupMenuItem(
                                 value: 'anular',
                                 child: Row(
                                   children: [
                                     Icon(Icons.undo_rounded, color: AppColors.red, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Anular este cobro'),
+                                    const SizedBox(width: 8),
+                                    const Text('Anular este cobro'),
                                   ],
                                 ),
                               ),

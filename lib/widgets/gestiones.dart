@@ -136,7 +136,7 @@ Future<bool> anotarGestion(BuildContext context, PrestamoConDatos datos) async {
                     selectedColor: AppColors.greenDark,
                     backgroundColor: AppColors.surfaceAlt,
                     labelStyle: TextStyle(
-                        color: elegido == o.key ? AppColors.green : AppColors.white,
+                        color: elegido == o.key ? AppColors.green : AppColors.texto,
                         fontWeight: FontWeight.w600),
                     showCheckmark: false,
                   ),
@@ -157,7 +157,7 @@ Future<bool> anotarGestion(BuildContext context, PrestamoConDatos datos) async {
               children: [
                 Text('Gestión a ${datos.nombre}',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                Text('Debe ${rd(estado.balance)}', style: const TextStyle(color: AppColors.grey)),
+                Text('Debe ${rd(estado.balance)}', style: TextStyle(color: AppColors.grey)),
                 const SizedBox(height: 16),
                 const Text('¿Cómo fue?', style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
@@ -321,7 +321,7 @@ class FilaGestion extends StatelessWidget {
               Text('${g.nombreTipo} · ${g.nombreResultado}',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(fechaHora(g.fecha),
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12)),
               if (g.acuerdo != null) ...[
                 const SizedBox(height: 4),
                 Text('"${g.acuerdo}"', style: const TextStyle(fontStyle: FontStyle.italic)),

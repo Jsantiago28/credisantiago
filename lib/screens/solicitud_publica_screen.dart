@@ -252,7 +252,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   @override
   Widget build(BuildContext context) {
     return Theme(
-      data: AppTheme.light(),
+      data: AppTheme.formulario(),
       child: Scaffold(
         backgroundColor: const Color(0xFFF7F8FA),
         body: SafeArea(

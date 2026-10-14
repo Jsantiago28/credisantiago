@@ -82,7 +82,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Con esto generamos tu link personal para mandar a tus clientes.',
               style: TextStyle(color: AppColors.grey),
             ),
@@ -103,7 +103,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
             const SizedBox(height: 16),
             const Text('Tu WhatsApp', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            const Text('Para avisarte cuando aprueben tu cuenta o te toque renovar.',
+            Text('Para avisarte cuando aprueben tu cuenta o te toque renovar.',
                 style: TextStyle(color: AppColors.grey, fontSize: 13)),
             const SizedBox(height: 8),
             TextField(
@@ -113,7 +113,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
               style: const TextStyle(fontSize: 18),
               decoration: InputDecoration(
                 hintText: '809-555-1234',
-                prefixIcon: const Icon(Icons.chat_rounded, color: AppColors.green),
+                prefixIcon: Icon(Icons.chat_rounded, color: AppColors.green),
                 filled: true,
                 fillColor: AppColors.surface,
                 border: OutlineInputBorder(
@@ -124,7 +124,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: AppColors.red)),
+              Text(_error!, style: TextStyle(color: AppColors.red)),
             ],
             const SizedBox(height: 24),
             ElevatedButton(

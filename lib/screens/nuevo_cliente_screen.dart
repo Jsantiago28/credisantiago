@@ -266,13 +266,13 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
                 borde: AppColors.green.withValues(alpha: 0.4),
                 child: Row(
                   children: [
-                    const Icon(Icons.calculate_rounded, color: AppColors.green),
+                    Icon(Icons.calculate_rounded, color: AppColors.green),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                           'Préstamo de ${rd(widget.monto!)} de la calculadora. '
                           'Lo confirmas en el próximo paso.',
-                          style: const TextStyle(color: AppColors.grey)),
+                          style: TextStyle(color: AppColors.grey)),
                     ),
                   ],
                 ),
@@ -300,7 +300,7 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
                 validar: errorTelefono,
                 aviso: (_) => _repetido(DatoRepetido.telefono)),
             _campo(_direccion, 'Dirección'),
-            const Text('La casa donde vive es:', style: TextStyle(color: AppColors.grey)),
+            Text('La casa donde vive es:', style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -395,7 +395,7 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('¿Es alguno de tus clientes? Tócalo para prestarle',
+          Text('¿Es alguno de tus clientes? Tócalo para prestarle',
               style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700, fontSize: 13)),
           for (final c in clientes)
             ListTile(
@@ -408,9 +408,9 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
                 [c['cedula'], c['telefono']]
                     .where((x) => x != null && '$x'.isNotEmpty)
                     .join(' · '),
-                style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                style: TextStyle(color: AppColors.grey, fontSize: 12),
               ),
-              trailing: const Icon(Icons.arrow_forward, color: AppColors.green),
+              trailing: Icon(Icons.arrow_forward, color: AppColors.green),
               onTap: () => _prestarAExistente(c),
             ),
           Align(
@@ -443,11 +443,11 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.add_a_photo_rounded, color: AppColors.grey),
+                  Icon(Icons.add_a_photo_rounded, color: AppColors.grey),
                   const SizedBox(height: 6),
                   Text(etiqueta,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                      style: TextStyle(color: AppColors.grey, fontSize: 12)),
                 ],
               ),
       ),
@@ -457,7 +457,7 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
   Widget _seccion(String titulo) => Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 10),
         child: Text(titulo,
-            style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
+            style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
       );
 
   Widget _campo(
@@ -491,7 +491,7 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
           hintText: ejemplo,
           helperText: advertencia,
           helperMaxLines: 2,
-          helperStyle: const TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600),
+          helperStyle: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600),
           errorMaxLines: 2,
           filled: true,
           fillColor: AppColors.surface,
@@ -502,7 +502,7 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: advertencia != null
-                ? const BorderSide(color: AppColors.amber)
+                ? BorderSide(color: AppColors.amber)
                 : BorderSide.none,
           ),
         ),

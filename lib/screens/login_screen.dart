@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: Border.all(color: AppColors.green, width: 2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.shield, color: AppColors.green),
+                        child: Icon(Icons.shield, color: AppColors.green),
                       ),
                       const SizedBox(width: 12),
                       Text(
@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? 'Te enviamos un código a ${_emailCtrl.text}'
                         : 'Pon tu correo y te enviamos un código. ¿Primera vez? '
                             'Con ese mismo código registras tu negocio en un minuto.',
-                    style: const TextStyle(color: AppColors.grey, fontSize: 15),
+                    style: TextStyle(color: AppColors.grey, fontSize: 15),
                   ),
                   const SizedBox(height: 32),
                   if (!_codigoEnviado)
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: const TextStyle(fontSize: 18),
                       decoration: InputDecoration(
                         prefixIcon:
-                            const Icon(Icons.email, color: AppColors.green),
+                            Icon(Icons.email, color: AppColors.green),
                         filled: true,
                         fillColor: AppColors.surface,
                         border: OutlineInputBorder(
@@ -145,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: AppColors.red)),
+                    Text(_error!, style: TextStyle(color: AppColors.red)),
                   ],
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -169,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                   const SizedBox(height: 24),
-                  const Center(
+                  Center(
                     child: Text('República Dominicana • RD',
                         style: TextStyle(color: AppColors.grey, fontSize: 12)),
                   ),

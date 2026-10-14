@@ -152,7 +152,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
                 '${_mora.toStringAsFixed(_mora == _mora.roundToDouble() ? 0 : 1)}% '
                 'de lo que falte de ella por cada día '
                 '(RD\$ ${(_plan!.cuota * _mora / 100).round()} diarios sobre una cuota completa).',
-                style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                style: TextStyle(color: AppColors.grey, fontSize: 12),
               ),
             const SizedBox(height: 20),
             Container(
@@ -166,12 +166,12 @@ class _PrestarScreenState extends State<PrestarScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Resumen', style: TextStyle(color: AppColors.grey)),
+                  Text('Resumen', style: TextStyle(color: AppColors.grey)),
                   const SizedBox(height: 8),
                   if (_aviso != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(_aviso!, style: const TextStyle(color: AppColors.amber)),
+                      child: Text(_aviso!, style: TextStyle(color: AppColors.amber)),
                     ),
                   if (_plan != null && _plan!.diasCobrados != _dias)
                     _resumenFila('Plazo real',
@@ -180,7 +180,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
                       'RD\$ ${(_plan?.interesTotal ?? 0).toStringAsFixed(0)}'),
                   _resumenFila('Total a devolver',
                       'RD\$ ${(_plan?.montoTotal ?? 0).toStringAsFixed(0)}'),
-                  const Divider(color: AppColors.grey),
+                  Divider(color: AppColors.grey),
                   _resumenFila(
                     '${_plan?.cantidadCuotas ?? 0} ${nombreCuotas(_frecuencia)}',
                     'RD\$ ${(_plan?.cuota ?? 0).toStringAsFixed(0)}',
@@ -240,7 +240,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
           Text(
             valor,
             style: TextStyle(
-              color: destacado ? AppColors.green : Colors.white,
+              color: destacado ? AppColors.green : AppColors.texto,
               fontWeight: destacado ? FontWeight.bold : FontWeight.normal,
               fontSize: destacado ? 20 : 14,
             ),

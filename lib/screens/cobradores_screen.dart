@@ -114,7 +114,7 @@ class _CobradoresScreenState extends State<CobradoresScreen> {
             TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Quitar acceso', style: TextStyle(color: AppColors.red)),
+              child: Text('Quitar acceso', style: TextStyle(color: AppColors.red)),
             ),
           ],
         ),
@@ -166,10 +166,10 @@ class _CobradoresScreenState extends State<CobradoresScreen> {
                         : _limite == 0
                             ? 'Tu plan no incluye cobradores. Con el Básico tienes 1 y con el Pro, 3.'
                             : 'Tu plan permite $_limite cobrador(es). Tienes $_activos activo(s).',
-                    style: const TextStyle(color: AppColors.grey),
+                    style: TextStyle(color: AppColors.grey),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Cada cobrador entra a esta misma app con su correo y solo ve los '
                     'clientes que le repartas. No ve reportes ni ganancias, no presta y no '
                     'anula cobros.',
@@ -239,7 +239,7 @@ class TarjetaCobrador extends StatelessWidget {
                             color: c.activo ? null : AppColors.grey)),
                     Text(c.email,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                        style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     Text(c.estado,
                         style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800)),
                   ],
@@ -251,7 +251,7 @@ class TarjetaCobrador extends StatelessWidget {
           Text('$clientes cliente(s) en su ruta',
               style: const TextStyle(fontWeight: FontWeight.w600)),
           if (c.activo && !c.yaEntro)
-            const Text('Mándale cómo entrar por WhatsApp.',
+            Text('Mándale cómo entrar por WhatsApp.',
                 style: TextStyle(color: AppColors.amber, fontSize: 12)),
           const SizedBox(height: 4),
           Wrap(
@@ -377,7 +377,7 @@ class _FormularioCobradorState extends State<FormularioCobrador> {
               ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
-                Text(_error!, style: const TextStyle(color: AppColors.red)),
+                Text(_error!, style: TextStyle(color: AppColors.red)),
               ],
               const SizedBox(height: 16),
               ElevatedButton.icon(
@@ -540,7 +540,7 @@ class _RepartirClientesScreenState extends State<RepartirClientesScreen> {
                       ].join(' · '),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                      style: TextStyle(color: AppColors.grey, fontSize: 12),
                     ),
                   ),
               ],

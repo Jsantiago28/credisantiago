@@ -15,7 +15,7 @@ const colorMora = Color(0xFFD95926);
 const colorPrestado = Color(0xFF199E70);
 
 const _alto = 180.0;
-const _linea = AppColors.border;
+final _linea = AppColors.border;
 
 /// "12K", "2.5K", "1.2M" para los ejes (el título ya dice que son pesos).
 String rdCorto(double v) {
@@ -64,7 +64,7 @@ class Leyenda extends StatelessWidget {
                   decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(width: 6),
-                Text(nombre, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                Text(nombre, style: TextStyle(color: AppColors.grey, fontSize: 12)),
               ],
             ),
         ],
@@ -122,12 +122,12 @@ class _GraficaBarrasState extends State<GraficaBarras> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.titulo, style: const TextStyle(color: AppColors.grey, fontSize: 13)),
+          Text(widget.titulo, style: TextStyle(color: AppColors.grey, fontSize: 13)),
           const SizedBox(height: 2),
           Text(widget.resumen,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           if (widget.detalle != null)
-            Text(widget.detalle!, style: const TextStyle(color: AppColors.grey, fontSize: 13)),
+            Text(widget.detalle!, style: TextStyle(color: AppColors.grey, fontSize: 13)),
           const SizedBox(height: 8),
           if (widget.series.length > 1) ...[
             Leyenda([for (final s in widget.series) (s.nombre, s.color)]),
@@ -203,12 +203,12 @@ class _GraficaBarrasState extends State<GraficaBarras> {
             barGroups: grupos,
             borderData: FlBorderData(
               show: true,
-              border: const Border(bottom: BorderSide(color: _linea)),
+              border: Border(bottom: BorderSide(color: _linea)),
             ),
             gridData: FlGridData(
               drawVerticalLine: false,
               horizontalInterval: eje.paso,
-              getDrawingHorizontalLine: (_) => const FlLine(color: _linea, strokeWidth: 1),
+              getDrawingHorizontalLine: (_) => FlLine(color: _linea, strokeWidth: 1),
             ),
             titlesData: FlTitlesData(
               topTitles: const AxisTitles(),
@@ -223,7 +223,7 @@ class _GraficaBarrasState extends State<GraficaBarras> {
                       : SideTitleWidget(
                           meta: meta,
                           child: Text(rdCorto(v),
-                              style: const TextStyle(color: AppColors.grey, fontSize: 10)),
+                              style: TextStyle(color: AppColors.grey, fontSize: 10)),
                         ),
                 ),
               ),
@@ -237,7 +237,7 @@ class _GraficaBarrasState extends State<GraficaBarras> {
                     return SideTitleWidget(
                       meta: meta,
                       child: Text(texto,
-                          style: const TextStyle(color: AppColors.grey, fontSize: 10)),
+                          style: TextStyle(color: AppColors.grey, fontSize: 10)),
                     );
                   },
                 ),
@@ -255,11 +255,11 @@ class _GraficaBarrasState extends State<GraficaBarras> {
                   ];
                   return BarTooltipItem(
                     '${widget.etiquetas[i]}\n',
-                    const TextStyle(color: AppColors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                    TextStyle(color: AppColors.texto, fontWeight: FontWeight.w700, fontSize: 12),
                     children: [
                       TextSpan(
                         text: lineas.join('\n'),
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.grey, fontWeight: FontWeight.w500, fontSize: 12),
                       ),
                     ],
@@ -290,14 +290,14 @@ class _GraficaBarrasState extends State<GraficaBarras> {
                 width: 90,
                 child: Text(s.nombre,
                     textAlign: TextAlign.right,
-                    style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                    style: TextStyle(color: AppColors.grey, fontSize: 12)),
               ),
           ],
         ),
         const Divider(height: 12),
         if (filas.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(8),
+          Padding(
+            padding: const EdgeInsets.all(8),
             child: Text('Sin cobros en este tiempo', style: TextStyle(color: AppColors.grey)),
           ),
         for (final i in filas)
@@ -347,13 +347,13 @@ class BarraCartera extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Cómo está tu dinero en la calle',
+          Text('Cómo está tu dinero en la calle',
               style: TextStyle(color: AppColors.grey, fontSize: 13)),
           const SizedBox(height: 2),
           Text(rd(total), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           if (total <= 0)
-            const Text('No tienes dinero en la calle ahora.',
+            Text('No tienes dinero en la calle ahora.',
                 style: TextStyle(color: AppColors.grey))
           else ...[
             ClipRRect(
@@ -388,7 +388,7 @@ class BarraCartera extends StatelessWidget {
                       width: 48,
                       child: Text('${(valor / total * 100).round()}%',
                           textAlign: TextAlign.right,
-                          style: const TextStyle(color: AppColors.grey)),
+                          style: TextStyle(color: AppColors.grey)),
                     ),
                   ],
                 ),

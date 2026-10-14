@@ -58,7 +58,7 @@ class _Edicion extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.history_rounded, size: 18, color: AppColors.green),
+              Icon(Icons.history_rounded, size: 18, color: AppColors.green),
               const SizedBox(width: 8),
               Text(fechaHora(edicion.fecha),
                   style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -66,7 +66,7 @@ class _Edicion extends StatelessWidget {
           ),
           for (final c in edicion.cambios) ...[
             const SizedBox(height: 10),
-            Text(c.nombre, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+            Text(c.nombre, style: TextStyle(color: AppColors.grey, fontSize: 12)),
             const SizedBox(height: 4),
             c.esFoto ? _fotos(c) : _textos(c),
           ],
@@ -79,12 +79,12 @@ class _Edicion extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(c.antesTexto,
-              style: const TextStyle(
+              style: TextStyle(
                   color: AppColors.red, decoration: TextDecoration.lineThrough)),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.green),
+              Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.green),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(c.despuesTexto,
@@ -111,11 +111,11 @@ class _Edicion extends StatelessWidget {
                       width: 90,
                       height: 64,
                       color: AppColors.surfaceAlt,
-                      child: const Icon(Icons.no_photography_rounded, color: AppColors.grey),
+                      child: Icon(Icons.no_photography_rounded, color: AppColors.grey),
                     ),
                   ),
                 ),
-                Text(texto, style: const TextStyle(color: AppColors.grey, fontSize: 11)),
+                Text(texto, style: TextStyle(color: AppColors.grey, fontSize: 11)),
               ],
             ),
           ),
@@ -123,8 +123,8 @@ class _Edicion extends StatelessWidget {
     return Row(
       children: [
         foto(c.antes, 'Antes'),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Icon(Icons.arrow_forward_rounded, color: AppColors.green),
         ),
         foto(c.despues, 'Ahora'),

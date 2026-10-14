@@ -95,7 +95,7 @@ class _GastosScreenState extends State<GastosScreen> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Borrar', style: TextStyle(color: AppColors.red)),
+            child: Text('Borrar', style: TextStyle(color: AppColors.red)),
           ),
         ],
       ),
@@ -181,7 +181,7 @@ List<Widget> contenidoGastos({
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
           children: [
-            Expanded(child: Text(texto, style: const TextStyle(color: AppColors.grey))),
+            Expanded(child: Text(texto, style: TextStyle(color: AppColors.grey))),
             Text(valor, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
           ],
         ),
@@ -206,7 +206,7 @@ List<Widget> contenidoGastos({
                     fontWeight: FontWeight.w800,
                     color: g.real >= 0 ? null : AppColors.red)),
           ),
-          const Text('Lo que te queda después de los gastos',
+          Text('Lo que te queda después de los gastos',
               style: TextStyle(color: AppColors.grey, fontSize: 12)),
           const Divider(height: 24),
           linea('+ Interés cobrado', rd(g.interes), AppColors.green),
@@ -223,7 +223,7 @@ List<Widget> contenidoGastos({
         child: Column(
           children: [
             for (final c in porCategoria)
-              linea(nombreCategoria(c.categoria), rd(c.total), AppColors.white),
+              linea(nombreCategoria(c.categoria), rd(c.total), AppColors.texto),
           ],
         ),
       ),
@@ -233,8 +233,8 @@ List<Widget> contenidoGastos({
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
     const SizedBox(height: 4),
     if (gastos.isEmpty)
-      const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text('No hay gastos anotados este mes. Toca "Anotar gasto" para agregar uno.',
             style: TextStyle(color: AppColors.grey)),
       ),
@@ -242,7 +242,7 @@ List<Widget> contenidoGastos({
       ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Text(fechaCorta(gasto.fecha),
-            style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+            style: TextStyle(color: AppColors.grey, fontSize: 12)),
         title: Text(gasto.descripcion,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -251,11 +251,11 @@ List<Widget> contenidoGastos({
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(rd(gasto.monto),
-                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.red)),
+                style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.red)),
             if (onBorrar != null && gasto.id != null)
               IconButton(
                 tooltip: 'Borrar',
-                icon: const Icon(Icons.delete_outline, color: AppColors.grey, size: 20),
+                icon: Icon(Icons.delete_outline, color: AppColors.grey, size: 20),
                 onPressed: () => onBorrar(gasto),
               ),
           ],

@@ -131,7 +131,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
           if (c != null)
             IconButton(
               tooltip: 'Corregir datos',
-              icon: const Icon(Icons.edit_rounded, color: AppColors.green),
+              icon: Icon(Icons.edit_rounded, color: AppColors.green),
               onPressed: _editar,
             ),
         ],
@@ -150,8 +150,8 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                       _fotos(c),
                       _titulo('Préstamos'),
                       if (_prestamos.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 12),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
                           child: Text('Todavía no tiene préstamos.',
                               style: TextStyle(color: AppColors.grey)),
                         ),
@@ -229,7 +229,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                     Text(c['nombre'] ?? '',
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                     if ((c['cedula'] as String?)?.isNotEmpty == true)
-                      Text('Cédula ${c['cedula']}', style: const TextStyle(color: AppColors.grey)),
+                      Text('Cédula ${c['cedula']}', style: TextStyle(color: AppColors.grey)),
                   ],
                 ),
               ),
@@ -265,7 +265,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                 child: FotoPrivada(guardado: fotos[i].$2, width: 120, height: 84),
               ),
               const SizedBox(height: 4),
-              Text(fotos[i].$1, style: const TextStyle(color: AppColors.grey, fontSize: 11)),
+              Text(fotos[i].$1, style: TextStyle(color: AppColors.grey, fontSize: 11)),
             ],
           ),
         ),
@@ -284,10 +284,10 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
           children: [
             Expanded(
               child: Text('${rd(p['monto'] as num? ?? 0)} — cancelado',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: AppColors.grey, decoration: TextDecoration.lineThrough)),
             ),
-            const Pildora('CANCELADO', color: AppColors.grey, fondo: AppColors.surfaceAlt),
+            Pildora('CANCELADO', color: AppColors.grey, fondo: AppColors.surfaceAlt),
           ],
         ),
       );
@@ -301,10 +301,10 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
             const Expanded(
               child: Text('Préstamo por confirmar', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
-            const Pildora('POR PRESTAR', color: AppColors.amber, fondo: AppColors.amberDark),
+            Pildora('POR PRESTAR', color: AppColors.amber, fondo: AppColors.amberDark),
             IconButton(
               tooltip: 'Cancelar préstamo',
-              icon: const Icon(Icons.close, color: AppColors.grey),
+              icon: Icon(Icons.close, color: AppColors.grey),
               onPressed: () => _cancelar(p),
             ),
           ],
@@ -333,7 +333,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                     style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               ),
               saldado
-                  ? const Pildora('SALDADO', color: AppColors.grey, fondo: AppColors.surfaceAlt)
+                  ? Pildora('SALDADO', color: AppColors.grey, fondo: AppColors.surfaceAlt)
                   : const Pildora('EN LA CALLE'),
             ],
           ),
@@ -344,7 +344,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
               '${p['cantidad_cuotas'] ?? '?'} ${nombreCuotas(p['frecuencia'] as String? ?? 'diario')}',
               '${p['tasa_interes'] ?? 0}% mensual',
             ].join(' · '),
-            style: const TextStyle(color: AppColors.grey, fontSize: 12),
+            style: TextStyle(color: AppColors.grey, fontSize: 12),
           ),
           const SizedBox(height: 6),
           Text(
@@ -355,7 +355,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                 : 'Debe ${rd(estado.balance)} de ${rd(estado.montoTotal)}'
                     '${estado.moraPendiente > 0 ? ' · mora ${rd(estado.moraPendiente)}' : ''}',
             style: TextStyle(
-                color: !saldado && estado.moraPendiente > 0 ? AppColors.red : AppColors.white,
+                color: !saldado && estado.moraPendiente > 0 ? AppColors.red : AppColors.texto,
                 fontSize: 13),
           ),
           if (!saldado && d.promesa(hoy) != null) ...[
@@ -367,7 +367,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
             children: [
               Expanded(
                 child: Text(saldado ? 'Toca para ver sus recibos' : 'Toca para ver cuotas y cobrar',
-                    style: const TextStyle(color: AppColors.green, fontSize: 12)),
+                    style: TextStyle(color: AppColors.green, fontSize: 12)),
               ),
               if (!saldado || d.gestiones.isNotEmpty)
                 TextButton.icon(
@@ -425,7 +425,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sí, cancelar', style: TextStyle(color: AppColors.red)),
+            child: Text('Sí, cancelar', style: TextStyle(color: AppColors.red)),
           ),
         ],
       ),
@@ -453,7 +453,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(punto != null ? 'Ubicación guardada' : 'Sin ubicación',
-              style: const TextStyle(color: AppColors.grey)),
+              style: TextStyle(color: AppColors.grey)),
         ),
         if (punto != null)
           TextButton.icon(
@@ -512,7 +512,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
       onTap: () => verHistorialCliente(context, c['nombre'] ?? '', _cambios),
       child: Row(
         children: [
-          const Icon(Icons.history_rounded, color: AppColors.green),
+          Icon(Icons.history_rounded, color: AppColors.green),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -523,7 +523,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.grey),
+          Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),
     );
@@ -540,7 +540,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
         .toList();
     return Panel(
       child: conValor.isEmpty
-          ? const Text('Sin datos', style: TextStyle(color: AppColors.grey))
+          ? Text('Sin datos', style: TextStyle(color: AppColors.grey))
           : Column(
               children: [
                 for (final f in conValor)
@@ -551,7 +551,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                       children: [
                         SizedBox(
                             width: 130,
-                            child: Text(f.$1, style: const TextStyle(color: AppColors.grey))),
+                            child: Text(f.$1, style: TextStyle(color: AppColors.grey))),
                         Expanded(child: Text('${f.$2}')),
                       ],
                     ),

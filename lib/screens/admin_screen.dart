@@ -126,7 +126,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     '${rd(plan['precio_mensual'] as num? ?? 0)}/mes · '
                     '${plan['max_clientes'] == null ? 'sin límite' : 'hasta ${plan['max_clientes']} clientes'}'),
                 trailing: plan['id'] == p['plan']
-                    ? const Icon(Icons.check, color: AppColors.green)
+                    ? Icon(Icons.check, color: AppColors.green)
                     : null,
                 onTap: () => Navigator.of(ctx).pop(plan['id'] as String),
               ),
@@ -198,7 +198,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       selectedColor: AppColors.greenDark,
                       backgroundColor: AppColors.surfaceAlt,
                       labelStyle: TextStyle(
-                          color: elegido == o.key ? AppColors.green : AppColors.white,
+                          color: elegido == o.key ? AppColors.green : AppColors.texto,
                           fontWeight: FontWeight.w600),
                       onSelected: (_) => setEstado(() => onElegir(o.key)),
                     ),
@@ -256,7 +256,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text('El plan le queda hasta el ${fechaLarga(quedaHasta())}.',
-                      style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
+                      style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: valido ? () => Navigator.of(ctx).pop(true) : null,
@@ -305,7 +305,7 @@ class _AdminScreenState extends State<AdminScreen> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
           TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Borrar', style: TextStyle(color: AppColors.red))),
+              child: Text('Borrar', style: TextStyle(color: AppColors.red))),
         ],
       ),
     );
@@ -337,7 +337,7 @@ class _AdminScreenState extends State<AdminScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.notifications_active_rounded, color: AppColors.amber),
+              Icon(Icons.notifications_active_rounded, color: AppColors.amber),
               const SizedBox(width: 10),
               Expanded(
                 child: Text('${vencen.length} por renovar',
@@ -410,10 +410,10 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Mensualidades cobradas', style: TextStyle(color: AppColors.grey, fontSize: 13)),
+          Text('Mensualidades cobradas', style: TextStyle(color: AppColors.grey, fontSize: 13)),
           Text(rd(total), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           Text('este mes · ${delMes.length} pago(s)',
-              style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+              style: TextStyle(color: AppColors.grey, fontSize: 12)),
           const Divider(height: 20),
           for (final pago in _pagos.take(10)) FilaPagoPlan(pago, onBorrar: () => _borrarPago(pago)),
         ],
@@ -515,7 +515,7 @@ class _AdminScreenState extends State<AdminScreen> {
               _requiereAprobacion
                   ? 'Quien se registre queda "en revisión" hasta que lo apruebes.'
                   : 'Quien se registre entra directo con el plan Gratis.',
-              style: const TextStyle(color: AppColors.grey, fontSize: 12),
+              style: TextStyle(color: AppColors.grey, fontSize: 12),
             ),
             value: _requiereAprobacion,
             onChanged: (v) => setState(() => _requiereAprobacion = v),
@@ -560,14 +560,14 @@ class _AdminScreenState extends State<AdminScreen> {
                         '${p['clientes'] ?? 0} clientes',
                         if (esAdmin) 'admin',
                       ].join(' · '),
-                      style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                      style: TextStyle(color: AppColors.grey, fontSize: 12),
                     ),
                   ],
                 ),
               ),
               aprobado
                   ? Pildora((plan['nombre'] as String? ?? '').toUpperCase())
-                  : const Pildora('POR APROBAR', color: AppColors.amber, fondo: AppColors.amberDark),
+                  : Pildora('POR APROBAR', color: AppColors.amber, fondo: AppColors.amberDark),
             ],
           ),
           if (vence != null)

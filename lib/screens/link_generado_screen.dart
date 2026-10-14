@@ -22,14 +22,14 @@ class LinkGeneradoScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.check_circle, color: AppColors.green, size: 64),
+              Icon(Icons.check_circle, color: AppColors.green, size: 64),
               const SizedBox(height: 16),
               const Text(
                 '¡Tu link está listo!',
                 style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Mándaselo a tus clientes por WhatsApp para que soliciten su préstamo.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.grey),
@@ -48,12 +48,12 @@ class LinkGeneradoScreen extends StatelessWidget {
                     Expanded(
                       child: Text(
                         link,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: AppColors.green, fontWeight: FontWeight.bold),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.copy, color: AppColors.grey),
+                      icon: Icon(Icons.copy, color: AppColors.grey),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: link));
                         ScaffoldMessenger.of(context).showSnackBar(

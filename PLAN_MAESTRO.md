@@ -3,7 +3,7 @@
 **Stack:** Flutter (Web; Android pendiente) + Supabase (proyecto `twhwjttwpliudqkkgzsq`)
 **Publicada en:** https://prestamistas-rd.netlify.app — link de clientes: `/s/{slug}`
 **Admin de la app:** applej904@gmail.com
-**Pruebas automáticas:** 260, todas pasan (`flutter test`)
+**Pruebas automáticas:** 264, todas pasan (`flutter test`)
 
 > ⚠️ **Nombre comercial:** "PRESTAMISTAS RD BY MITCHELL CASTILLO" está registrado en ONAPI (2020, préstamos personales y comerciales). Antes de **vender u ofrecer** la app hay que elegir otro nombre, buscarlo en ONAPI, registrarlo y comprar el dominio. Para uso propio se puede seguir usando.
 
@@ -27,6 +27,7 @@
 | Gestiones y acuerdos de cobro (promesas de pago) | ✅ Completo |
 | Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados | ✅ Hecho |
 | Gráficas del negocio | ✅ Completo |
+| Colores claro y oscuro (lo elige cada quien en Perfil) | ✅ Hecho (13-10-2026) |
 | Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); contrato hecho (13-10-2026); sigue el APK |
 | Login por WhatsApp | ⬜ Pendiente (puede esperar) |
 
@@ -293,6 +294,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 | Planes | Plan vencido = Gratis. Límite aplicado por la base de datos. Activación manual por el admin. |
 | Cobro de planes | Depósito o transferencia a la cuenta del dueño, o efectivo si queda cerca. Sin cobro en línea por ahora. |
 | Mapas | OpenStreetMap para ver (gratis con uso justo; si un día hay cientos de usuarios, cambiar a MapTiler); Google Maps solo para navegar, abriendo la app de Google. El paquete `google_maps_flutter` se quitó el 12-10-2026 porque no se usaba. |
+| Colores | Dos modos: **Claro** (fondo gris claro, tarjetas blancas; el de siempre, se lee mejor al sol) y **Oscuro** (el original). Cada quien lo elige en Perfil → Apariencia (el cobrador en "Yo") y se guarda en ese teléfono. Los colores se piden a `AppColors` (`lib/theme/app_theme.dart`), nunca fijos: así salen bien en los dos modos. El formulario público del cliente siempre es claro y azul. |
 
 ## Decisiones abiertas
 - **Nombre comercial** (ver el aviso de arriba).

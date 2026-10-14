@@ -105,7 +105,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                       if (p.datos.direccion.isNotEmpty)
                         Text(p.datos.direccion,
-                            style: const TextStyle(color: AppColors.grey, fontSize: 13)),
+                            style: TextStyle(color: AppColors.grey, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -122,7 +122,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
             ),
             if (_yo != null && p.punto != null)
               Text('A ${distanciaKm(_yo!, p.punto!).toStringAsFixed(1)} km en línea recta',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () {
@@ -259,11 +259,11 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
                           decoration: BoxDecoration(
                             color: p.etiqueta.color,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 2),
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: Text('${numero[p]}',
-                              style: const TextStyle(
-                                  color: Colors.black, fontWeight: FontWeight.w900)),
+                              style: TextStyle(
+                                  color: AppColors.sobreVerde, fontWeight: FontWeight.w900)),
                         ),
                       ),
                     ),
@@ -292,8 +292,8 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
                         : 'Armar ruta en Google Maps (${ruta.length} paradas)'),
                   ),
                   if (_yo == null)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
                       child: Text('Toca 🎯 arriba para ordenar la ruta desde donde estás.',
                           style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     ),
@@ -309,7 +309,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
                   const SizedBox(height: 12),
                   Text('Sin ubicación (${sinUbicacion.length})',
                       style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const Text(
+                  Text(
                     'Ábrelos y toca "Marcar ubicación aquí" cuando estés en su casa.',
                     style: TextStyle(color: AppColors.grey, fontSize: 12),
                   ),
@@ -346,7 +346,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
             backgroundColor: numero != null ? p.etiqueta.color : AppColors.surfaceAlt,
             child: Text(numero != null ? '$numero' : '?',
                 style: TextStyle(
-                    color: numero != null ? Colors.black : AppColors.grey,
+                    color: numero != null ? AppColors.sobreVerde : AppColors.grey,
                     fontWeight: FontWeight.w900,
                     fontSize: 12)),
           ),
@@ -367,7 +367,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
                   ].join(' • '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -376,7 +376,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
           p.aCobrar > 0
               ? Text(rd(p.aCobrar), style: const TextStyle(fontWeight: FontWeight.w800))
               : Text(rd(p.datos.estado(DateTime.now()).balance),
-                  style: const TextStyle(color: AppColors.grey, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: AppColors.grey, fontWeight: FontWeight.w600)),
         ],
       ),
     );

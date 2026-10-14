@@ -67,9 +67,9 @@ class _SelectorCobradorState extends State<SelectorCobrador> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Row(
         children: [
-          const Icon(Icons.delivery_dining_rounded, color: AppColors.green),
+          Icon(Icons.delivery_dining_rounded, color: AppColors.green),
           const SizedBox(width: 12),
-          const Text('Le cobra:', style: TextStyle(color: AppColors.grey)),
+          Text('Le cobra:', style: TextStyle(color: AppColors.grey)),
           const SizedBox(width: 8),
           Expanded(
             child: DropdownButton<String?>(

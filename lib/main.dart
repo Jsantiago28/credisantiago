@@ -17,6 +17,7 @@ Future<void> main() async {
     url: SupabaseConfig.url,
     publishableKey: SupabaseConfig.anonKey,
   );
+  await ModoColor.cargar();
   runApp(const PrestamistasRDApp());
 }
 
@@ -25,10 +26,18 @@ class PrestamistasRDApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Al elegir otro modo (claro u oscuro) cambia el tema de toda la app.
+    return ValueListenableBuilder<ModoColor>(
+      valueListenable: ModoColor.actual,
+      builder: (context, modo, _) => _app(),
+    );
+  }
+
+  Widget _app() {
     return MaterialApp(
       title: 'Prestamistas RD',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(),
+      theme: AppTheme.app(),
       onGenerateRoute: (settings) {
         final uri = Uri.parse(settings.name ?? '/');
         if (uri.pathSegments.length == 2 && uri.pathSegments.first == 's') {

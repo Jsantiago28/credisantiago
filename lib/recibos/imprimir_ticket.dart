@@ -101,7 +101,7 @@ class _HojaImprimirState extends State<HojaImprimir> {
             const Text('Imprimir ticket',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
-            const Text('Papel de la impresora', style: TextStyle(color: AppColors.grey)),
+            Text('Papel de la impresora', style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 6),
             SegmentedButton<int>(
               segments: const [
@@ -127,7 +127,7 @@ class _HojaImprimirState extends State<HojaImprimir> {
               hayBluetooth
                   ? 'Para impresoras con Bluetooth BLE. La primera vez eliges la impresora de la lista.'
                   : 'Este navegador no se conecta directo. Usa Chrome en Android, o RawBT.',
-              style: const TextStyle(color: AppColors.grey, fontSize: 12),
+              style: TextStyle(color: AppColors.grey, fontSize: 12),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -135,14 +135,14 @@ class _HojaImprimirState extends State<HojaImprimir> {
               icon: const Icon(Icons.print_rounded),
               label: const Text('Con la app RawBT (Android)'),
             ),
-            const Text(
+            Text(
               'Funciona con casi cualquier impresora Bluetooth. Instala RawBT una vez desde '
               'Google Play y empareja ahí tu impresora.',
               style: TextStyle(color: AppColors.grey, fontSize: 12),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: AppColors.red)),
+              Text(_error!, style: TextStyle(color: AppColors.red)),
             ],
             if (hayBluetooth) ...[
               const SizedBox(height: 8),

@@ -131,7 +131,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   g == null
                       ? 'Anota gasolina, pago al cobrador y otros gastos'
                       : 'Este mes: ${rd(g.interes + g.mora)} ganado − ${rd(g.gastos)} gastos',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -139,7 +139,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
           if (g != null)
             Text(rd(g.real),
                 style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 16)),
-          const Icon(Icons.chevron_right, color: AppColors.grey),
+          Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),
     );
@@ -370,15 +370,15 @@ class _ReportesScreenState extends State<ReportesScreen> {
                 builder: (_) =>
                     GraficasScreen(prestamistaId: widget.prestamistaId, prestamos: prestamos),
               )),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.bar_chart_rounded, color: AppColors.green, size: 28),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Gráficas del negocio',
+                        const Text('Gráficas del negocio',
                             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                         Text('Cartera, cobros por día, ganancia por mes',
                             style: TextStyle(color: AppColors.grey, fontSize: 12)),
@@ -469,14 +469,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   color: AppColors.greenDark,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Icon(Icons.trending_up_rounded, color: AppColors.green, size: 36),
+                child: Icon(Icons.trending_up_rounded, color: AppColors.green, size: 36),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('GANANCIA PROYECTADA ESTE MES',
+                    Text('GANANCIA PROYECTADA ESTE MES',
                         style: TextStyle(
                             color: AppColors.green, fontSize: 11, fontWeight: FontWeight.w700)),
                     FittedBox(
@@ -501,7 +501,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
           Row(
             children: [
               Expanded(child: _dato('Ya llevas', rd(g.yaLlevas), AppColors.green)),
-              Expanded(child: _dato('Te falta', rd(g.falta), AppColors.white)),
+              Expanded(child: _dato('Te falta', rd(g.falta), AppColors.texto)),
             ],
           ),
           const Divider(height: 24),
@@ -559,7 +559,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
           Panel(
             child: Row(
               children: [
-                Expanded(child: _dato('Capital recuperado', rd(capital), AppColors.white)),
+                Expanded(child: _dato('Capital recuperado', rd(capital), AppColors.texto)),
                 Expanded(
                   child: _dato(
                     mora > 0 ? 'Ganancia (con ${rd(mora)} mora)' : 'Ganancia cobrada',
@@ -610,14 +610,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
                 Text(
                   '${rd(p['monto'] as num)} prestado'
                   '${fecha != null ? ' • saldó el ${fechaLarga(fecha)}' : ''}',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
           Text('+${rd(_gananciaRealizada(p))}',
-              style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
-          const Icon(Icons.chevron_right, color: AppColors.grey),
+              style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
+          Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),
     );
@@ -626,7 +626,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
   Widget _dato(String etiqueta, String valor, Color color) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(etiqueta, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+          Text(etiqueta, style: TextStyle(color: AppColors.grey, fontSize: 12)),
           Text(valor,
               style: TextStyle(color: color, fontSize: 17, fontWeight: FontWeight.w800)),
         ],
@@ -655,13 +655,13 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   '${rd(p['balance'] as num)} • '
                   '${dias == 0 ? 'vence hoy' : '$dias día(s) atrasado'}'
                   '${mora > 0 ? ' • mora ${rd(mora)}' : ''}',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
           EtiquetaEstado(dias == 0 ? EstadoCobro.venceHoy : EstadoCobro.atrasado),
-          const Icon(Icons.chevron_right, color: AppColors.grey),
+          Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),
     );
@@ -698,7 +698,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(detalle,
-                          style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                          style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     ),
                   ],
                 ),

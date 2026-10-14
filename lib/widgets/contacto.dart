@@ -89,11 +89,11 @@ class FilaContacto extends StatelessWidget {
     final tel = telefono ?? '';
     return Row(
       children: [
-        const Icon(Icons.phone_rounded, size: 16, color: AppColors.grey),
+        Icon(Icons.phone_rounded, size: 16, color: AppColors.grey),
         const SizedBox(width: 6),
         Expanded(
           child: Text(tel.isEmpty ? 'Sin teléfono' : tel,
-              style: const TextStyle(color: AppColors.grey)),
+              style: TextStyle(color: AppColors.grey)),
         ),
         if (tel.isNotEmpty) ...[
           TextButton.icon(
@@ -105,7 +105,7 @@ class FilaContacto extends StatelessWidget {
           IconButton(
             tooltip: 'Llamar',
             onPressed: () => llamar(context, tel),
-            icon: const Icon(Icons.call_rounded, color: AppColors.green),
+            icon: Icon(Icons.call_rounded, color: AppColors.green),
           ),
         ],
       ],

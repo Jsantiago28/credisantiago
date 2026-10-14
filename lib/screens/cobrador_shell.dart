@@ -5,6 +5,7 @@ import '../logic/cobradores.dart';
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/selector_colores.dart';
 import '../widgets/ui.dart';
 import 'inicio_screen.dart';
 
@@ -52,7 +53,7 @@ class _CobradorShellState extends State<CobradorShell> {
         ],
       ),
       bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(top: BorderSide(color: AppColors.border)),
         ),
         child: NavigationBar(
@@ -147,7 +148,7 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('COBRASTE HOY',
+                            Text('COBRASTE HOY',
                                 style: TextStyle(
                                     color: AppColors.green,
                                     fontSize: 11,
@@ -155,10 +156,10 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
                             Text(rd(dia.total),
                                 style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
                             Text('${dia.cantidad} cobro(s) · esto es lo que entregas',
-                                style: const TextStyle(color: AppColors.grey)),
+                                style: TextStyle(color: AppColors.grey)),
                             if (dia.mora > 0)
                               Text('De eso, mora: ${rd(dia.mora)}',
-                                  style: const TextStyle(color: AppColors.red, fontSize: 13)),
+                                  style: TextStyle(color: AppColors.red, fontSize: 13)),
                             if (_entrega case final e?) ...[
                               const Divider(height: 20),
                               Text(
@@ -175,13 +176,13 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 8),
                       if (cobros.isEmpty)
-                        const Text('Todavía no has cobrado hoy.',
+                        Text('Todavía no has cobrado hoy.',
                             style: TextStyle(color: AppColors.grey)),
                       for (final c in dia.cobros)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: Text(_hora(c.fecha),
-                              style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                              style: TextStyle(color: AppColors.grey, fontSize: 12)),
                           title: Text(c.cliente,
                               style: TextStyle(
                                   fontWeight: FontWeight.w700,
@@ -229,25 +230,27 @@ class _Yo extends StatelessWidget {
                       Text(sesion.cobradorNombre,
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                       Text('Cobrador de ${sesion.negocio}',
-                          style: const TextStyle(color: AppColors.grey)),
+                          style: TextStyle(color: AppColors.grey)),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const Panel(
+          Panel(
             child: Text(
               'Ves y cobras solo a los clientes que tu jefe te asignó. '
               'Si te equivocas en un cobro, avísale para que lo anule.',
               style: TextStyle(color: AppColors.grey),
             ),
           ),
+          const SizedBox(height: 8),
+          const SelectorColores(),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.red,
-              side: const BorderSide(color: AppColors.red),
+              side: BorderSide(color: AppColors.red),
             ),
             onPressed: () => SupabaseService.instance.cerrarSesion(),
             icon: const Icon(Icons.logout),

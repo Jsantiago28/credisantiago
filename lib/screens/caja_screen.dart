@@ -49,7 +49,7 @@ class FilaDiaCaja extends StatelessWidget {
                   dia.cantidad == 0
                       ? 'Sin cobros'
                       : '${dia.cantidad} cobro(s)${dia.mora > 0 ? ' · mora ${rd(dia.mora)}' : ''}',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               ],
             ),
@@ -60,7 +60,7 @@ class FilaDiaCaja extends StatelessWidget {
           if (cierre != null)
             const Pildora('CERRADO ✓')
           else
-            const Icon(Icons.chevron_right, color: AppColors.grey),
+            Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),
     );
@@ -240,7 +240,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Cobró ${rd(cobrado)} el ${fechaLarga(_d.dia)}.',
-                    style: const TextStyle(color: AppColors.grey)),
+                    style: TextStyle(color: AppColors.grey)),
                 const SizedBox(height: 12),
                 TextField(
                   controller: monto,
@@ -270,7 +270,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               if (antes != null)
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop('borrar'),
-                  child: const Text('Borrar', style: TextStyle(color: AppColors.red)),
+                  child: Text('Borrar', style: TextStyle(color: AppColors.red)),
                 ),
               TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
               TextButton(
@@ -346,7 +346,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w800)),
                     Text('$cantidad cobro(s)',
-                        style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                        style: TextStyle(color: AppColors.grey, fontSize: 12)),
                   ],
                 ),
               ),
@@ -356,7 +356,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
           if (cobradorId != null) ...[
             const SizedBox(height: 6),
             if (entrega == null)
-              const Text('Toca para anotar lo que te entregó',
+              Text('Toca para anotar lo que te entregó',
                   style: TextStyle(
                       color: AppColors.amber, fontSize: 12, fontWeight: FontWeight.w700))
             else
@@ -366,9 +366,9 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               Text(
                   'Cuando te entregó había cobrado ${rd(entrega.cobrado)}; ahora suma ${rd(total)}. '
                   'Se anuló o se agregó un cobro después.',
-                  style: const TextStyle(color: AppColors.amber, fontSize: 12)),
+                  style: TextStyle(color: AppColors.amber, fontSize: 12)),
             if (nota.isNotEmpty)
-              Text('Nota: $nota', style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+              Text('Nota: $nota', style: TextStyle(color: AppColors.grey, fontSize: 12)),
           ],
         ],
       ),
@@ -403,7 +403,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Se guarda: ${rd(_d.total)} en ${_d.cantidad} cobro(s).',
-                style: const TextStyle(color: AppColors.grey)),
+                style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 12),
             TextField(
               controller: nota,
@@ -441,7 +441,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Borrar cierre', style: TextStyle(color: AppColors.red)),
+            child: Text('Borrar cierre', style: TextStyle(color: AppColors.red)),
           ),
         ],
       ),
@@ -498,15 +498,15 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('RECIBIDO EL ${fechaLarga(_d.dia).toUpperCase()}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: AppColors.green, fontSize: 11, fontWeight: FontWeight.w700)),
                 Text(rd(_d.total),
                     style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
-                Text('${_d.cantidad} cobro(s)', style: const TextStyle(color: AppColors.grey)),
+                Text('${_d.cantidad} cobro(s)', style: TextStyle(color: AppColors.grey)),
                 const Divider(height: 24),
                 Row(
                   children: [
-                    Expanded(child: _dato('A cuotas', rd(_d.cuotas), AppColors.white)),
+                    Expanded(child: _dato('A cuotas', rd(_d.cuotas), AppColors.texto)),
                     Expanded(
                         child: _dato('A mora', rd(_d.mora),
                             _d.mora > 0 ? AppColors.red : AppColors.grey)),
@@ -552,14 +552,14 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                       child: Text(
                         'Al cerrar sumaba ${rd(totalCierre)}; ahora suma ${rd(_d.total)}. '
                         'Se anuló o se agregó un cobro después del cierre.',
-                        style: const TextStyle(color: AppColors.amber, fontSize: 13),
+                        style: TextStyle(color: AppColors.amber, fontSize: 13),
                       ),
                     ),
                   if ((cierre['nota'] as String?)?.isNotEmpty == true)
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text('Nota: ${cierre['nota']}',
-                          style: const TextStyle(color: AppColors.grey)),
+                          style: TextStyle(color: AppColors.grey)),
                     ),
                 ],
               ),
@@ -598,12 +598,12 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           if (_d.cobros.isEmpty)
-            const Text('Sin cobros este día.', style: TextStyle(color: AppColors.grey)),
+            Text('Sin cobros este día.', style: TextStyle(color: AppColors.grey)),
           for (final c in _d.cobros)
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Text(_hora(c.fecha),
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12)),
               title: Text(c.cliente,
                   style: TextStyle(
                       fontWeight: FontWeight.w700,
@@ -636,13 +636,13 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
             ],
           ),
           if (_gastos.isEmpty)
-            const Text('Sin gastos este día.', style: TextStyle(color: AppColors.grey)),
+            Text('Sin gastos este día.', style: TextStyle(color: AppColors.grey)),
           for (final g in _gastos)
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(g.descripcion, style: const TextStyle(fontWeight: FontWeight.w700)),
               trailing: Text('− ${rd(g.monto)}',
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.red)),
+                  style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.red)),
             ),
         ],
       ),
@@ -652,7 +652,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
   Widget _dato(String etiqueta, String valor, Color color) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(etiqueta, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+          Text(etiqueta, style: TextStyle(color: AppColors.grey, fontSize: 12)),
           Text(valor, style: TextStyle(color: color, fontSize: 17, fontWeight: FontWeight.w800)),
         ],
       );

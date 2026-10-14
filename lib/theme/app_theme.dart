@@ -1,119 +1,271 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Colores base del Plan Maestro
-class AppColors {
-  static const background = Color(0xFF0D0F0E);
-  static const surface = Color(0xFF17191A);
+/// Los colores de una de las dos formas de ver la app (clara u oscura).
+class Paleta {
+  final Brightness brillo;
+  final Color background;
+  final Color surface;
 
-  /// Superficie un poco más clara, para cajas dentro de tarjetas.
-  static const surfaceAlt = Color(0xFF212524);
+  /// Superficie un poco distinta, para cajas dentro de tarjetas.
+  final Color surfaceAlt;
 
   /// Borde tenue de las tarjetas.
-  static const border = Color(0xFF2A2F2D);
-  static const green = Color(0xFF00E676);
+  final Color border;
+  final Color green;
 
-  /// Verde oscuro para fondos de íconos y etiquetas.
-  static const greenDark = Color(0xFF0F3D26);
-  static const red = Color(0xFFFF5252);
-  static const redDark = Color(0xFF4A1C1E);
+  /// Verde suave para fondos de íconos y etiquetas.
+  final Color greenDark;
+  final Color red;
+  final Color redDark;
 
   /// Ámbar para lo que vence hoy (ni al día ni atrasado todavía).
-  static const amber = Color(0xFFFFC857);
-  static const amberDark = Color(0xFF3F3417);
-  static const white = Color(0xFFFFFFFF);
-  static const grey = Color(0xFF9E9E9E);
+  final Color amber;
+  final Color amberDark;
+
+  /// Letra principal.
+  final Color texto;
+
+  /// Letra secundaria (fechas, ayudas, etiquetas).
+  final Color grey;
+
+  /// Letra e íconos encima del verde (botones, el círculo de cobrar).
+  final Color sobreVerde;
+
+  const Paleta({
+    required this.brillo,
+    required this.background,
+    required this.surface,
+    required this.surfaceAlt,
+    required this.border,
+    required this.green,
+    required this.greenDark,
+    required this.red,
+    required this.redDark,
+    required this.amber,
+    required this.amberDark,
+    required this.texto,
+    required this.grey,
+    required this.sobreVerde,
+  });
+
+  /// Fondo negro y verde brillante: la de siempre, buena de noche.
+  static const oscura = Paleta(
+    brillo: Brightness.dark,
+    background: Color(0xFF0D0F0E),
+    surface: Color(0xFF17191A),
+    surfaceAlt: Color(0xFF212524),
+    border: Color(0xFF2A2F2D),
+    green: Color(0xFF00E676),
+    greenDark: Color(0xFF0F3D26),
+    red: Color(0xFFFF5252),
+    redDark: Color(0xFF4A1C1E),
+    amber: Color(0xFFFFC857),
+    amberDark: Color(0xFF3F3417),
+    texto: Color(0xFFFFFFFF),
+    grey: Color(0xFF9E9E9E),
+    sobreVerde: Color(0xFF000000),
+  );
+
+  /// Fondo claro y tarjetas blancas: se lee mejor en la calle, a pleno sol.
+  static const clara = Paleta(
+    brillo: Brightness.light,
+    background: Color(0xFFF3F5F4),
+    surface: Color(0xFFFFFFFF),
+    surfaceAlt: Color(0xFFEDF1EF),
+    border: Color(0xFFDCE2DF),
+    green: Color(0xFF16A34A),
+    greenDark: Color(0xFFDCFCE7),
+    red: Color(0xFFDC2626),
+    redDark: Color(0xFFFEE2E2),
+    amber: Color(0xFFB45309),
+    amberDark: Color(0xFFFEF3C7),
+    texto: Color(0xFF111827),
+    grey: Color(0xFF6B7280),
+    sobreVerde: Color(0xFFFFFFFF),
+  );
 }
 
-/// Tema OSCURO — usado en la app del prestamista (dashboard, cobros, reportes)
+/// Colores de la app del prestamista y del cobrador. Salen de la paleta
+/// que eligió quien usa el teléfono (ver [ModoColor]).
+class AppColors {
+  static Paleta _p = Paleta.clara;
+
+  static Paleta get paleta => _p;
+  static Color get background => _p.background;
+  static Color get surface => _p.surface;
+  static Color get surfaceAlt => _p.surfaceAlt;
+  static Color get border => _p.border;
+  static Color get green => _p.green;
+  static Color get greenDark => _p.greenDark;
+  static Color get red => _p.red;
+  static Color get redDark => _p.redDark;
+  static Color get amber => _p.amber;
+  static Color get amberDark => _p.amberDark;
+  static Color get texto => _p.texto;
+  static Color get grey => _p.grey;
+  static Color get sobreVerde => _p.sobreVerde;
+}
+
+/// Las dos formas de ver la app. Cada quien elige la suya en Perfil (o en
+/// "Yo", el cobrador) y se recuerda en ese teléfono.
+enum ModoColor {
+  claro('Claro', Paleta.clara),
+  oscuro('Oscuro', Paleta.oscura);
+
+  final String nombre;
+  final Paleta paleta;
+  const ModoColor(this.nombre, this.paleta);
+
+  /// La que ve quien abre la app por primera vez.
+  static const deSiempre = ModoColor.claro;
+
+  static const _clave = 'modo_color';
+
+  /// El modo que está puesto ahora. La app se vuelve a dibujar cuando cambia.
+  static final actual = ValueNotifier<ModoColor>(deSiempre);
+
+  /// Lee el modo guardado en el teléfono (al abrir la app).
+  static Future<void> cargar() async {
+    try {
+      final guardado = (await SharedPreferences.getInstance()).getString(_clave);
+      _poner(ModoColor.values.firstWhere((m) => m.name == guardado, orElse: () => deSiempre));
+    } catch (_) {
+      _poner(deSiempre); // sin acceso al almacenamiento: el de siempre
+    }
+  }
+
+  /// Cambia el modo, lo guarda y vuelve a dibujar toda la app.
+  static Future<void> elegir(ModoColor modo) async {
+    _poner(modo);
+    _redibujarTodo();
+    try {
+      await (await SharedPreferences.getInstance()).setString(_clave, modo.name);
+    } catch (_) {
+      // Si no se pudo guardar, el cambio vale hasta que se cierre la app.
+    }
+  }
+
+  static void _poner(ModoColor modo) {
+    AppColors._p = modo.paleta;
+    actual.value = modo;
+  }
+
+  /// Las pantallas leen los colores de [AppColors] al dibujarse: hay que
+  /// pedirles a todas (también las de atrás) que se dibujen otra vez.
+  static void _redibujarTodo() {
+    void marcar(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(marcar);
+    }
+
+    WidgetsBinding.instance.rootElement?.visitChildren(marcar);
+  }
+}
+
 class AppTheme {
-  static ThemeData dark() {
-    final base = ThemeData.dark();
+  /// Tema de la app del prestamista y del cobrador, con la paleta elegida.
+  static ThemeData app() {
+    final p = AppColors.paleta;
+    final oscuro = p.brillo == Brightness.dark;
+    final base = oscuro ? ThemeData.dark() : ThemeData.light();
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.background,
-      primaryColor: AppColors.green,
+      scaffoldBackgroundColor: p.background,
+      primaryColor: p.green,
       colorScheme: base.colorScheme.copyWith(
-        primary: AppColors.green,
-        secondary: AppColors.green,
-        surface: AppColors.surface,
-        error: AppColors.red,
+        primary: p.green,
+        onPrimary: p.sobreVerde,
+        secondary: p.green,
+        onSecondary: p.sobreVerde,
+        surface: p.surface,
+        onSurface: p.texto,
+        error: p.red,
+        outline: p.border,
       ),
       textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(
-        bodyColor: AppColors.white,
-        displayColor: AppColors.white,
+        bodyColor: p.texto,
+        displayColor: p.texto,
       ),
+      iconTheme: IconThemeData(color: p.texto),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.background,
+        backgroundColor: p.background,
+        foregroundColor: p.texto,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.inter(
-            fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.white),
+        systemOverlayStyle: oscuro ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        titleTextStyle: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: p.texto),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.green,
-          side: const BorderSide(color: AppColors.green),
+          foregroundColor: p.green,
+          side: BorderSide(color: p.green),
           minimumSize: const Size.fromHeight(48),
           textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
-      dividerColor: AppColors.border,
-      bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: AppColors.surface,
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: p.green),
+      ),
+      dividerColor: p.border,
+      dividerTheme: DividerThemeData(color: p.border),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: p.surface,
         surfaceTintColor: Colors.transparent,
       ),
-      snackBarTheme: const SnackBarThemeData(
-        backgroundColor: AppColors.surfaceAlt,
-        contentTextStyle: TextStyle(color: AppColors.white),
+      dialogTheme: DialogThemeData(
+        backgroundColor: p.surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: oscuro ? p.surfaceAlt : p.texto,
+        contentTextStyle: TextStyle(color: oscuro ? p.texto : p.surface),
         behavior: SnackBarBehavior.floating,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.green,
-          foregroundColor: Colors.black,
+          backgroundColor: p.green,
+          foregroundColor: p.sobreVerde,
           minimumSize: const Size.fromHeight(48),
-          textStyle: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          textStyle: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       cardTheme: CardThemeData(
-        color: AppColors.surface,
+        color: p.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.surface,
+        backgroundColor: p.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.greenDark,
+        indicatorColor: p.greenDark,
         height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith((estados) => GoogleFonts.inter(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: estados.contains(WidgetState.selected) ? AppColors.green : AppColors.grey,
+              color: estados.contains(WidgetState.selected) ? p.green : p.grey,
             )),
         iconTheme: WidgetStateProperty.resolveWith((estados) => IconThemeData(
-              color: estados.contains(WidgetState.selected) ? AppColors.green : AppColors.grey,
+              color: estados.contains(WidgetState.selected) ? p.green : p.grey,
             )),
       ),
     );
   }
 
-  /// Tema CLARO — usado en el formulario público del cliente (/s/{slug})
-  static ThemeData light() {
+  /// Tema del formulario público del cliente (/s/{slug}): siempre claro y
+  /// azul, sin importar lo que eligió el prestamista.
+  static ThemeData formulario() {
     final base = ThemeData.light();
     return base.copyWith(
       scaffoldBackgroundColor: Colors.white,
       primaryColor: const Color(0xFF1565C0),
       colorScheme: base.colorScheme.copyWith(
         primary: const Color(0xFF1565C0),
-        secondary: AppColors.green,
+        secondary: Paleta.clara.green,
       ),
       textTheme: GoogleFonts.interTextTheme(base.textTheme),
       elevatedButtonTheme: ElevatedButtonThemeData(

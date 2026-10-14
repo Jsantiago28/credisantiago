@@ -66,19 +66,19 @@ class _ClientesScreenState extends State<ClientesScreen> {
         actions: [
           IconButton(
             tooltip: 'Importar desde Excel',
-            icon: const Icon(Icons.upload_file_rounded, color: AppColors.green),
+            icon: Icon(Icons.upload_file_rounded, color: AppColors.green),
             onPressed: () => _abrir(ImportarScreen(prestamistaId: widget.prestamistaId)),
           ),
           IconButton(
             tooltip: 'Calculadora de préstamos',
-            icon: const Icon(Icons.calculate_rounded, color: AppColors.green),
+            icon: Icon(Icons.calculate_rounded, color: AppColors.green),
             onPressed: () => _abrir(CalculadoraScreen(prestamistaId: widget.prestamistaId)),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.green,
-        foregroundColor: Colors.black,
+        foregroundColor: AppColors.sobreVerde,
         onPressed: () => _abrir(NuevoClienteScreen(prestamistaId: widget.prestamistaId)),
         icon: const Icon(Icons.person_add_alt_1),
         label: const Text('Nuevo cliente', style: TextStyle(fontWeight: FontWeight.w800)),
@@ -150,11 +150,11 @@ class _ClientesScreenState extends State<ClientesScreen> {
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     hintText: 'Buscar por nombre, cédula o teléfono',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.grey),
+                    prefixIcon: Icon(Icons.search, color: AppColors.grey),
                     suffixIcon: busqueda.isEmpty
                         ? null
                         : IconButton(
-                            icon: const Icon(Icons.close, color: AppColors.grey),
+                            icon: Icon(Icons.close, color: AppColors.grey),
                             onPressed: () => setState(_buscar.clear),
                           ),
                     filled: true,
@@ -170,7 +170,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
                     busqueda.isEmpty
                         ? '${todos.length} cliente(s)'
                         : '${clientes.length} de ${todos.length} cliente(s)',
-                    style: const TextStyle(color: AppColors.grey)),
+                    style: TextStyle(color: AppColors.grey)),
               ],
             ),
           );
@@ -250,7 +250,7 @@ class _ClienteCardState extends State<_ClienteCard> {
         child: CircularProgressIndicator(strokeWidth: 2),
       );
     } else if (_error != null) {
-      accion = const Icon(Icons.error, color: AppColors.red);
+      accion = Icon(Icons.error, color: AppColors.red);
     } else if (_prestamo?['estado'] == 'borrador') {
       accion = SizedBox(
         width: 110,
@@ -263,9 +263,9 @@ class _ClienteCardState extends State<_ClienteCard> {
     } else if (_prestamo?['estado'] == 'en_calle') {
       accion = const Pildora('EN LA CALLE');
     } else if (_prestamo?['estado'] == 'pagado') {
-      accion = const Pildora('SALDADO', color: AppColors.grey, fondo: AppColors.surfaceAlt);
+      accion = Pildora('SALDADO', color: AppColors.grey, fondo: AppColors.surfaceAlt);
     } else {
-      accion = const Text('Sin préstamo',
+      accion = Text('Sin préstamo',
           style: TextStyle(color: AppColors.grey, fontSize: 12));
     }
 
@@ -297,7 +297,7 @@ class _ClienteCardState extends State<_ClienteCard> {
                         .join(' • '),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                    style: TextStyle(color: AppColors.grey, fontSize: 12)),
               ],
             ),
           ),

@@ -164,7 +164,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PRÉSTAMOS RD',
+        title: Text('PRÉSTAMOS RD',
             style: TextStyle(
                 color: AppColors.green, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
       ),
@@ -211,7 +211,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
                 ],
               ),
               const SizedBox(height: 4),
-              const Text('Aprobar o rechazar las nuevas solicitudes de préstamo',
+              Text('Aprobar o rechazar las nuevas solicitudes de préstamo',
                   style: TextStyle(color: AppColors.grey)),
               const SizedBox(height: 16),
               if (nuevas.isEmpty)
@@ -286,7 +286,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.schedule, size: 14, color: AppColors.green),
+                        Icon(Icons.schedule, size: 14, color: AppColors.green),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -297,11 +297,11 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
                             fontWeight: FontWeight.w800)),
                     Row(
                       children: [
-                        const Icon(Icons.account_balance, size: 15, color: AppColors.grey),
+                        Icon(Icons.account_balance, size: 15, color: AppColors.grey),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(_metodoCobroTexto(s),
-                              style: const TextStyle(color: AppColors.grey, fontSize: 13)),
+                              style: TextStyle(color: AppColors.grey, fontSize: 13)),
                         ),
                       ],
                     ),
@@ -348,7 +348,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.red,
-                    side: const BorderSide(color: AppColors.red),
+                    side: BorderSide(color: AppColors.red),
                     backgroundColor: AppColors.redDark.withValues(alpha: 0.4),
                   ),
                   onPressed: () => _rechazar(s),
@@ -386,7 +386,7 @@ class _FichaSolicitud extends StatelessWidget {
         children: [
           SizedBox(
               width: 130,
-              child: Text(label, style: const TextStyle(color: AppColors.grey))),
+              child: Text(label, style: TextStyle(color: AppColors.grey))),
           Expanded(child: Text(valor)),
         ],
       ),
@@ -415,7 +415,7 @@ class _FichaSolicitud extends StatelessWidget {
           Text(solicitud['nombre'] ?? '',
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          const Text('Datos personales',
+          Text('Datos personales',
               style: TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
           _fila('Cédula', solicitud['cedula']),
           _fila('Teléfono', solicitud['telefono']),
@@ -426,7 +426,7 @@ class _FichaSolicitud extends StatelessWidget {
             _ => null,
           }),
           const SizedBox(height: 12),
-          const Text('Trabajo e ingresos',
+          Text('Trabajo e ingresos',
               style: TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
           _fila('Lugar', solicitud['trabajo_lugar']),
           _fila('Dirección trabajo', solicitud['trabajo_direccion']),
@@ -438,19 +438,19 @@ class _FichaSolicitud extends StatelessWidget {
             _fila('Monto otros ingresos', _montoTexto(solicitud['otros_ingresos_monto'])),
           ],
           const SizedBox(height: 12),
-          const Text('Evidencias de ingresos',
+          Text('Evidencias de ingresos',
               style: TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           GaleriaEvidencias(urls: GaleriaEvidencias.desde(solicitud['evidencias_ingresos'])),
           const SizedBox(height: 12),
-          const Text('Referencias',
+          Text('Referencias',
               style: TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
           _fila('Ref 1',
               '${solicitud['ref1_nombre'] ?? ''} (${solicitud['ref1_parentesco'] ?? ''}) - ${solicitud['ref1_telefono'] ?? ''}'),
           _fila('Ref 2',
               '${solicitud['ref2_nombre'] ?? ''} (${solicitud['ref2_parentesco'] ?? ''}) - ${solicitud['ref2_telefono'] ?? ''}'),
           const SizedBox(height: 12),
-          const Text('Monto y forma de pago',
+          Text('Monto y forma de pago',
               style: TextStyle(color: AppColors.green, fontWeight: FontWeight.bold)),
           _fila('Monto solicitado', _montoTexto(solicitud['monto_solicitado'])),
           _fila('Frecuencia de pago', solicitud['frecuencia_pago']),

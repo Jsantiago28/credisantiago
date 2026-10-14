@@ -137,7 +137,7 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            const Text(
+            Text(
               'Esto sale arriba y abajo de cada recibo que le mandas a tus clientes. '
               'Todo es opcional.',
               style: TextStyle(color: AppColors.grey),
@@ -161,10 +161,10 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
                 largo: 120,
                 lineas: 2),
             const SizedBox(height: 8),
-            const Text('PARA TUS CONTRATOS',
+            Text('PARA TUS CONTRATOS',
                 style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Salen en el contrato de cada préstamo. Si los dejas vacíos, el contrato '
               'trae una raya para llenarlos a mano.',
               style: TextStyle(color: AppColors.grey, fontSize: 12),
@@ -198,7 +198,7 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
   Widget _logo() {
     final sinLogo = Container(
       color: AppColors.surfaceAlt,
-      child: const Icon(Icons.storefront_rounded, color: AppColors.grey, size: 36),
+      child: Icon(Icons.storefront_rounded, color: AppColors.grey, size: 36),
     );
     final tieneLogo = _logoNuevo != null || _logoGuardado != null;
     return Panel(
@@ -227,7 +227,7 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Logo', style: TextStyle(fontWeight: FontWeight.w800)),
-                const Text('Sale arriba del recibo.',
+                Text('Sale arriba del recibo.',
                     style: TextStyle(color: AppColors.grey, fontSize: 12)),
                 Wrap(
                   children: [

@@ -95,10 +95,10 @@ class _TarjetaMiPlanState extends State<TarjetaMiPlan> {
                       e.limite == null
                           ? '${e.usados} clientes · sin límite'
                           : '${e.usados} de ${e.limite} clientes',
-                      style: const TextStyle(color: AppColors.grey),
+                      style: TextStyle(color: AppColors.grey),
                     ),
                     if (e.vencido)
-                      const Text('Tu plan pagado venció: estás en Gratis',
+                      Text('Tu plan pagado venció: estás en Gratis',
                           style: TextStyle(color: AppColors.amber, fontSize: 12))
                     else if (dias != null)
                       Text(
@@ -109,8 +109,8 @@ class _TarjetaMiPlanState extends State<TarjetaMiPlan> {
                   ],
                 ),
               ),
-              const Text('Ver planes', style: TextStyle(color: AppColors.green)),
-              const Icon(Icons.chevron_right, color: AppColors.green),
+              Text('Ver planes', style: TextStyle(color: AppColors.green)),
+              Icon(Icons.chevron_right, color: AppColors.green),
             ],
           ),
         );
@@ -156,7 +156,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                 d.estado.limite == null
                     ? 'Tienes ${d.estado.usados} clientes.'
                     : 'Usas ${d.estado.usados} de ${d.estado.limite} clientes de tu plan ${d.estado.nombre}.',
-                style: const TextStyle(color: AppColors.grey),
+                style: TextStyle(color: AppColors.grey),
               ),
               const SizedBox(height: 16),
               const Text('¿Por cuánto tiempo?', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -204,10 +204,10 @@ class _PlanesScreenState extends State<PlanesScreen> {
                       Text(nombrePeriodoPlan(m),
                           style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              color: _meses == m ? AppColors.green : AppColors.white)),
+                              color: _meses == m ? AppColors.green : AppColors.texto)),
                       Text(descuentos.etiqueta(m) ?? 'Precio normal',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: AppColors.grey, fontSize: 11)),
+                          style: TextStyle(color: AppColors.grey, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -245,7 +245,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                   ],
                 ),
                 Text(max == null ? 'Clientes sin límite' : 'Hasta $max clientes',
-                    style: const TextStyle(color: AppColors.grey)),
+                    style: TextStyle(color: AppColors.grey)),
               ],
             ),
           ),
@@ -259,7 +259,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                   _meses == 1
                       ? 'al mes'
                       : 'por ${nombrePeriodoPlan(_meses)} · ${rd((precio / _meses).roundToDouble())}/mes',
-                  style: const TextStyle(color: AppColors.grey, fontSize: 11),
+                  style: TextStyle(color: AppColors.grey, fontSize: 11),
                 ),
               if (mensual > 0)
                 TextButton.icon(
@@ -368,10 +368,10 @@ class FilaPagoPlan extends StatelessWidget {
                     metodosPagoPlan[pago['metodo']] ?? '${pago['metodo']}',
                     if (hasta != null) 'hasta el ${fechaLarga(hasta)}',
                   ].join(' · '),
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
                 if (nota != null && nota.isNotEmpty)
-                  Text(nota, style: const TextStyle(color: AppColors.grey, fontSize: 12)),
+                  Text(nota, style: TextStyle(color: AppColors.grey, fontSize: 12)),
               ],
             ),
           ),
@@ -380,7 +380,7 @@ class FilaPagoPlan extends StatelessWidget {
             IconButton(
               tooltip: 'Borrar (registrado por error)',
               visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.grey),
+              icon: Icon(Icons.delete_outline, size: 18, color: AppColors.grey),
               onPressed: onBorrar,
             ),
         ],
@@ -407,7 +407,7 @@ class CuentaEnRevisionScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.hourglass_top_rounded, color: AppColors.amber, size: 64),
+                  Icon(Icons.hourglass_top_rounded, color: AppColors.amber, size: 64),
                   const SizedBox(height: 16),
                   const Text('Tu cuenta está en revisión',
                       textAlign: TextAlign.center,
@@ -418,7 +418,7 @@ class CuentaEnRevisionScreen extends StatelessWidget {
                     'El administrador tiene que aprobar tu cuenta antes de que puedas usar la app. '
                     'Te avisará cuando esté lista.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.grey),
+                    style: TextStyle(color: AppColors.grey),
                   ),
                   const SizedBox(height: 24),
                   FutureBuilder<Map<String, dynamic>?>(

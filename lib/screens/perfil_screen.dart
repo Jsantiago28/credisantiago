@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/selector_colores.dart';
 import '../widgets/ui.dart';
 import 'admin_screen.dart';
 import 'cobradores_screen.dart';
@@ -60,7 +61,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                       Text(nombre,
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                       if (telefono.isNotEmpty)
-                        Text(telefono, style: const TextStyle(color: AppColors.grey)),
+                        Text(telefono, style: TextStyle(color: AppColors.grey)),
                     ],
                   ),
                 ),
@@ -68,7 +69,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text('MI PLAN',
+          Text('MI PLAN',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           const TarjetaMiPlan(),
@@ -77,11 +78,11 @@ class _PerfilScreenState extends State<PerfilScreen> {
               borde: AppColors.amber.withValues(alpha: 0.5),
               onTap: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (_) => const AdminScreen())),
-              child: const Row(
+              child: Row(
                 children: [
                   Icon(Icons.admin_panel_settings_rounded, color: AppColors.amber),
-                  SizedBox(width: 12),
-                  Expanded(
+                  const SizedBox(width: 12),
+                  const Expanded(
                     child: Text('Administrar prestamistas',
                         style: TextStyle(fontWeight: FontWeight.w800)),
                   ),
@@ -90,7 +91,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
               ),
             ),
           const SizedBox(height: 8),
-          const Text('TU LINK PARA CLIENTES',
+          Text('TU LINK PARA CLIENTES',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           Panel(
@@ -102,12 +103,12 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   children: [
                     Expanded(
                       child: Text(_link,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: AppColors.green, fontWeight: FontWeight.w700)),
                     ),
                     IconButton(
                       tooltip: 'Copiar',
-                      icon: const Icon(Icons.copy, color: AppColors.grey),
+                      icon: Icon(Icons.copy, color: AppColors.grey),
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: _link));
                         ScaffoldMessenger.of(context)
@@ -128,21 +129,21 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text('COBRADORES',
+          Text('COBRADORES',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           Panel(
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => CobradoresScreen(perfil: perfil))),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.delivery_dining_rounded, color: AppColors.green),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Mis cobradores', style: TextStyle(fontWeight: FontWeight.w800)),
+                      const Text('Mis cobradores', style: TextStyle(fontWeight: FontWeight.w800)),
                       Text('Agrégalos y repárteles los clientes',
                           style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     ],
@@ -153,21 +154,26 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text('MI RECIBO Y CONTRATO',
+          Text('APARIENCIA',
+              style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
+          const SizedBox(height: 8),
+          const SelectorColores(),
+          const SizedBox(height: 8),
+          Text('MI RECIBO Y CONTRATO',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           Panel(
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => MiReciboScreen(perfil: perfil))),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.receipt_long_rounded, color: AppColors.green),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Personalizar mi recibo y contrato',
+                      const Text('Personalizar mi recibo y contrato',
                           style: TextStyle(fontWeight: FontWeight.w800)),
                       Text('Logo, nombre del negocio, teléfono, cédula o RNC y mensaje al pie',
                           style: TextStyle(color: AppColors.grey, fontSize: 12)),
@@ -179,7 +185,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text('SOLICITUDES',
+          Text('SOLICITUDES',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           Panel(
@@ -194,7 +200,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                     ? 'Tu link no deja enviar la solicitud sin al menos una foto '
                         '(volante de pago, carta de trabajo o estado de cuenta).'
                     : 'Es opcional: el cliente puede subirla o no.',
-                style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                style: TextStyle(color: AppColors.grey, fontSize: 12),
               ),
               value: _exigirEvidencias,
               onChanged: _cambiarExigir,
@@ -204,7 +210,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: AppColors.red,
-              side: const BorderSide(color: AppColors.red),
+              side: BorderSide(color: AppColors.red),
             ),
             onPressed: () async {
               final confirmar = await showDialog<bool>(
@@ -218,7 +224,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                         child: const Text('Cancelar')),
                     TextButton(
                         onPressed: () => Navigator.of(ctx).pop(true),
-                        child: const Text('Cerrar sesión',
+                        child: Text('Cerrar sesión',
                             style: TextStyle(color: AppColors.red))),
                   ],
                 ),

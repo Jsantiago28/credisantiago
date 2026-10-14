@@ -189,7 +189,7 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
                 validar: errorTelefono,
                 aviso: (_) => _repetido(DatoRepetido.telefono)),
             _campo('direccion', 'Dirección'),
-            const Text('La casa donde vive es:', style: TextStyle(color: AppColors.grey)),
+            Text('La casa donde vive es:', style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -266,7 +266,7 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
                             height: 72,
                             sinFoto: Container(
                               color: AppColors.surface,
-                              child: const Icon(Icons.no_photography_rounded,
+                              child: Icon(Icons.no_photography_rounded,
                                   color: AppColors.grey),
                             ),
                           ),
@@ -275,7 +275,7 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
                 const SizedBox(height: 4),
                 Text(texto,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.grey, fontSize: 11)),
+                    style: TextStyle(color: AppColors.grey, fontSize: 11)),
                 TextButton(
                   onPressed: _guardando
                       ? null
@@ -295,7 +295,7 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
   Widget _seccion(String titulo) => Padding(
         padding: const EdgeInsets.only(top: 8, bottom: 10),
         child: Text(titulo,
-            style: const TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
+            style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
       );
 
   Widget _campo(
@@ -323,7 +323,7 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
           labelText: etiqueta,
           helperText: advertencia,
           helperMaxLines: 2,
-          helperStyle: const TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600),
+          helperStyle: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600),
           errorMaxLines: 2,
           filled: true,
           fillColor: AppColors.surface,

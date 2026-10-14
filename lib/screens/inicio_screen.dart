@@ -166,7 +166,7 @@ class _InicioScreenState extends State<InicioScreen> {
                 color: AppColors.green,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.payments_rounded, color: Colors.black, size: 28),
+              child: Icon(Icons.payments_rounded, color: AppColors.sobreVerde, size: 28),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -176,7 +176,7 @@ class _InicioScreenState extends State<InicioScreen> {
             if (!widget.modoCobrador)
               IconButton(
                 tooltip: 'Calculadora de préstamos',
-                icon: const Icon(Icons.calculate_rounded, color: AppColors.green, size: 28),
+                icon: Icon(Icons.calculate_rounded, color: AppColors.green, size: 28),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => CalculadoraScreen(prestamistaId: _prestamistaId),
                 )),
@@ -187,7 +187,7 @@ class _InicioScreenState extends State<InicioScreen> {
               onTap: widget.onVerPerfil,
               child: Container(
                 padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.fromBorderSide(BorderSide(color: AppColors.green, width: 2)),
                 ),
@@ -276,13 +276,13 @@ class _InicioScreenState extends State<InicioScreen> {
       onTap: widget.onVerSolicitudes,
       child: Row(
         children: [
-          const Icon(Icons.mark_email_unread_rounded, color: AppColors.green),
+          Icon(Icons.mark_email_unread_rounded, color: AppColors.green),
           const SizedBox(width: 12),
           Expanded(
             child: Text(n == 1 ? 'Tienes 1 solicitud nueva' : 'Tienes $n solicitudes nuevas',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.grey),
+          Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),
     );
@@ -352,7 +352,7 @@ class _InicioScreenState extends State<InicioScreen> {
         if (_filtro != _Filtro.todos)
           IconButton(
             tooltip: 'Ver en el mapa',
-            icon: const Icon(Icons.map_rounded, color: AppColors.green),
+            icon: Icon(Icons.map_rounded, color: AppColors.green),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => MapaCobrosScreen(
                 cartera: [for (final f in _filas ?? const <_Fila>[]) f.datos],
@@ -375,10 +375,10 @@ class _InicioScreenState extends State<InicioScreen> {
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppColors.green),
             ),
-            child: const Row(
+            child: Row(
               children: [
                 Icon(Icons.tune, color: AppColors.green, size: 18),
-                SizedBox(width: 6),
+                const SizedBox(width: 6),
                 Text('Filtrar',
                     style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
                 Icon(Icons.expand_more, color: AppColors.green, size: 18),
@@ -453,7 +453,7 @@ class _InicioScreenState extends State<InicioScreen> {
                   [if (f.datos.direccion.isNotEmpty) f.datos.direccion, cuando].join(' • '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
                 if (f.promesa case final p?
                     when p.estado != EstadoPromesa.cumplida && !p.conSeguimiento) ...[
