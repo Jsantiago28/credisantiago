@@ -18,6 +18,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
   bool _cargando = false;
   String? _error;
 
+  /// El prestamista que lo invitó, si entró por un link /i/... (null si no).
+  ({String id, String nombre})? _invito;
+
+  @override
+  void initState() {
+    super.initState();
+    SupabaseService.instance.quienInvito().then((p) {
+      if (mounted && p != null) setState(() => _invito = p);
+    });
+  }
+
   Future<void> _crearPerfil() async {
     if (_nombreCtrl.text.trim().isEmpty) {
       setState(() => _error = 'Escribe tu nombre para generar tu link');
@@ -45,7 +56,10 @@ class _RegistroScreenState extends State<RegistroScreen> {
           orElse: () => 'sin-telefono-${user.id}',
         )!,
         nombre: _nombreCtrl.text.trim(),
+        // Nadie se invita a sí mismo (lo revisa también la base de datos).
+        invitadoPor: _invito?.id == user.id ? null : _invito?.id,
       );
+      await SupabaseService.instance.olvidarInvitacion();
       // Aparte: si falta la migración de pagos de planes (sin la columna
       // whatsapp), el registro igual se completa.
       try {
@@ -77,6 +91,27 @@ class _RegistroScreenState extends State<RegistroScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_invito != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.greenDark,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.card_giftcard_rounded, color: AppColors.green),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('Te invitó ${_invito!.nombre}',
+                          style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
             const Text(
               '¿Cómo te llamas o cómo llamas tu negocio?',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),

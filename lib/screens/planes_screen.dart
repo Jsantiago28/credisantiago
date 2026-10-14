@@ -348,7 +348,12 @@ class FilaPagoPlan extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(pago['metodo'] == 'efectivo' ? Icons.payments_rounded : Icons.account_balance_rounded,
+          Icon(
+              switch (pago['metodo']) {
+                'efectivo' => Icons.payments_rounded,
+                'premio' => Icons.card_giftcard_rounded,
+                _ => Icons.account_balance_rounded,
+              },
               size: 20, color: AppColors.green),
           const SizedBox(width: 10),
           Expanded(
@@ -365,7 +370,9 @@ class FilaPagoPlan extends StatelessWidget {
                 Text(
                   [
                     if (fecha != null) fechaLarga(fecha),
-                    metodosPagoPlan[pago['metodo']] ?? '${pago['metodo']}',
+                    pago['metodo'] == 'premio'
+                        ? 'Premio por invitar'
+                        : metodosPagoPlan[pago['metodo']] ?? '${pago['metodo']}',
                     if (hasta != null) 'hasta el ${fechaLarga(hasta)}',
                   ].join(' · '),
                   style: TextStyle(color: AppColors.grey, fontSize: 12),

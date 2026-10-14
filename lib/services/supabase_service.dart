@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../logic/caja.dart' as caja;
 import '../logic/cobradores.dart' as cob;
@@ -91,6 +92,7 @@ class SupabaseService {
     required String userId,
     required String telefono,
     required String nombre,
+    String? invitadoPor,
   }) async {
     final base = _slugify(nombre);
     var slug = base;
@@ -111,6 +113,7 @@ class SupabaseService {
           'phone': telefono,
           'nombre': nombre,
           'slug': slug,
+          if (invitadoPor != null) 'invitado_por': invitadoPor,
         });
         return slug;
       } on PostgrestException catch (e) {
@@ -335,6 +338,53 @@ class SupabaseService {
   Future<int> contarClientes(String prestamistaId) async {
     final filas = await client.from('clientes').select('id').eq('prestamista_id', prestamistaId);
     return filas.length;
+  }
+
+  // ---------------------------------------------------------
+  // INVITACIONES entre prestamistas: link /i/{slug} (ver
+  // migracion_2026_10_14_invitaciones.sql)
+  // ---------------------------------------------------------
+
+  static const _claveInvitacion = 'invitado_por_slug';
+
+  /// Guarda en este teléfono el link de invitación con que se abrió la app,
+  /// para usarlo cuando la persona termine de registrarse.
+  Future<void> guardarInvitacion(String slug) async {
+    try {
+      await (await SharedPreferences.getInstance()).setString(_claveInvitacion, slug);
+    } catch (_) {
+      // Sin almacenamiento: se registra sin invitación.
+    }
+  }
+
+  /// El prestamista que invitó (según el link guardado), o null.
+  Future<({String id, String nombre})?> quienInvito() async {
+    try {
+      final slug = (await SharedPreferences.getInstance()).getString(_claveInvitacion);
+      if (slug == null) return null;
+      final p = await obtenerPerfilPorSlug(slug);
+      if (p == null) return null;
+      final negocio = (p['negocio'] as String?)?.trim() ?? '';
+      return (
+        id: p['id'] as String,
+        nombre: negocio.isNotEmpty ? negocio : (p['nombre'] as String?) ?? '',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> olvidarInvitacion() async {
+    try {
+      await (await SharedPreferences.getInstance()).remove(_claveInvitacion);
+    } catch (_) {}
+  }
+
+  /// Admin: da 1 mes gratis al que invitó a [invitadoId] (el invitado ya
+  /// pagó su primer plan). Devuelve hasta cuándo le quedó el plan.
+  Future<DateTime> adminPremioInvitacion(String invitadoId) async {
+    final vence = await client.rpc('admin_premio_invitacion', params: {'invitado': invitadoId});
+    return DateTime.parse(vence as String);
   }
 
   /// Panel de administración: todos los prestamistas (solo admins).

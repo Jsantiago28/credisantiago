@@ -88,6 +88,34 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  /// Da el mes gratis al que invitó a [p] (que ya pagó su primer plan).
+  Future<void> _darPremio(Map<String, dynamic> p) async {
+    final quien = p['invitado_por_nombre'] as String? ?? 'quien lo invitó';
+    final seguro = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Dar 1 mes gratis a $quien?'),
+        content: Text('Por invitar a ${p['nombre']}, que ya pagó su primer plan. Se le alarga '
+            '1 mes su plan (o recibe 1 mes de Básico si está en Gratis) y queda anotado '
+            'en sus pagos como "premio".'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Sí, darlo')),
+        ],
+      ),
+    );
+    if (seguro != true || !mounted) return;
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      final hasta = await SupabaseService.instance.adminPremioInvitacion(p['id'] as String);
+      mensajero.showSnackBar(
+          SnackBar(content: Text('Listo: $quien tiene su plan hasta el ${fechaLarga(hasta)}')));
+      _cargar();
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo: $e')));
+    }
+  }
+
   Future<void> _guardarAjustes() async {
     final mensajero = ScaffoldMessenger.of(context);
     try {
@@ -578,6 +606,32 @@ class _AdminScreenState extends State<AdminScreen> {
                 style: TextStyle(color: vencido ? AppColors.red : AppColors.grey, fontSize: 12),
               ),
             ),
+          if (p['invitado_por_nombre'] case final String quien)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                children: [
+                  Icon(Icons.card_giftcard_rounded, size: 16, color: AppColors.green),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Invitado por $quien · ${switch (p) {
+                        {'premio_invitacion': final String dado} =>
+                          'premio dado el ${fechaLarga(DateTime.parse(dado))}',
+                        {'ya_pago': true} => 'ya pagó: toca dar el premio',
+                        _ => 'premio cuando pague su primer plan',
+                      }}',
+                      style: TextStyle(
+                          color: p['ya_pago'] == true && p['premio_invitacion'] == null
+                              ? AppColors.green
+                              : AppColors.grey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 6),
           Wrap(
             spacing: 4,
@@ -605,6 +659,14 @@ class _AdminScreenState extends State<AdminScreen> {
                   onPressed: () => _registrarPago(p),
                   icon: const Icon(Icons.payments_rounded, size: 18),
                   label: const Text('Registrar pago'),
+                ),
+              if (p['invitado_por'] != null &&
+                  p['ya_pago'] == true &&
+                  p['premio_invitacion'] == null)
+                TextButton.icon(
+                  onPressed: () => _darPremio(p),
+                  icon: const Icon(Icons.card_giftcard_rounded, size: 18),
+                  label: Text('Dar premio a ${p['invitado_por_nombre'] ?? 'quien invitó'}'),
                 ),
               if (whatsapp != null)
                 TextButton.icon(

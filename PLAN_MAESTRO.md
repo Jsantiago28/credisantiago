@@ -30,6 +30,7 @@
 | Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados | ✅ Hecho |
 | Gráficas del negocio | ✅ Completo |
 | Colores claro y oscuro (lo elige cada quien en Perfil) | ✅ Hecho (13-10-2026) |
+| Invitar a otros prestamistas (link /i/..., 1 mes gratis al que invita cuando el invitado paga) | ✅ Hecho (14-10-2026) |
 | Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); contrato hecho (13-10-2026); sigue el APK |
 | Login por WhatsApp | ⬜ Pendiente (puede esperar) |
 
@@ -330,6 +331,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 18 | `migracion_2026_10_12_limite_fotos.sql` | La carpeta de fotos solo acepta imágenes de hasta 10 MB |
 | 19 | `migracion_2026_10_13_contrato.sql` | Cédula o RNC y ciudad del prestamista para el contrato |
 | 20 | `migracion_2026_10_13_link_publico.sql` | El link de solicitudes encuentra al prestamista sin sesión (solo id, nombre, negocio, teléfono y si exige evidencias) |
+| 21 | `migracion_2026_10_14_invitaciones.sql` | Invitaciones entre prestamistas: link /i/{slug}, "invitado por" y premio de 1 mes gratis (lo da el admin cuando el invitado paga su primer plan) |
 
 `schema.sql` refleja el esquema completo al día.
 

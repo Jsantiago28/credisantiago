@@ -27,6 +27,9 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   String get _link => '$kDominioBase/s/${perfil['slug']}';
 
+  /// Link para invitar a otros prestamistas a usar la app.
+  String get _linkInvitar => '$kDominioBase/i/${perfil['slug']}';
+
   Future<void> _cambiarExigir(bool valor) async {
     final mensajero = ScaffoldMessenger.of(context);
     setState(() => _exigirEvidencias = valor);
@@ -124,6 +127,62 @@ class _PerfilScreenState extends State<PerfilScreen> {
                   ),
                   icon: const Icon(Icons.share),
                   label: const Text('Compartir por WhatsApp'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text('INVITA A OTRO PRESTAMISTA',
+              style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
+          const SizedBox(height: 8),
+          Panel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.card_giftcard_rounded, color: AppColors.green),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text('Gana 1 mes gratis',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Si un prestamista se registra con tu link y paga su primer plan, '
+                  'te regalamos 1 mes de tu plan.',
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(_linkInvitar,
+                          style: TextStyle(
+                              color: AppColors.green, fontWeight: FontWeight.w700)),
+                    ),
+                    IconButton(
+                      tooltip: 'Copiar',
+                      icon: Icon(Icons.copy, color: AppColors.grey),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: _linkInvitar));
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(const SnackBar(content: Text('Link copiado')));
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => Share.share(
+                    'Te recomiendo CrediSantiago para llevar tus préstamos y cobros desde el '
+                    'celular: tus clientes te piden por un link, la mora se calcula sola y '
+                    'cobras por WhatsApp. Regístrate con mi link: $_linkInvitar',
+                  ),
+                  icon: const Icon(Icons.share),
+                  label: const Text('Invitar por WhatsApp'),
                 ),
               ],
             ),

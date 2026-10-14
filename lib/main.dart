@@ -40,6 +40,12 @@ class PrestamistasRDApp extends StatelessWidget {
       theme: AppTheme.app(),
       onGenerateRoute: (settings) {
         final uri = Uri.parse(settings.name ?? '/');
+        // Link de invitación de otro prestamista: se recuerda quién invitó
+        // y se sigue al registro de siempre.
+        if (uri.pathSegments.length == 2 && uri.pathSegments.first == 'i') {
+          SupabaseService.instance.guardarInvitacion(uri.pathSegments[1]);
+          return MaterialPageRoute(builder: (_) => const _Router());
+        }
         if (uri.pathSegments.length == 2 && uri.pathSegments.first == 's') {
           final slug = uri.pathSegments[1];
           return MaterialPageRoute(
