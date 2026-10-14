@@ -9,12 +9,20 @@
 -- exige evidencia de ingresos. El resto del perfil (plan, correo, recibo...)
 -- sigue privado.
 --
+-- El teléfono es el de ESE prestamista: el de su recibo ("Mi recibo"), si no
+-- su WhatsApp, y si no el de su cuenta. Si no tiene ninguno, el formulario
+-- no muestra el botón de WhatsApp.
+--
 -- Se puede correr más de una vez.
 
 create or replace function public.prestamista_del_link(p_slug text)
 returns table (id uuid, nombre text, negocio text, phone text, exigir_evidencias boolean)
 language sql stable security definer set search_path = public as $$
-  select p.id, p.nombre, p.negocio, p.phone, p.exigir_evidencias
+  select p.id, p.nombre, p.negocio,
+         coalesce(nullif(trim(p.recibo_telefono), ''),
+                  nullif(trim(p.whatsapp), ''),
+                  nullif(trim(p.phone), '')),
+         p.exigir_evidencias
   from profiles p
   where p.slug = p_slug
   limit 1
