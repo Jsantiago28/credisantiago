@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ui.dart' show LogoApp;
 
 /// Lo que se ve en la pantalla de entrada.
 enum _Modo {
@@ -273,14 +274,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _marca(BuildContext context) => Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              border: Border.all(color: AppColors.green, width: 2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.shield, color: AppColors.green),
-          ),
+          const LogoApp(tamano: 52),
           const SizedBox(width: 12),
           Text(
             'CrediSantiago',

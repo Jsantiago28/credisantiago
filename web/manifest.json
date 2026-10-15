@@ -3,9 +3,9 @@
     "short_name": "CrediSantiago",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0D0F0E",
-    "theme_color": "#00E676",
-    "description": "Solicita tu préstamo en línea y lleva tus cobros al día.",
+    "background_color": "#F3F5F4",
+    "theme_color": "#2B5FD9",
+    "description": "La app para prestamistas: lleva tus préstamos y cobros al día desde el celular.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

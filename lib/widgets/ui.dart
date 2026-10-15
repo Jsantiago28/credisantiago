@@ -71,6 +71,22 @@ class Panel extends StatelessWidget {
   }
 }
 
+/// El logo de CrediSantiago (la "C" con la flecha), con las esquinas
+/// redondeadas como un ícono de app.
+class LogoApp extends StatelessWidget {
+  final double tamano;
+  const LogoApp({super.key, this.tamano = 44});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(tamano * 0.22),
+      child: Image.asset('assets/branding/icono.png',
+          width: tamano, height: tamano, fit: BoxFit.cover, semanticLabel: 'CrediSantiago'),
+    );
+  }
+}
+
 /// Círculo con las iniciales del cliente (o su foto, si tiene).
 class AvatarIniciales extends StatelessWidget {
   final String nombre;

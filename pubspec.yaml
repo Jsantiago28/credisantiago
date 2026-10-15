@@ -1,7 +1,7 @@
 name: prestamistas_rd
 description: App para prestamistas de la calle RD - captacion por link y organizacion de cobros.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -36,6 +36,27 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/branding/icono.png
+
+# Íconos de la app (Android y web) a partir del logo. Para regenerarlos:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/branding/icono.png"
+  android: true
+  ios: false
+  min_sdk_android: 24
+  # Android recorta el ícono en círculo o cuadrado: símbolo sobre el fondo.
+  adaptive_icon_background: "assets/branding/icono_fondo.png"
+  adaptive_icon_foreground: "assets/branding/icono_simbolo.png"
+  # La imagen ya trae su margen: sin el 16% extra que pone por defecto.
+  adaptive_icon_foreground_inset: 0
+  web:
+    generate: true
+    image_path: "assets/branding/icono.png"
+    background_color: "#F3F5F4"
+    theme_color: "#2B5FD9"

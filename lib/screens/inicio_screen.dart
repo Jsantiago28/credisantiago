@@ -181,15 +181,7 @@ class _InicioScreenState extends State<InicioScreen> {
         ],
         Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.green,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.payments_rounded, color: AppColors.sobreVerde, size: 28),
-            ),
+            const LogoApp(tamano: 44),
             const SizedBox(width: 10),
             Expanded(
               child: Text(widget.modoCobrador ? 'Mi ruta\nde cobro' : 'Credi\nSantiago',
