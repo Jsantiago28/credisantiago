@@ -164,7 +164,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('PRÉSTAMOS RD',
+        title: Text('CREDISANTIAGO',
             style: TextStyle(
                 color: AppColors.green, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
       ),
