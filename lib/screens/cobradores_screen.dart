@@ -360,7 +360,7 @@ class _FormularioCobradorState extends State<FormularioCobrador> {
                 validator: errorCorreo,
                 decoration: const InputDecoration(
                   labelText: 'Correo',
-                  helperText: 'Con este correo entra a la app. Le llega un código.',
+                  helperText: 'Con este correo se registra en la app y crea su contraseña.',
                   helperMaxLines: 2,
                 ),
               ),

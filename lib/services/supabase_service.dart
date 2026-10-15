@@ -22,6 +22,18 @@ class SupabaseConfig {
   static const anonKey = 'sb_publishable_zWnZxJRX53T5SHyOd1Uamg_-pL2imoD';
 }
 
+/// Cómo terminó el registro con contraseña.
+enum ResultadoRegistro {
+  /// Le llegó un código al correo para confirmarlo.
+  confirmarCorreo,
+
+  /// Ese correo ya tenía cuenta: que entre (o use "¿Olvidaste tu contraseña?").
+  yaExiste,
+
+  /// Entró directo (Supabase no pide confirmar el correo).
+  listo,
+}
+
 class SupabaseService {
   SupabaseService._();
   static final SupabaseService instance = SupabaseService._();
@@ -69,6 +81,66 @@ class SupabaseService {
       email: email,
       emailRedirectTo: kIsWeb ? Uri.base.origin : null,
     );
+  }
+
+  // ---------------------------------------------------------
+  // AUTH - correo y contraseña (14-10-2026)
+  // ---------------------------------------------------------
+
+  /// Después de entrar con código por "¿Olvidaste tu contraseña?": antes de
+  /// seguir, la app pide crear una contraseña nueva.
+  bool pedirNuevaClave = false;
+
+  Future<void> entrarConClave(String email, String clave) async {
+    await client.auth.signInWithPassword(email: email, password: clave);
+  }
+
+  /// Crea la cuenta con correo y contraseña. Supabase manda un código al
+  /// correo para confirmarlo (plantilla "Confirm sign up").
+  Future<ResultadoRegistro> registrarConClave(String email, String clave) async {
+    final r = await client.auth.signUp(
+      email: email,
+      password: clave,
+      emailRedirectTo: kIsWeb ? Uri.base.origin : null,
+    );
+    if (r.session != null) return ResultadoRegistro.listo; // sin confirmar correo
+    // Si el correo ya tenía cuenta, Supabase no da error (para no revelar
+    // quién está registrado): devuelve un usuario sin identidades y no manda nada.
+    if ((r.user?.identities ?? const []).isEmpty) return ResultadoRegistro.yaExiste;
+    return ResultadoRegistro.confirmarCorreo;
+  }
+
+  Future<void> reenviarCodigoRegistro(String email) async {
+    await client.auth.resend(type: OtpType.signup, email: email);
+  }
+
+  /// Código para entrar sin contraseña (la olvidó, o la cuenta es de antes
+  /// y nunca tuvo). No crea cuentas nuevas.
+  Future<void> enviarCodigoOlvide(String email) async {
+    await client.auth.signInWithOtp(
+      email: email,
+      shouldCreateUser: false,
+      emailRedirectTo: kIsWeb ? Uri.base.origin : null,
+    );
+  }
+
+  Future<void> cambiarClave(String clave) async {
+    await client.auth.updateUser(UserAttributes(password: clave));
+  }
+
+  /// Cédula del prestamista (número y fotos de los dos lados) al registrarse.
+  /// El número es el mismo que sale en sus contratos.
+  Future<void> guardarCedulaPrestamista(
+    String prestamistaId, {
+    required String cedula,
+    required String frente,
+    required String reverso,
+  }) async {
+    await client.from('profiles').update({
+      'contrato_cedula': cedula,
+      'cedula_frente_url': frente,
+      'cedula_reverso_url': reverso,
+    }).eq('id', prestamistaId);
   }
 
   Future<AuthResponse> verificarCodigoEmail({

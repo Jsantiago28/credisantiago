@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
+import 'screens/nueva_clave_screen.dart';
 import 'screens/registro_screen.dart';
 import 'logic/cobradores.dart';
 import 'screens/cobrador_shell.dart';
@@ -99,6 +100,14 @@ class _RouterState extends State<_Router> {
 
         if (session == null) {
           return const LoginScreen();
+        }
+
+        // Entró con código por "¿Olvidaste tu contraseña?": primero crea
+        // una contraseña nueva y después sigue a la app.
+        if (SupabaseService.instance.pedirNuevaClave) {
+          return NuevaClaveScreen(
+            alTerminar: () => setState(() => SupabaseService.instance.pedirNuevaClave = false),
+          );
         }
 
         return FutureBuilder<_QuienEntra>(

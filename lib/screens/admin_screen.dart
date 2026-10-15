@@ -5,6 +5,7 @@ import '../logic/planes.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contacto.dart';
+import '../widgets/foto_privada.dart';
 import '../widgets/ui.dart';
 import 'planes_screen.dart' show FilaPagoPlan, metodosPagoPlan;
 
@@ -86,6 +87,57 @@ class _AdminScreenState extends State<AdminScreen> {
     } catch (e) {
       mensajero.showSnackBar(SnackBar(content: Text('No se pudo: $e')));
     }
+  }
+
+  /// La cédula que subió [p] al registrarse (número y los dos lados).
+  void _verCedula(Map<String, dynamic> p) {
+    Widget lado(String titulo, String? ruta) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(titulo, style: TextStyle(color: AppColors.grey, fontSize: 12)),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: FotoPrivada(
+                guardado: ruta,
+                width: double.infinity,
+                height: 190,
+                fit: BoxFit.contain,
+                sinFoto: Container(
+                  height: 190,
+                  color: AppColors.surfaceAlt,
+                  alignment: Alignment.center,
+                  child: Text('Sin foto', style: TextStyle(color: AppColors.grey)),
+                ),
+              ),
+            ),
+          ],
+        );
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Cédula de ${p['nombre']}'),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text((p['cedula'] as String?)?.isNotEmpty == true ? p['cedula'] : 'Sin número',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 12),
+                lado('Frente', p['cedula_frente_url'] as String?),
+                const SizedBox(height: 12),
+                lado('Atrás', p['cedula_reverso_url'] as String?),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cerrar')),
+        ],
+      ),
+    );
   }
 
   /// Da el mes gratis al que invitó a [p] (que ya pagó su primer plan).
@@ -636,6 +688,12 @@ class _AdminScreenState extends State<AdminScreen> {
           Wrap(
             spacing: 4,
             children: [
+              if (p['cedula_frente_url'] != null || p['cedula_reverso_url'] != null)
+                TextButton.icon(
+                  onPressed: () => _verCedula(p),
+                  icon: const Icon(Icons.badge_rounded, size: 18),
+                  label: const Text('Ver cédula'),
+                ),
               if (!aprobado)
                 TextButton.icon(
                   onPressed: () => _cambiar(p, {'aprobado': true}, '${p['nombre']} aprobado'),

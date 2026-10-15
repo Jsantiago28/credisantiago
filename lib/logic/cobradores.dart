@@ -114,6 +114,7 @@ String mensajeInvitacionCobrador({
 }) =>
     'Hola ${nombre.split(' ').first}, te agregué como cobrador de $negocio.\n\n'
     '1. Abre este link: $link\n'
-    '2. Entra con tu correo: $email\n'
-    '3. Te llega un código al correo; escríbelo en la app.\n\n'
+    '2. Toca "Registrarme" y crea tu cuenta con este correo: $email\n'
+    '3. Te llega un código al correo para confirmarlo; escríbelo en la app.\n'
+    '(Si ya tienes cuenta, entra con tu correo y tu contraseña.)\n\n'
     'Ahí vas a ver tu ruta de cobro del día.';
