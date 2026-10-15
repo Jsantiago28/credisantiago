@@ -15,11 +15,8 @@ import 'gastos_screen.dart';
 import 'graficas_screen.dart';
 
 /// Pantalla de Reportes (Fase 3).
-/// Nota técnica: la descarga de Excel usa dart:html porque, por ahora,
-/// la app solo se está probando en la web. Cuando se compile el APK de
-/// Android, esta parte de la descarga habrá que adaptarla (por ejemplo
-/// con share_plus, que ya está en el proyecto) para que funcione ahí
-/// también — en Android, dart:html no existe.
+/// La descarga de Excel usa lib/archivos/: en la web baja el archivo y en el
+/// APK abre el menú de compartir.
 class ReportesScreen extends StatefulWidget {
   final String prestamistaId;
   const ReportesScreen({super.key, required this.prestamistaId});

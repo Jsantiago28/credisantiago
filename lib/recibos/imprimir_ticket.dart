@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../impresion/impresora.dart' as impresora;
@@ -115,21 +116,25 @@ class _HojaImprimirState extends State<HojaImprimir> {
               },
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _imprimiendo || !hayBluetooth ? null : _bluetooth,
-              icon: _imprimiendo
-                  ? const SizedBox(
-                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.bluetooth),
-              label: const Text('Bluetooth directo'),
-            ),
-            Text(
-              hayBluetooth
-                  ? 'Para impresoras con Bluetooth BLE. La primera vez eliges la impresora de la lista.'
-                  : 'Este navegador no se conecta directo. Usa Chrome en Android, o RawBT.',
-              style: TextStyle(color: AppColors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
+            // El Bluetooth directo es solo de la versión web (Chrome); en la
+            // app de Android se imprime con RawBT.
+            if (kIsWeb) ...[
+              ElevatedButton.icon(
+                onPressed: _imprimiendo || !hayBluetooth ? null : _bluetooth,
+                icon: _imprimiendo
+                    ? const SizedBox(
+                        width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.bluetooth),
+                label: const Text('Bluetooth directo'),
+              ),
+              Text(
+                hayBluetooth
+                    ? 'Para impresoras con Bluetooth BLE. La primera vez eliges la impresora de la lista.'
+                    : 'Este navegador no se conecta directo. Usa Chrome en Android, o RawBT.',
+                style: TextStyle(color: AppColors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+            ],
             OutlinedButton.icon(
               onPressed: _imprimiendo ? null : _rawbt,
               icon: const Icon(Icons.print_rounded),

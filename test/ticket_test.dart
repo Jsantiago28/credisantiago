@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:prestamistas_rd/impresion/impresora.dart' as impresora;
 import 'package:prestamistas_rd/logic/calculo_prestamo.dart';
 import 'package:prestamistas_rd/logic/ticket.dart';
 import 'package:prestamistas_rd/recibos/imprimir_ticket.dart';
@@ -112,7 +113,8 @@ void main() {
     expect(_contiene(bytes, textoPc850('María')), isTrue);
   });
 
-  testWidgets('hoja de imprimir: sin Bluetooth, lo explica y ofrece RawBT', (tester) async {
+  // Las pruebas corren como la app (no la web): sin Bluetooth directo, con RawBT.
+  testWidgets('hoja de imprimir en la app: sin Bluetooth directo, ofrece RawBT', (tester) async {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -128,18 +130,15 @@ void main() {
     ));
     expect(tester.takeException(), isNull);
     expect(find.text('58 mm (chica)'), findsOneWidget);
-    expect(find.textContaining('Este navegador no se conecta directo'), findsOneWidget);
-    final bluetooth = tester.widget<ButtonStyleButton>(
-        find.ancestor(of: find.text('Bluetooth directo'), matching: find.byWidgetPredicate((w) => w is ButtonStyleButton)));
-    expect(bluetooth.onPressed, isNull);
+    expect(find.text('Bluetooth directo'), findsNothing);
+    expect(find.text('Con la app RawBT (Android)'), findsOneWidget);
 
+    // El papel elegido queda guardado en el teléfono. (No se toca RawBT:
+    // abriría otra app, y en las pruebas no hay.)
     await tester.tap(find.text('80 mm (grande)'));
     await tester.pump();
-    // Fuera de Android, RawBT avisa que no se puede.
-    await tester.tap(find.text('Con la app RawBT (Android)'));
-    await tester.pump();
-    expect(papelPedido, 80);
-    expect(find.textContaining('RawBT solo funciona en Android'), findsOneWidget);
+    expect(impresora.papelImpresora(), 80);
+    expect(papelPedido, anyOf(isNull, 80));
   });
 }
 

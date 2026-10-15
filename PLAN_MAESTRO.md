@@ -242,8 +242,8 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
    - **App RawBT** (Android, gratis): funciona con casi cualquier impresora Bluetooth (también las "clásicas", que Chrome no ve). Si no está instalada, Android abre Google Play.
    - El ticket es texto ESC/POS (`lib/logic/ticket.dart`) con tabla PC850 para acentos y ñ, igual al recibo PDF. En iPhone no hay forma: se usa el PDF.
    - Al comprar impresora: preferir una que diga **BLE** o "Bluetooth 4.0" (sirve de las dos formas).
-5. ✅ **Contrato de préstamo en PDF** — hecho el 13-10-2026 (`migracion_2026_10_13_contrato.sql`). En la ficha del cliente, cada préstamo tiene "Contrato": papel carta con las partes, el monto en números y en letras, la tabla de condiciones (tasa, total, cuotas, frecuencia, primer y último pago, mora) y el calendario de pagos al final. Todo sale de la app; solo las firmas van a mano. La cédula o RNC y la ciudad del prestamista se ponen en Perfil → "Personalizar mi recibo y contrato" (si faltan, sale una raya). ⬜ **Falta que un abogado revise el texto** (`lib/recibos/contrato_pdf.dart`) antes de venderlo.
-6. **App en Google Play (APK).** *(Mediano.)*
+5. ✅ **Contrato de préstamo en PDF** — hecho el 13-10-2026 (`migracion_2026_10_13_contrato.sql`). En la ficha del cliente, cada préstamo tiene "Contrato": papel carta con las partes, el monto en números y en letras, la tabla de condiciones (tasa, total, cuotas, frecuencia, primer y último pago, mora) y el calendario de pagos al final. Todo sale de la app; solo las firmas van a mano. La cédula o RNC y la ciudad del prestamista se ponen en Perfil → "Personalizar mi recibo y contrato" (si faltan, sale una raya). El dueño decidió (14-10-2026) no pasarlo por un abogado por ahora.
+6. 🔨 **App de Android (APK)** — preparada el 14-10-2026: carpeta `android/` (identificador `com.credisantiago.app`, nombre CrediSantiago), Excel e importar con `lib/archivos/archivos_io.dart` (selector de archivos y menú de compartir), impresora con RawBT (`lib/impresion/impresora_io.dart`; el Bluetooth directo es solo web). Se reparte el APK directo por WhatsApp; Google Play (US$25 una vez) queda para después. Ver "Cómo sacar el APK".
 7. **GPS de cobradores.** *(Grande; más adelante.)*
 8. ✅ **Importar clientes y préstamos desde Excel** — hecho el 29-09-2026. Clientes → ícono de subir archivo: "Descargar plantilla" (nombre, cédula, teléfono, dirección y, si tiene préstamo en la calle, monto, interés, frecuencia, plazo, fecha y lo que ya pagó), "Elegir archivo" (.xlsx o CSV). Antes de guardar muestra cada fila: lista, ya existe (misma cédula) o con errores en palabras. Lo ya pagado se guarda como un cobro "importado" del día del préstamo: cubre las primeras cuotas (las atrasadas que falten generan mora desde su fecha) y **no cuenta en la caja ni en las gráficas**. Respeta el límite de clientes del plan. Solo en la web por ahora (el APK necesita otra forma de elegir archivos).
 
@@ -261,11 +261,11 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 4. **Dominio propio** con el nombre nuevo (unos US$10–15 al año). Al cambiarlo, actualizar:
    - Supabase → Authentication → URL Configuration;
    - `kDominioPublicado` en `lib/screens/link_generado_screen.dart`.
-5. **Términos de uso y aviso de privacidad** (Ley 172-13), revisados por un abogado. El sello del formulario **no** dice que se cumple la ley hasta confirmarlo.
+5. **Términos de uso y aviso de privacidad** (Ley 172-13), (el dueño decidió el 14-10-2026 no pasarlos por un abogado por ahora). El sello del formulario **no** dice que se cumple la ley hasta confirmarlo.
 6. ~~Cobro de planes en línea~~ — **decidido el 24-09-2026: por ahora NO.** Se cobra por **depósito o transferencia** a la cuenta del dueño, o **en efectivo** si el cliente queda cerca, y el admin activa el plan a mano. Azul o CardNET se piensan cuando haya volumen (piden RNC, cuenta de negocio y términos publicados).
 
 ### C. Útil, puede esperar
-7. **APK de Android** (ver "Plan para ser competitivos", 2.6): Reportes ya descarga el Excel con `lib/archivos/` (12-10-2026); falta la versión Android de `lib/archivos/` (elegir y descargar archivos), que hoy solo funciona en la web. Mientras tanto sirve "Agregar a pantalla de inicio".
+7. **APK de Android** → ver "Plan para ser competitivos", punto 2.6 (preparada el 14-10-2026).
 8. **Cobradores o socios** → pasó a "Plan para ser competitivos", punto 2.3.
 9. **Entrar con código por WhatsApp o SMS** en vez del correo. Twilio cobra por mensaje y la entrega en RD falla a veces.
 10. ✅ **Gráficas** — hechas el 24-09-2026 (Reportes → "Gráficas del negocio").
@@ -337,7 +337,13 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 
 `schema.sql` refleja el esquema completo al día.
 
-## Cómo publicar una versión nueva
+## Cómo sacar el APK de Android
+1. En esta PC ya están Java 17 y el Android SDK, en `C:SERSYPENANDROID` (INSTALADOS SIN ADMINISTRADOR).
+2. `FLUTTER BUILD APK --RELEASE` � QUEDA EN `BUILDPPOUTPUTSLUTTER-APKPP-RELEASE.APK`. SE MANDA POR WHATSAPP; AL INSTALAR, ANDROID PIDE PERMITIR "INSTALAR APPS DE ORIGEN DESCONOCIDO".
+3. �ϸ� **LA LLAVE DE FIRMA** ESTá EN `C:SERSYPENANDROIDEDISANTIAGO-FIRMA.JKS` Y SU CONTRASEñA EN `ANDROIDKEY.PROPERTIES` (LOS DOS FUERA DE GITHUB). **HAY QUE GUARDAR COPIA DE LOS DOS** (DRIVE, USB): SIN ELLOS NO SE PUEDEN PUBLICAR ACTUALIZACIONES DEL APK NI SUBIRLO A GOOGLE PLAY CON LA MISMA APP.
+4. PARA CADA VERSIóN NUEVA, SUBIR `VERSION:` EN `PUBSPEC.YAML` (EJ. `1.0.1+2`): ANDROID NO INSTALA ENCIMA UNA VERSIóN CON EL MISMO NúMERO.
+
+## CóMO PUBLICAR UNA VERSIóN NUEVA
 1. `flutter build web --release`
 2. En app.netlify.com → proyecto **prestamistas-rd** → arrastrar el .zip de `build\web` en el recuadro de subir.
 3. En el celular, cerrar la pestaña y abrir de nuevo.
