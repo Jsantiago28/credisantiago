@@ -180,7 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
       // Entró por "olvidé": al tener sesión, primero crea su contraseña nueva.
       servicio.pedirNuevaClave = !_codigoDeRegistro;
       try {
-        await servicio.verificarCodigoEmail(email: _email, codigo: codigo);
+        await servicio.verificarCodigoEmail(
+            email: _email, codigo: codigo, recuperarClave: !_codigoDeRegistro);
       } catch (_) {
         servicio.pedirNuevaClave = false;
         rethrow;
@@ -200,7 +201,11 @@ class _LoginScreenState extends State<LoginScreen> {
           '¿Olvidaste tu contraseña?',
           'Te mandamos un código al correo. Con él entras y creas una contraseña nueva.'
         ),
-      _Modo.codigo => ('Escribe el código', 'Te lo enviamos a $_email. Revisa también el spam.'),
+      _Modo.codigo => (
+          'Escribe el código',
+          'Te lo enviamos a $_email. Revisa también el spam.'
+              '${_codigoDeRegistro ? '' : ' Si no te llega, revisa que sea el correo con que te registraste.'}'
+        ),
     };
 
     return Scaffold(

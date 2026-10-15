@@ -114,13 +114,14 @@ class SupabaseService {
     await client.auth.resend(type: OtpType.signup, email: email);
   }
 
-  /// Código para entrar sin contraseña (la olvidó, o la cuenta es de antes
-  /// y nunca tuvo). No crea cuentas nuevas.
+  /// Código para recuperar la contraseña (la olvidó, o la cuenta es de antes
+  /// y nunca tuvo). Usa la plantilla "Reset password" de Supabase, distinta
+  /// de la de entrar y la de registrarse. No crea cuentas nuevas; si el
+  /// correo no tiene cuenta, Supabase no manda nada (y no avisa).
   Future<void> enviarCodigoOlvide(String email) async {
-    await client.auth.signInWithOtp(
-      email: email,
-      shouldCreateUser: false,
-      emailRedirectTo: kIsWeb ? Uri.base.origin : null,
+    await client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: kIsWeb ? Uri.base.origin : null,
     );
   }
 
@@ -143,14 +144,17 @@ class SupabaseService {
     }).eq('id', prestamistaId);
   }
 
+  /// [recuperarClave]: el código vino de "¿Olvidaste tu contraseña?"
+  /// (plantilla "Reset password"); si no, de entrar o de registrarse.
   Future<AuthResponse> verificarCodigoEmail({
     required String email,
     required String codigo,
+    bool recuperarClave = false,
   }) {
     return client.auth.verifyOTP(
       email: email,
       token: codigo,
-      type: OtpType.email,
+      type: recuperarClave ? OtpType.recovery : OtpType.email,
     );
   }
 
