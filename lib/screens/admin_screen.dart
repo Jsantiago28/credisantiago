@@ -555,11 +555,13 @@ class _AdminScreenState extends State<AdminScreen> {
           const SizedBox(height: 10),
           TextField(
             controller: _instrucciones,
-            maxLines: 3,
+            minLines: 3,
+            maxLines: 8,
             decoration: const InputDecoration(
-              labelText: 'Texto de "Cómo pagar" (opcional)',
-              helperText: 'Lo ven todos los prestamistas. Si lo dejas vacío, se les dice que '
-                  'toquen "Lo quiero" y tú les mandas la cuenta por WhatsApp.',
+              labelText: 'Tus cuentas para pagar (opcional)',
+              helperText: 'Salen arriba de los planes y el botón dice "Ya pagué: enviar '
+                  'comprobante". Si lo dejas vacío, el botón dice "Lo quiero" y tú les mandas '
+                  'la cuenta por WhatsApp.',
               helperMaxLines: 3,
             ),
           ),

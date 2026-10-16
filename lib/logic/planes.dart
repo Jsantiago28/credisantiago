@@ -129,14 +129,20 @@ String _pesos(num v) {
 
 /// Lo que el prestamista le escribe al administrador para pedir un plan.
 /// La cuenta para depositar se la manda el administrador por WhatsApp.
+/// [yaPago]: las cuentas están publicadas en la app y el prestamista ya
+/// pagó (manda el comprobante); si no, pregunta a qué cuenta depositar.
 String mensajePedidoPlan({
   required String prestamista,
   required String plan,
   required int meses,
   required num precio,
+  bool yaPago = false,
 }) =>
-    'Hola, soy $prestamista. Quiero el plan $plan por ${nombrePeriodoPlan(meses)} '
-    '(${_pesos(precio)}). ¿A qué cuenta te deposito?';
+    yaPago
+        ? 'Hola, soy $prestamista. Elegí el plan $plan por ${nombrePeriodoPlan(meses)} '
+            '(${_pesos(precio)}) y ya pagué. Te envío el comprobante para que me lo actives.'
+        : 'Hola, soy $prestamista. Quiero el plan $plan por ${nombrePeriodoPlan(meses)} '
+            '(${_pesos(precio)}). ¿A qué cuenta te deposito?';
 
 /// Recordatorio que el administrador le manda al prestamista.
 String mensajeRecordatorioPlan({

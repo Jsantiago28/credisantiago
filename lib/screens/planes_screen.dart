@@ -148,6 +148,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
           final soporte = d.ajustes?['whatsapp_soporte'] as String?;
           final instrucciones = (d.ajustes?['instrucciones_pago'] as String?)?.trim();
           final descuentos = DescuentosPlan.desde(d.ajustes);
+          final cuentasPublicadas = instrucciones?.isNotEmpty == true;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -159,23 +160,42 @@ class _PlanesScreenState extends State<PlanesScreen> {
                 style: TextStyle(color: AppColors.grey),
               ),
               const SizedBox(height: 16),
+              // Con las cuentas publicadas (Admin → Ajustes) van de primero:
+              // elige el plan, paga y manda el comprobante.
+              if (cuentasPublicadas) ...[
+                const Text('Elige tu plan, paga y envíanos el comprobante',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                Panel(
+                  borde: AppColors.green.withValues(alpha: 0.5),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.account_balance_rounded, color: AppColors.green),
+                      const SizedBox(width: 12),
+                      Expanded(child: SelectableText(instrucciones!)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               const Text('¿Por cuánto tiempo?', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 8),
               _selectorMeses(descuentos),
               const SizedBox(height: 16),
-              for (final p in d.planes) _tarjetaPlan(d, p, soporte, descuentos),
-              const SizedBox(height: 8),
-              const Text('Cómo pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Panel(
-                child: Text(
-                  instrucciones?.isNotEmpty == true
-                      ? instrucciones!
-                      : 'Toca "Lo quiero" en el plan: te llega por WhatsApp la cuenta para '
-                          'depositar o transferir. Si estás cerca, también se puede pagar en efectivo. '
-                          'Cuando se reciba el pago, se te activa el plan.',
+              for (final p in d.planes) _tarjetaPlan(d, p, soporte, descuentos, cuentasPublicadas),
+              if (!cuentasPublicadas) ...[
+                const SizedBox(height: 8),
+                const Text('Cómo pagar', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                const Panel(
+                  child: Text(
+                    'Toca "Lo quiero" en el plan: te llega por WhatsApp la cuenta para '
+                    'depositar o transferir. Si estás cerca, también se puede pagar en efectivo. '
+                    'Cuando se reciba el pago, se te activa el plan.',
+                  ),
                 ),
-              ),
+              ],
               _MisPagos(prestamistaId: d.perfil['id'] as String),
             ],
           );
@@ -222,6 +242,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
     Map<String, dynamic> p,
     String? soporte,
     DescuentosPlan descuentos,
+    bool cuentasPublicadas,
   ) {
     final actual = p['id'] == d.estado.planId;
     final mensual = (p['precio_mensual'] as num?) ?? 0;
@@ -278,10 +299,13 @@ class _PlanesScreenState extends State<PlanesScreen> {
                               plan: p['nombre'] as String? ?? '',
                               meses: _meses,
                               precio: precio,
+                              yaPago: cuentasPublicadas,
                             ),
                           ),
                   icon: const Icon(Icons.chat_rounded, size: 18),
-                  label: Text(actual ? 'Renovar' : 'Lo quiero'),
+                  label: Text(cuentasPublicadas
+                      ? 'Ya pagué: enviar comprobante'
+                      : (actual ? 'Renovar' : 'Lo quiero')),
                 ),
             ],
           ),

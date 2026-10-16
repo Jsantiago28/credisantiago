@@ -106,6 +106,15 @@ void main() {
       );
       expect(nombrePeriodoPlan(1), '1 mes');
     });
+
+    test('con las cuentas publicadas, el mensaje manda el comprobante', () {
+      expect(
+        mensajePedidoPlan(
+            prestamista: 'Soluciones Méndez', plan: 'Pro', meses: 3, precio: 1860, yaPago: true),
+        'Hola, soy Soluciones Méndez. Elegí el plan Pro por 3 meses (RD\$1,860) y ya pagué. '
+        'Te envío el comprobante para que me lo actives.',
+      );
+    });
   });
 
   group('Vencimientos', () {
