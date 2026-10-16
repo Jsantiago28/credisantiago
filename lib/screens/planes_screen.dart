@@ -304,7 +304,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                           ),
                   icon: const Icon(Icons.chat_rounded, size: 18),
                   label: Text(cuentasPublicadas
-                      ? 'Ya pagué: enviar comprobante'
+                      ? 'Enviar comprobante'
                       : (actual ? 'Renovar' : 'Lo quiero')),
                 ),
             ],

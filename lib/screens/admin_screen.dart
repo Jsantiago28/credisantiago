@@ -559,7 +559,7 @@ class _AdminScreenState extends State<AdminScreen> {
             maxLines: 8,
             decoration: const InputDecoration(
               labelText: 'Tus cuentas para pagar (opcional)',
-              helperText: 'Salen arriba de los planes y el botón dice "Ya pagué: enviar '
+              helperText: 'Salen arriba de los planes y el botón dice "Enviar '
                   'comprobante". Si lo dejas vacío, el botón dice "Lo quiero" y tú les mandas '
                   'la cuenta por WhatsApp.',
               helperMaxLines: 3,
