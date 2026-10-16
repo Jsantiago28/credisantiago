@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../logic/historial.dart';
+import '../logic/historial_pagos.dart';
 import '../logic/ruta.dart';
 import '../recibos/contrato_pdf.dart';
 import '../services/supabase_service.dart';
@@ -16,6 +17,7 @@ import '../widgets/ubicacion.dart';
 import '../widgets/selector_cobrador.dart';
 import '../widgets/ui.dart';
 import 'editar_cliente_screen.dart';
+import 'historial_pagos_screen.dart';
 import 'prestar_screen.dart';
 
 /// Ficha completa de un cliente: los datos de su solicitud (cédula, trabajo,
@@ -156,6 +158,15 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                               style: TextStyle(color: AppColors.grey)),
                         ),
                       ..._prestamos.map(_tarjetaPrestamo),
+                      if (_prestamos.any((p) => p.prestamo['estado'] != 'borrador'))
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: OutlinedButton.icon(
+                            onPressed: () => _verHistorial(c),
+                            icon: const Icon(Icons.receipt_long_rounded),
+                            label: const Text('Historial de pagos'),
+                          ),
+                        ),
                       if (_puedePrestar)
                         ElevatedButton.icon(
                           onPressed: _nuevoPrestamo,
@@ -398,6 +409,20 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
         ],
       ),
     );
+  }
+
+  /// Todos los pagos del cliente, de todos sus préstamos (y el PDF para él).
+  void _verHistorial(Map<String, dynamic> c) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => HistorialPagosScreen(
+        cliente: c['nombre'] as String? ?? '',
+        cedula: c['cedula'] as String?,
+        prestamos: historialPagos(
+          [for (final d in _prestamos) (prestamo: d.prestamo, pagos: d.pagos)],
+          DateTime.now(),
+        ),
+      ),
+    ));
   }
 
   /// Contrato del préstamo en PDF, para imprimir y firmar.

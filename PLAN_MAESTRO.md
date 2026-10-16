@@ -30,6 +30,7 @@
 | Inicio: WhatsApp y mapa solo en Cobros del día y Atrasados | ✅ Hecho |
 | Gráficas del negocio | ✅ Completo |
 | Colores claro y oscuro (lo elige cada quien en Perfil) | ✅ Hecho (13-10-2026) |
+| Historial de pagos del cliente (todos sus préstamos, en pantalla y en PDF para mandárselo) | ✅ Hecho (15-10-2026) |
 | Invitar a otros prestamistas (link /i/..., 1 mes gratis al que invita cuando el invitado paga) | ✅ Hecho (14-10-2026) |
 | Entrar con correo y contraseña; "Registrarme" aparte (código al correo solo para confirmarlo); "¿Olvidaste tu contraseña?" entra con código y pide una nueva; cédula y fotos del prestamista al registrarse | ✅ Hecho (14-10-2026) |
 | Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); contrato hecho (13-10-2026); sigue el APK |

@@ -264,8 +264,12 @@ class _PlanesScreenState extends State<PlanesScreen> {
               if (mensual > 0)
                 TextButton.icon(
                   style: TextButton.styleFrom(foregroundColor: verdeWhatsApp),
-                  onPressed: soporte == null || soporte.isEmpty
-                      ? null
+                  // Sin el WhatsApp de soporte (Admin → ajustes) no hay a quién
+                  // escribirle: se explica en vez de dejar el botón apagado.
+                  onPressed: soporte == null || soporte.trim().isEmpty
+                      ? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Todavía no se puede pedir el plan por aquí: falta el '
+                              'WhatsApp de soporte. Escríbele al administrador de la app.')))
                       : () => abrirWhatsApp(
                             context,
                             soporte,
