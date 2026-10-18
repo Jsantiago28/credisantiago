@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ajuste_recordatorio.dart';
 import '../widgets/legal.dart';
 import '../widgets/primeros_pasos.dart';
 import '../widgets/selector_colores.dart';
@@ -220,6 +221,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           const SizedBox(height: 8),
           const SelectorColores(),
+          const SizedBox(height: 8),
+          const AjusteRecordatorio(),
           const SizedBox(height: 8),
           Text('MI RECIBO Y CONTRATO',
               style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),

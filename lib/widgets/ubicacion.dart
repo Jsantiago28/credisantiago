@@ -33,6 +33,27 @@ Future<Punto?> miUbicacion(BuildContext context) async {
   }
 }
 
+/// Dónde está el teléfono, sin avisos y sin hacer esperar más de unos
+/// segundos: para guardarlo con un cobro. Null si no se puede (el cobro se
+/// guarda igual).
+Future<Punto?> ubicacionSinAvisar() async {
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) return null;
+    var permiso = await Geolocator.checkPermission();
+    if (permiso == LocationPermission.denied) permiso = await Geolocator.requestPermission();
+    if (permiso == LocationPermission.denied || permiso == LocationPermission.deniedForever) {
+      return null;
+    }
+    final pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.medium,
+      timeLimit: const Duration(seconds: 6),
+    );
+    return (lat: pos.latitude, lng: pos.longitude);
+  } catch (_) {
+    return null;
+  }
+}
+
 /// Abre Google Maps (app o web) en el enlace dado.
 Future<void> abrirMapa(BuildContext context, Uri enlace) async {
   final mensajero = ScaffoldMessenger.of(context);

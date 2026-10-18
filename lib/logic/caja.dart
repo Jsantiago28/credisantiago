@@ -17,6 +17,9 @@ class CobroCaja {
   /// El cobrador que lo cobró (null si lo cobró el prestamista).
   final String? cobradorId;
 
+  /// Dónde se hizo el cobro (null si el teléfono no dio la ubicación).
+  final ({double lat, double lng})? ubicacion;
+
   const CobroCaja({
     this.id,
     this.numeroRecibo,
@@ -26,6 +29,7 @@ class CobroCaja {
     this.anulado = false,
     required this.cliente,
     this.cobradorId,
+    this.ubicacion,
   });
 
   double get montoCuota => monto - montoMora;
@@ -44,6 +48,10 @@ class CobroCaja {
       anulado: fila['anulado'] == true,
       cliente: (cliente?['nombre'] as String?) ?? 'Cliente',
       cobradorId: fila['cobrador_id'] as String?,
+      ubicacion: switch ((fila['lat'], fila['lng'])) {
+        (final num lat, final num lng) => (lat: lat.toDouble(), lng: lng.toDouble()),
+        _ => null,
+      },
     );
   }
 }

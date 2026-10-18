@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../logic/caja.dart';
 import '../logic/cobradores.dart';
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
+import '../services/recordatorio.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ajuste_recordatorio.dart';
 import '../widgets/legal.dart';
 import '../widgets/selector_colores.dart';
 import '../widgets/ui.dart';
@@ -37,6 +39,7 @@ class _CobradorShellState extends State<CobradorShell> {
   void initState() {
     super.initState();
     darBienvenida(context, widget.sesion.cobradorNombre);
+    Recordatorio.alEntrar();
   }
 
   @override
@@ -257,6 +260,8 @@ class _Yo extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const SelectorColores(),
+          const SizedBox(height: 8),
+          const AjusteRecordatorio(),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(

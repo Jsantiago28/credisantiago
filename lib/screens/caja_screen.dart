@@ -4,10 +4,12 @@ import 'package:share_plus/share_plus.dart';
 import '../logic/caja.dart';
 import '../logic/cobradores.dart';
 import '../logic/gastos.dart';
+import '../logic/ruta.dart' show enlaceLugar;
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/formato_campos.dart' show soloNumeros;
+import '../widgets/ubicacion.dart' show abrirMapa;
 import '../widgets/ui.dart';
 import 'gastos_screen.dart' show anotarGasto;
 
@@ -615,11 +617,24 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                 '${c.anulado ? ' · ANULADO' : ''}',
                 style: TextStyle(color: c.anulado ? AppColors.red : AppColors.grey, fontSize: 12),
               ),
-              trailing: Text(rd(c.monto),
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: c.anulado ? AppColors.grey : null,
-                      decoration: c.anulado ? TextDecoration.lineThrough : null)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Dónde se hizo el cobro (si el teléfono dio la ubicación).
+                  if (c.ubicacion case final donde?)
+                    IconButton(
+                      tooltip: 'Ver dónde se cobró',
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(Icons.place_outlined, color: AppColors.green, size: 20),
+                      onPressed: () => abrirMapa(context, enlaceLugar(donde)),
+                    ),
+                  Text(rd(c.monto),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: c.anulado ? AppColors.grey : null,
+                          decoration: c.anulado ? TextDecoration.lineThrough : null)),
+                ],
+              ),
             ),
           const SizedBox(height: 16),
           Row(

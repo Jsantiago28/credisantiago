@@ -6,6 +6,7 @@ import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contacto.dart';
 import '../widgets/foto_privada.dart';
+import '../widgets/panel_errores.dart';
 import '../widgets/ui.dart';
 import 'planes_screen.dart' show FilaPagoPlan, metodosPagoPlan;
 
@@ -519,6 +520,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 children: [
                   _panelVencen(lista),
                   _panelPagos(),
+                  const PanelErrores(),
                   _panelAjustes(),
                   const SizedBox(height: 16),
                   Row(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../services/recordatorio.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart' show darBienvenida;
@@ -56,6 +57,8 @@ class _HomeShellState extends State<HomeShell> {
     if (!mounted || perfil == null) return;
     setState(() => _perfilDatos = perfil);
     darBienvenida(context, (perfil['nombre'] as String?) ?? '');
+    // Deja programado el aviso diario de cobros (solo en Android).
+    Recordatorio.alEntrar();
     // Solo las cuentas aprobadas escuchan sus solicitudes (antes de la
     // migración de planes no existe "aprobado": se toma como aprobada).
     if (perfil['aprobado'] != false) _escucharSolicitudes(perfil['id'] as String);

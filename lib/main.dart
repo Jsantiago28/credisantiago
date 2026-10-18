@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/errores.dart';
 import 'services/inactividad.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
@@ -19,6 +20,8 @@ Future<void> main() async {
     url: SupabaseConfig.url,
     publishableKey: SupabaseConfig.anonKey,
   );
+  // Los errores que nadie esperaba se guardan para el admin (Admin → Errores).
+  await Errores.iniciar();
   await ModoColor.cargar();
   // Si la app se dejó más de 40 minutos sin usar, se entra de nuevo.
   await Inactividad.revisarAlAbrir();

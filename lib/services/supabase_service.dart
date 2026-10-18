@@ -813,6 +813,7 @@ class SupabaseService {
     required String prestamoId,
     required String prestamistaId,
     required double monto,
+    ({double lat, double lng})? ubicacion,
   }) async {
     final prestamo = await client
         .from('prestamos')
@@ -824,7 +825,7 @@ class SupabaseService {
     final reparto = calc.repartirPago(calc.estadoPrestamo(prestamo, pagos, ahora), monto);
 
     // numero_recibo lo asigna la base de datos (trigger), por eso se lee de vuelta.
-    final fila = await _conColumnasPago(() => client
+    Future<Map<String, dynamic>> guardar(bool conUbicacion) => _conColumnasPago(() => client
         .from('pagos')
         .insert({
           'prestamo_id': prestamoId,
@@ -832,9 +833,21 @@ class SupabaseService {
           'monto': monto,
           'monto_mora': reparto.mora,
           'metodo': 'efectivo',
+          if (conUbicacion && ubicacion != null) ...{
+            'lat': ubicacion.lat,
+            'lng': ubicacion.lng,
+          },
         })
         .select(_columnasPago)
         .single());
+    Map<String, dynamic> fila;
+    try {
+      fila = await guardar(true);
+    } on PostgrestException catch (e) {
+      // Sin la migración del GPS todavía: el cobro se guarda sin ubicación.
+      if (ubicacion == null || !e.message.contains('lat')) rethrow;
+      fila = await guardar(false);
+    }
     final pago = calc.PagoRegistrado.desdeFila(fila);
 
     final despues = calc.estadoPrestamo(prestamo, [...pagos, pago], ahora);
@@ -931,19 +944,32 @@ class SupabaseService {
   /// Cobros del prestamista desde `desde` (también los anulados), con el
   /// nombre del cliente, para la caja por día.
   Future<List<caja.CobroCaja>> obtenerCobrosCaja(String prestamistaId, {DateTime? desde}) async {
-    final filas = await _conColumnasPago(() {
-      var consulta = client
-          .from('pagos')
-          .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
-              '${_hayCobradorEnPagos ? 'cobrador_id, ' : ''}prestamos(clientes(nombre))')
-          .eq('prestamista_id', prestamistaId);
-      if (desde != null) {
-        consulta = consulta.gte('fecha_pago', desde.toUtc().toIso8601String());
-      }
-      return consulta.order('fecha_pago', ascending: false);
-    });
+    Future<List<Map<String, dynamic>>> buscar() => _conColumnasPago(() {
+          var consulta = client
+              .from('pagos')
+              .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
+                  '${_hayCobradorEnPagos ? 'cobrador_id, ' : ''}'
+                  '${_hayGpsEnPagos ? 'lat, lng, ' : ''}prestamos(clientes(nombre))')
+              .eq('prestamista_id', prestamistaId);
+          if (desde != null) {
+            consulta = consulta.gte('fecha_pago', desde.toUtc().toIso8601String());
+          }
+          return consulta.order('fecha_pago', ascending: false);
+        });
+    List<Map<String, dynamic>> filas;
+    try {
+      filas = await buscar();
+    } on PostgrestException catch (e) {
+      // Sin la migración del GPS todavía: la caja se ve sin ubicaciones.
+      if (!_hayGpsEnPagos || !e.message.contains('lat')) rethrow;
+      _hayGpsEnPagos = false;
+      filas = await buscar();
+    }
     return filas.where(_noImportado).map(caja.CobroCaja.desdeFila).toList();
   }
+
+  /// false si la base de datos todavía no tiene pagos.lat / pagos.lng.
+  bool _hayGpsEnPagos = true;
 
   /// Entregas de los cobradores de un día, por cobrador. Vacío si falta la
   /// migración de entregas.

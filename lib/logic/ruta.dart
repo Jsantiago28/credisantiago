@@ -63,6 +63,12 @@ double largoRutaKm(List<Punto> puntos, {Punto? inicio}) {
 
 String _coord(Punto p) => '${p.lat.toStringAsFixed(6)},${p.lng.toStringAsFixed(6)}';
 
+/// Google Maps mostrando un punto (por ejemplo, dónde se hizo un cobro).
+Uri enlaceLugar(Punto lugar) => Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': _coord(lugar),
+    });
+
 /// Google Maps con la navegación hasta un punto.
 Uri enlaceComoLlegar(Punto destino) => Uri.https('www.google.com', '/maps/dir/', {
       'api': '1',

@@ -8,6 +8,7 @@ import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'contacto.dart';
 import 'gestiones.dart';
+import 'ubicacion.dart' show ubicacionSinAvisar;
 import 'ui.dart';
 
 /// Flujo de cobro de un préstamo: cuotas → cobrar → recibo, e historial de
@@ -240,11 +241,15 @@ class CobroPrestamo {
     final mensajero = ScaffoldMessenger.of(context);
 
     try {
+      // Dónde se cobró (si el teléfono lo da), para que el prestamista vea
+      // en la caja dónde cobró cada cobrador.
+      final donde = await ubicacionSinAvisar();
       // El cobro es del dueño del préstamo, aunque lo haga un cobrador.
       final pago = await SupabaseService.instance.registrarPago(
         prestamoId: _prestamo['id'],
         prestamistaId: _prestamo['prestamista_id'] as String,
         monto: monto,
+        ubicacion: donde,
       );
       onCambio();
       if (context.mounted) await _mostrarCobroRegistrado(pago);
