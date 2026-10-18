@@ -32,6 +32,7 @@
 | Colores claro y oscuro (lo elige cada quien en Perfil) | ✅ Hecho (13-10-2026) |
 | Historial de pagos del cliente (todos sus préstamos, en pantalla y en PDF para mandárselo) | ✅ Hecho (15-10-2026) |
 | Interés sobre saldo (como la cooperativa), plazo en meses, tabla de amortización, cierre de sesión a los 40 minutos sin uso y bienvenida con el nombre | ✅ Hecho (17-10-2026) |
+| Logo del prestamista en su app y su formulario; contrato firmado (fotos o PDF) en cada préstamo, solo lo ve el prestamista | ✅ Hecho (17/18-10-2026) |
 | Invitar a otros prestamistas (link /i/..., 1 mes gratis al que invita cuando el invitado paga) | ✅ Hecho (14-10-2026) |
 | Entrar con correo y contraseña; "Registrarme" aparte (código al correo solo para confirmarlo); "¿Olvidaste tu contraseña?" entra con código y pide una nueva; cédula y fotos del prestamista al registrarse | ✅ Hecho (14-10-2026) |
 | Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); contrato hecho (13-10-2026); sigue el APK |
@@ -338,6 +339,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 21 | `migracion_2026_10_14_invitaciones.sql` | Invitaciones entre prestamistas: link /i/{slug}, "invitado por" y premio de 1 mes gratis (lo da el admin cuando el invitado paga su primer plan) |
 | 23 | `migracion_2026_10_17_interes_sobre_saldo.sql` | Columna `tipo_interes` en préstamos (los de antes quedan "fijo"; los nuevos, "saldo"). Correr ANTES de publicar la versión que presta sobre saldo |
 | 24 | `migracion_2026_10_17_logo_prestamista.sql` | El logo del prestamista sale en su app y en su formulario /s/... (los logos se pueden ver sin sesión; lo demás sigue privado) |
+| 25 | `migracion_2026_10_18_contrato_firmado.sql` | Contrato firmado de cada préstamo (fotos o PDF) en la carpeta privada del prestamista; la carpeta acepta PDF |
 | 22 | `migracion_2026_10_14_registro.sql` | Cédula del prestamista (número y fotos de los dos lados) al registrarse; solo el admin ve esas fotos |
 
 `schema.sql` refleja el esquema completo al día.

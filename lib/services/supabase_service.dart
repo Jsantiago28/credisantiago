@@ -261,19 +261,53 @@ class SupabaseService {
     required List<int> bytes,
     required String prestamistaId,
     required String tipo, // cara, cedula_f, cedula_r, evidencia...
+    bool pdf = false,
   }) async {
     final ruta = fotos.rutaNuevaFoto(
       prestamistaId: prestamistaId,
       tipo: tipo,
       ahora: DateTime.now(),
       azar: _azar.nextInt(1 << 30),
+      extension: pdf ? 'pdf' : 'jpg',
     );
     await client.storage.from(fotos.bucketFotos).uploadBinary(
           ruta,
           Uint8List.fromList(bytes),
-          fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          fileOptions: FileOptions(contentType: pdf ? 'application/pdf' : 'image/jpeg'),
         );
     return ruta;
+  }
+
+  /// Sube el contrato firmado de un préstamo (fotos de las páginas y/o PDF)
+  /// a la carpeta privada del prestamista y lo anota en el préstamo.
+  /// Devuelve la lista completa de archivos.
+  Future<List<String>> agregarContratoFirmado(
+    Map<String, dynamic> prestamo,
+    List<({Uint8List bytes, bool pdf})> archivos,
+  ) async {
+    final prestamistaId = prestamo['prestamista_id'] as String;
+    final nuevos = [
+      for (final a in archivos)
+        await subirFoto(bytes: a.bytes, prestamistaId: prestamistaId, tipo: 'contrato', pdf: a.pdf),
+    ];
+    final lista = [...contratoFirmadoDe(prestamo), ...nuevos];
+    await client.from('prestamos').update({'contrato_firmado': lista}).eq('id', prestamo['id']);
+    prestamo['contrato_firmado'] = lista;
+    return lista;
+  }
+
+  /// Quita un archivo de la lista del contrato firmado (subido por error).
+  Future<List<String>> quitarDeContratoFirmado(Map<String, dynamic> prestamo, String archivo) async {
+    final lista = [...contratoFirmadoDe(prestamo)]..remove(archivo);
+    await client.from('prestamos').update({'contrato_firmado': lista}).eq('id', prestamo['id']);
+    prestamo['contrato_firmado'] = lista;
+    return lista;
+  }
+
+  /// Los archivos del contrato firmado de un préstamo (text[] de Supabase).
+  static List<String> contratoFirmadoDe(Map<String, dynamic> prestamo) {
+    final valor = prestamo['contrato_firmado'];
+    return valor is List ? valor.whereType<String>().toList() : const [];
   }
 
   /// Sube las fotos de evidencia de ingresos y devuelve sus ubicaciones.

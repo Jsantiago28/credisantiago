@@ -21,5 +21,9 @@ String rutaNuevaFoto({
   required String tipo,
   required DateTime ahora,
   required int azar,
+  String extension = 'jpg',
 }) =>
-    '$prestamistaId/${tipo}_${ahora.millisecondsSinceEpoch}_$azar.jpg';
+    '$prestamistaId/${tipo}_${ahora.millisecondsSinceEpoch}_$azar.$extension';
+
+/// Si lo guardado es un PDF (si no, es una foto).
+bool esPdf(String guardado) => guardado.toLowerCase().endsWith('.pdf');

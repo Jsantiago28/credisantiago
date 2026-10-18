@@ -16,6 +16,7 @@ import '../widgets/historial_cliente.dart';
 import '../widgets/ubicacion.dart';
 import '../widgets/selector_cobrador.dart';
 import '../widgets/ui.dart';
+import 'contrato_firmado_screen.dart';
 import 'editar_cliente_screen.dart';
 import 'historial_pagos_screen.dart';
 import 'prestar_screen.dart';
@@ -396,6 +397,17 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                 icon: const Icon(Icons.description_rounded, size: 18),
                 label: const Text('Contrato'),
               ),
+              TextButton.icon(
+                onPressed: () => _contratoFirmado(p),
+                icon: Icon(
+                    SupabaseService.contratoFirmadoDe(p).isEmpty
+                        ? Icons.upload_file_rounded
+                        : Icons.verified_rounded,
+                    size: 18),
+                label: Text(SupabaseService.contratoFirmadoDe(p).isEmpty
+                    ? 'Subir contrato firmado'
+                    : 'Contrato firmado (${SupabaseService.contratoFirmadoDe(p).length})'),
+              ),
               // Préstamo hecho por error: sin cobros se puede cancelar.
               if (!saldado && validos.isEmpty)
                 TextButton.icon(
@@ -409,6 +421,17 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
         ],
       ),
     );
+  }
+
+  /// El contrato firmado del préstamo (fotos o PDF), solo para el prestamista.
+  Future<void> _contratoFirmado(Map<String, dynamic> prestamo) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ContratoFirmadoScreen(
+        prestamo: prestamo,
+        cliente: (_cliente?['nombre'] as String?) ?? '',
+      ),
+    ));
+    if (mounted) setState(() {}); // el botón muestra cuántos archivos hay
   }
 
   /// Todos los pagos del cliente, de todos sus préstamos (y el PDF para él).
