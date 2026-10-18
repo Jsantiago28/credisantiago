@@ -164,6 +164,48 @@
 
 ---
 
+## 🚀 Para salir al mercado (análisis del 18-10-2026)
+
+La app ya hace todo lo que un prestamista necesita (solicitudes por link, préstamos con interés sobre saldo, cobros, mora, recibos, contrato, cobradores, reportes, planes, web y APK). Lo que falta es sobre todo **legal, de confianza y de prueba con gente real**. ✅ = hecho · ⬜ = falta.
+
+### A. Imprescindible antes de cobrarle a alguien
+1. ⬜ **ONAPI:** buscar y registrar "CrediSantiago" (nombre comercial y marca). Sin esto, otro puede registrarlo y obligarte a cambiar el nombre.
+2. ⬜ **Términos de uso y política de privacidad** (Ley 172-13 de datos personales), publicados en la web y aceptados con una casilla al registrarse (prestamista) y al enviar la solicitud (cliente). La app guarda cédulas, fotos e ingresos: es lo mínimo. Deben decir que CrediSantiago es una herramienta y **no presta dinero** (cada prestamista responde por sus préstamos). Se pueden redactar en la app sin abogado (decisión del dueño, 14-10-2026).
+3. ⬜ **Borrar mi cuenta** desde la app (y un enlace web para pedirlo): lo exige Google Play y la Ley 172-13 (derecho a borrar los datos). Hoy no existe.
+4. ⬜ **Prueba piloto** con 3 a 5 prestamistas reales durante 2-4 semanas (web y APK), anotando fallas. Hasta ahora solo lo ha probado el dueño. Incluye probar la **impresora térmica** con una real.
+5. ⬜ **Datos de prueba:** borrar o arreglar los préstamos de prueba (john, aquiles, cédulas repetidas como la de "maurelis garcia") antes de manejar carteras reales.
+6. ⬜ **Cobro de los planes:** poner en Admin → Ajustes el WhatsApp de soporte y las cuentas (texto listo); decidir si el plan se activa al subir el comprobante (opción A), con un toque del admin (B) o con tarjeta (C, más adelante).
+
+### B. Muy recomendable al lanzar
+7. ⬜ **Dominio propio** `credisantiago.com` (~US$12/año) conectado a Netlify: se ve profesional y no depende del nombre de Netlify.
+8. ⬜ **Correo de la app con el dominio** (Resend gratis hasta 3,000 correos/mes): hoy sale de un Gmail personal (applej904), con límite de ~500/día, riesgo de caer en spam y se rompe si cambia la contraseña de Google.
+9. ⬜ **Página de presentación** en la dirección principal: qué es CrediSantiago, precios, "Registrarme" y WhatsApp. Hoy la dirección principal abre directo el login.
+10. ⬜ **Google Play** (US$25 una vez): las actualizaciones llegan solas. Pide política de privacidad (punto 2), borrar cuenta (punto 3), formulario de "Seguridad de los datos" y la **declaración de funciones financieras**; por ser de préstamos, Google la revisa con más cuidado.
+11. ⬜ **Aviso de "versión nueva"** dentro del APK mientras no esté en Google Play.
+12. ⬜ **Respaldo de las fotos y contratos firmados:** la copia semanal solo guarda la base de datos, no los archivos. Con Supabase Pro (US$25/mes) hay copias diarias; contratarlo cuando haya ~5 prestamistas pagando o las fotos se acerquen a 1 GB.
+13. ⬜ **Cerrar huecos menores de seguridad:** funciones de solo lectura que cualquiera puede consultar, posible relleno de solicitudes falsas en el link público (captcha), y cobradores que siguen activos cuando al jefe se le vence el plan. Cambiar la contraseña de aplicación de Gmail que se escribió en el chat.
+14. ⬜ **Ayuda para empezar:** una guía corta (o video) de los primeros pasos: subir logo, configurar recibo y contrato, mandar el link, prestar y cobrar.
+
+### C. Para competir mejor (después del lanzamiento)
+15. ⬜ **Funcionar sin internet** para los cobradores en la calle (PrestaCOP y PrestamosCloud lo tienen). Es el cambio más grande.
+16. ⬜ **Notificaciones** al teléfono: solicitud nueva, cuotas de hoy, promesas incumplidas.
+17. ⬜ **Reporte de errores automático** (Sentry o Crashlytics, gratis) para enterarse de fallas sin que el cliente avise.
+18. ⬜ App de **iPhone** (US$99/año de Apple). Mientras tanto, en iPhone se usa la web.
+19. ⬜ Lo que ya estaba: GPS de cobradores, entrar con WhatsApp/SMS, que el cobrador vea fotos de sus clientes.
+
+### D. Lo de impuestos (consultar con un contador)
+20. ⬜ Al cobrar los planes se reciben ingresos: preguntar a un contador si conviene sacar **RNC** como persona física, cómo declararlos en la DGII y si los clientes van a pedir comprobante fiscal. También lo pide Azul/CardNET para cobrar con tarjeta.
+
+### Costos para arrancar
+| Qué | Costo | Cuándo |
+|---|---|---|
+| Netlify, Supabase gratis, GitHub, Resend | US$0 | Ya |
+| Dominio credisantiago.com | ~US$12 al año | Al lanzar |
+| Google Play | US$25 una sola vez | Al lanzar |
+| Registro ONAPI (nombre y marca) | Ver tarifas de ONAPI | Antes de vender |
+| Supabase Pro | US$25 al mes | Con ~5 prestamistas pagando |
+| Apple (iPhone) | US$99 al año | Más adelante |
+
 ## ⬜ Lo que falta, en orden de importancia
 
 ### ⭐ Pedido por el dueño (23-09-2026) — todo hecho
