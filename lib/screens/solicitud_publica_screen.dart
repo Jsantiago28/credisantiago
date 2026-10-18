@@ -50,6 +50,9 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   bool _enviado = false;
   Map<String, dynamic>? _prestamista;
 
+  /// El logo del negocio del prestamista (null si no tiene o no cargó).
+  Uint8List? _logo;
+
   // Paso 1: fotos — guardamos los bytes (no el File, que no funciona en web)
   Uint8List? _fotoCaraBytes;
   Uint8List? _fotoCedulaFrenteBytes;
@@ -104,8 +107,12 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
 
   Future<void> _cargarPrestamista() async {
     try {
-      final p = await Future.sync(() => SupabaseService.instance.obtenerPerfilPorSlug(widget.slug));
+      final servicio = SupabaseService.instance;
+      final p = await Future.sync(() => servicio.obtenerPerfilPorSlug(widget.slug));
       if (mounted) setState(() => _prestamista = p);
+      // El logo del prestamista (si subió uno): se ve sin sesión.
+      final logo = await servicio.bajarFoto(p?['logo'] as String?);
+      if (mounted && logo != null) setState(() => _logo = logo);
     } catch (e) {
       // ignore: avoid_print
       print('ERROR REAL CARGAR PRESTAMISTA: $e'); // al enviar se avisa que el link no sirve
@@ -383,6 +390,13 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
               : null,
         ),
         const SizedBox(width: 8),
+        if (_logo != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.memory(_logo!, width: 52, height: 52, fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 12),
+        ],
         Expanded(
           child: Text(
             _prestamista == null ? 'Solicitud de préstamo' : 'Solicitud a $_negocio',

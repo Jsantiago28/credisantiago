@@ -337,6 +337,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 20 | `migracion_2026_10_13_link_publico.sql` | El link de solicitudes encuentra al prestamista sin sesión (solo id, nombre, negocio, teléfono y si exige evidencias) |
 | 21 | `migracion_2026_10_14_invitaciones.sql` | Invitaciones entre prestamistas: link /i/{slug}, "invitado por" y premio de 1 mes gratis (lo da el admin cuando el invitado paga su primer plan) |
 | 23 | `migracion_2026_10_17_interes_sobre_saldo.sql` | Columna `tipo_interes` en préstamos (los de antes quedan "fijo"; los nuevos, "saldo"). Correr ANTES de publicar la versión que presta sobre saldo |
+| 24 | `migracion_2026_10_17_logo_prestamista.sql` | El logo del prestamista sale en su app y en su formulario /s/... (los logos se pueden ver sin sesión; lo demás sigue privado) |
 | 22 | `migracion_2026_10_14_registro.sql` | Cédula del prestamista (número y fotos de los dos lados) al registrarse; solo el admin ve esas fotos |
 
 `schema.sql` refleja el esquema completo al día.

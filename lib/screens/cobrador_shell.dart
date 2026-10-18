@@ -47,7 +47,11 @@ class _CobradorShellState extends State<CobradorShell> {
         children: [
           InicioScreen(
             // El id del jefe: los préstamos son suyos. El nombre, el del cobrador.
-            perfil: {'id': s.prestamistaId, 'nombre': s.cobradorNombre},
+            perfil: {
+              'id': s.prestamistaId,
+              'nombre': s.cobradorNombre,
+              'recibo_logo': s.jefe['recibo_logo'],
+            },
             solicitudesNuevas: 0,
             onVerSolicitudes: () {},
             onVerPerfil: () => _ir(_yo),

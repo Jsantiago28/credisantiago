@@ -227,7 +227,7 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Logo', style: TextStyle(fontWeight: FontWeight.w800)),
-                Text('Sale arriba del recibo.',
+                Text('Sale en tus recibos, en tu app y en tu formulario de solicitudes.',
                     style: TextStyle(color: AppColors.grey, fontSize: 12)),
                 Wrap(
                   children: [

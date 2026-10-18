@@ -181,7 +181,7 @@ class _InicioScreenState extends State<InicioScreen> {
         ],
         Row(
           children: [
-            const LogoApp(tamano: 44),
+            LogoNegocio(logo: widget.perfil['recibo_logo'] as String?, tamano: 44),
             const SizedBox(width: 10),
             Expanded(
               child: Text(widget.modoCobrador ? 'Mi ruta\nde cobro' : 'Credi\nSantiago',

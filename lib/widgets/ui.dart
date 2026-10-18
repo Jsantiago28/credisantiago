@@ -113,6 +113,36 @@ class LogoApp extends StatelessWidget {
   }
 }
 
+/// El logo del negocio del prestamista (el que subió en "Mi recibo"); si no
+/// tiene, o mientras carga, el de CrediSantiago.
+class LogoNegocio extends StatelessWidget {
+  /// Dónde está el logo (profiles.recibo_logo), o null.
+  final String? logo;
+  final double tamano;
+  const LogoNegocio({super.key, required this.logo, this.tamano = 44});
+
+  @override
+  Widget build(BuildContext context) {
+    final propio = logo?.trim();
+    if (propio == null || propio.isEmpty) return LogoApp(tamano: tamano);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(tamano * 0.22),
+      child: Container(
+        width: tamano,
+        height: tamano,
+        color: Colors.white, // los logos con fondo transparente se ven en los dos modos
+        child: FotoPrivada(
+          guardado: propio,
+          width: tamano,
+          height: tamano,
+          fit: BoxFit.contain,
+          sinFoto: LogoApp(tamano: tamano),
+        ),
+      ),
+    );
+  }
+}
+
 /// Círculo con las iniciales del cliente (o su foto, si tiene).
 class AvatarIniciales extends StatelessWidget {
   final String nombre;
