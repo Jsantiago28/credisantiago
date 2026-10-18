@@ -170,21 +170,21 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 
 ### A. Imprescindible antes de cobrarle a alguien
 1. ⬜ **ONAPI:** buscar y registrar "CrediSantiago" (nombre comercial y marca). Sin esto, otro puede registrarlo y obligarte a cambiar el nombre.
-2. ⬜ **Términos de uso y política de privacidad** (Ley 172-13 de datos personales), publicados en la web y aceptados con una casilla al registrarse (prestamista) y al enviar la solicitud (cliente). La app guarda cédulas, fotos e ingresos: es lo mínimo. Deben decir que CrediSantiago es una herramienta y **no presta dinero** (cada prestamista responde por sus préstamos). Se pueden redactar en la app sin abogado (decisión del dueño, 14-10-2026).
-3. ⬜ **Borrar mi cuenta** desde la app (y un enlace web para pedirlo): lo exige Google Play y la Ley 172-13 (derecho a borrar los datos). Hoy no existe.
+2. ✅ (18-10-2026: `web/terminos.html` y `web/privacidad.html`, en /terminos y /privacidad; casilla obligatoria al registrarse y al enviar la solicitud; se anota cuándo se aceptó) **Términos de uso y política de privacidad** (Ley 172-13 de datos personales), publicados en la web y aceptados con una casilla al registrarse (prestamista) y al enviar la solicitud (cliente). La app guarda cédulas, fotos e ingresos: es lo mínimo. Deben decir que CrediSantiago es una herramienta y **no presta dinero** (cada prestamista responde por sus préstamos). Se pueden redactar en la app sin abogado (decisión del dueño, 14-10-2026).
+3. ✅ (18-10-2026: Perfil y "Yo" del cobrador → Borrar mi cuenta, escribiendo BORRAR; página /borrar-cuenta para Google Play) **Borrar mi cuenta** desde la app (y un enlace web para pedirlo): lo exige Google Play y la Ley 172-13 (derecho a borrar los datos). Hoy no existe.
 4. ⬜ **Prueba piloto** con 3 a 5 prestamistas reales durante 2-4 semanas (web y APK), anotando fallas. Hasta ahora solo lo ha probado el dueño. Incluye probar la **impresora térmica** con una real.
-5. ⬜ **Datos de prueba:** borrar o arreglar los préstamos de prueba (john, aquiles, cédulas repetidas como la de "maurelis garcia") antes de manejar carteras reales.
+5. 🔨 (18-10-2026: consultas listas en `supabase/limpieza_datos_de_prueba.sql`, que primero solo muestran; falta que el dueño elija qué borrar) **Datos de prueba:** borrar o arreglar los préstamos de prueba (john, aquiles, cédulas repetidas como la de "maurelis garcia") antes de manejar carteras reales.
 6. ⬜ **Cobro de los planes:** poner en Admin → Ajustes el WhatsApp de soporte y las cuentas (texto listo); decidir si el plan se activa al subir el comprobante (opción A), con un toque del admin (B) o con tarjeta (C, más adelante).
 
 ### B. Muy recomendable al lanzar
 7. ⏸️ **Dominio propio** `credisantiago.com` — **pospuesto por dinero (18-10-2026)**. El 17-10-2026 estaba **libre**. Se compra en **Cloudflare** (dash.cloudflare.com → Domains → Registrations → buscar credisantiago.com): **US$10.46 al año y renueva al mismo precio**, privacidad gratis, ya hay cuenta con applej904@gmail.com. Plan B si no hay tarjeta: Namecheap con PayPal (~US$11 el primer año). Al comprarlo: apagar la traducción de Edge antes de pagar (traduce "santiago" como "santihace"), elegir solo el .com, 1 año con renovación automática. Después: conectarlo a Netlify, cambiar la dirección en la app (`kDominioPublicado`) y en Supabase (Site URL y Redirect URLs), y configurar el correo con Resend. Hosting: seguir con Netlify (gratis). Riesgo de esperar: que alguien lo compre antes.
 8. ⬜ **Correo de la app con el dominio** (Resend gratis hasta 3,000 correos/mes): hoy sale de un Gmail personal (applej904), con límite de ~500/día, riesgo de caer en spam y se rompe si cambia la contraseña de Google.
-9. ⬜ **Página de presentación** en la dirección principal: qué es CrediSantiago, precios, "Registrarme" y WhatsApp. Hoy la dirección principal abre directo el login.
+9. ✅ (18-10-2026: `web/presentacion.html` en la dirección principal; la app pasa a /app; los links /s/ e /i/ siguen igual) **Página de presentación** en la dirección principal: qué es CrediSantiago, precios, "Registrarme" y WhatsApp. Hoy la dirección principal abre directo el login.
 10. ⬜ **Google Play** (US$25 una vez): las actualizaciones llegan solas. Pide política de privacidad (punto 2), borrar cuenta (punto 3), formulario de "Seguridad de los datos" y la **declaración de funciones financieras**; por ser de préstamos, Google la revisa con más cuidado.
 11. ⬜ **Aviso de "versión nueva"** dentro del APK mientras no esté en Google Play.
 12. ⬜ **Respaldo de las fotos y contratos firmados:** la copia semanal solo guarda la base de datos, no los archivos. Con Supabase Pro (US$25/mes) hay copias diarias; contratarlo cuando haya ~5 prestamistas pagando o las fotos se acerquen a 1 GB.
 13. ⬜ **Cerrar huecos menores de seguridad:** funciones de solo lectura que cualquiera puede consultar, posible relleno de solicitudes falsas en el link público (captcha), y cobradores que siguen activos cuando al jefe se le vence el plan. Cambiar la contraseña de aplicación de Gmail que se escribió en el chat.
-14. ⬜ **Ayuda para empezar:** una guía corta (o video) de los primeros pasos: subir logo, configurar recibo y contrato, mandar el link, prestar y cobrar.
+14. ✅ (18-10-2026: tarjeta "Primeros pasos" en el Inicio, con 5 pasos que se marcan solos y se puede ocultar) **Ayuda para empezar:** una guía corta (o video) de los primeros pasos: subir logo, configurar recibo y contrato, mandar el link, prestar y cobrar.
 
 ### C. Para competir mejor (después del lanzamiento)
 15. ⬜ **Funcionar sin internet** para los cobradores en la calle (PrestaCOP y PrestamosCloud lo tienen). Es el cambio más grande.
@@ -382,6 +382,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 23 | `migracion_2026_10_17_interes_sobre_saldo.sql` | Columna `tipo_interes` en préstamos (los de antes quedan "fijo"; los nuevos, "saldo"). Correr ANTES de publicar la versión que presta sobre saldo |
 | 24 | `migracion_2026_10_17_logo_prestamista.sql` | El logo del prestamista sale en su app y en su formulario /s/... (los logos se pueden ver sin sesión; lo demás sigue privado) |
 | 25 | `migracion_2026_10_18_contrato_firmado.sql` | Contrato firmado de cada préstamo (fotos o PDF) en la carpeta privada del prestamista; la carpeta acepta PDF |
+| 26 | `migracion_2026_10_18_legal_y_borrar_cuenta.sql` | Cuándo se aceptaron términos y privacidad; borrar la cuenta propia (y sus archivos) |
 | 22 | `migracion_2026_10_14_registro.sql` | Cédula del prestamista (número y fotos de los dos lados) al registrarse; solo el admin ve esas fotos |
 
 `schema.sql` refleja el esquema completo al día.

@@ -1,3 +1,9 @@
-/s/*   /solicitud.html   200
-/i/*   /invitar.html     200
-/*     /index.html       200
+/                /presentacion.html   200!
+/terminos        /terminos.html       200
+/privacidad      /privacidad.html     200
+/borrar-cuenta   /borrar-cuenta.html  200
+/s/*             /solicitud.html      200
+/i/*             /invitar.html        200
+/app             /index.html          200
+/app/*           /index.html          200
+/*               /index.html          200

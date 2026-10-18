@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CrediSantiago · La app para prestamistas</title>
+  <meta name="description" content="Lleva tus préstamos y cobros al día desde el celular: solicitudes por link, interés sobre saldo, mora automática, recibos, contratos y cobradores. Empieza gratis.">
+  <meta name="theme-color" content="#F3F5F4">
+  <meta property="og:site_name" content="CrediSantiago">
+  <meta property="og:title" content="CrediSantiago · La app para prestamistas">
+  <meta property="og:description" content="Lleva tus préstamos y cobros al día desde el celular. Empieza gratis.">
+  <meta property="og:image" content="https://credisantiago.netlify.app/icons/Icon-512.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/sitio.css">
+  <style>
+    .portada { background: linear-gradient(135deg, var(--azul) 0%, var(--azul-oscuro) 100%); color: #fff; }
+    .portada .contenedor { padding: 48px 16px 56px; display: grid; gap: 28px; align-items: center; }
+    .portada h1 { font-size: 34px; line-height: 1.15; margin: 0 0 12px; }
+    .portada p { font-size: 18px; margin: 0 0 24px; opacity: .95; }
+    .portada .acciones { display: flex; flex-wrap: wrap; gap: 12px; }
+    .portada .boton.secundario { border-color: #fff; color: #fff; }
+    .portada .logo-grande { width: 140px; height: 140px; border-radius: 30px; box-shadow: 0 16px 40px rgba(0,0,0,.25); justify-self: center; }
+    .nota { font-size: 14px; opacity: .9; margin-top: 12px; }
+
+    section { padding: 44px 0 8px; }
+    section h2 { font-size: 26px; margin: 0 0 6px; }
+    section .sub { color: var(--gris); margin: 0 0 20px; }
+
+    .rejilla { display: grid; gap: 14px; grid-template-columns: 1fr; }
+    .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 16px; padding: 18px; box-shadow: 0 4px 14px rgba(0,0,0,.05); }
+    .tarjeta h3 { margin: 6px 0 4px; font-size: 17px; }
+    .tarjeta p { margin: 0; color: var(--gris); font-size: 15px; }
+    .icono { font-size: 26px; }
+
+    .pasos { counter-reset: paso; }
+    .pasos .tarjeta h3::before { counter-increment: paso; content: counter(paso); display: inline-flex; width: 28px; height: 28px; margin-right: 8px;
+      border-radius: 50%; background: var(--verde); color: #fff; font-size: 15px; align-items: center; justify-content: center; }
+
+    .plan .precio { font-size: 28px; font-weight: 800; margin: 6px 0 0; color: var(--texto); }
+    .plan .precio small { font-size: 14px; font-weight: 600; color: var(--gris); }
+    .plan ul { margin: 10px 0 0; padding-left: 18px; color: var(--gris); }
+    .plan.destacado { border: 2px solid var(--verde); }
+    .etiqueta { display: inline-block; background: #DCFCE7; color: var(--verde); font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 20px; }
+    .incluye { margin-top: 14px; color: var(--gris); font-size: 15px; }
+
+    .final { text-align: center; padding: 48px 0 16px; }
+    .final .boton { margin: 6px; }
+
+    @media (min-width: 720px) {
+      .portada .contenedor { grid-template-columns: 1.4fr 1fr; padding: 72px 16px 80px; }
+      .portada h1 { font-size: 46px; }
+      .portada .logo-grande { width: 220px; height: 220px; }
+      .rejilla.tres { grid-template-columns: repeat(3, 1fr); }
+      .rejilla.cuatro { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (min-width: 520px) and (max-width: 719px) {
+      .rejilla.cuatro, .rejilla.tres { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <div class="contenedor">
+      <a class="marca" href="/"><img src="/icons/Icon-192.png" alt="">CrediSantiago</a>
+      <span class="espacio"></span>
+      <a class="boton secundario chico" href="/app">Entrar</a>
+    </div>
+  </header>
+
+  <div class="portada">
+    <div class="contenedor">
+      <div>
+        <h1>Tus préstamos y cobros al día, desde el celular</h1>
+        <p>La app para prestamistas de República Dominicana: tus clientes te piden préstamos por un link,
+          la mora se calcula sola y cobras por WhatsApp con un toque.</p>
+        <div class="acciones">
+          <a class="boton principal" href="/app">Crear cuenta gratis</a>
+          <a class="boton secundario" href="#planes">Ver precios</a>
+        </div>
+        <p class="nota">Gratis hasta 10 clientes, sin fecha de vencimiento. Funciona en cualquier celular desde el navegador.</p>
+      </div>
+      <img class="logo-grande" src="/icons/Icon-512.png" alt="Logo de CrediSantiago">
+    </div>
+  </div>
+
+  <main class="contenedor">
+    <section>
+      <h2>Todo lo de tu negocio en un solo lugar</h2>
+      <p class="sub">Sin cuadernos, sin hojas de Excel y sin perder la cartera si se te pierde el teléfono.</p>
+      <div class="rejilla tres">
+        <div class="tarjeta"><div class="icono">🔗</div><h3>Solicitudes por link</h3>
+          <p>Tu cliente llena su solicitud con fotos de la cédula desde su celular. Te llega lista para aprobar.</p></div>
+        <div class="tarjeta"><div class="icono">📊</div><h3>Interés sobre saldo</h3>
+          <p>Cuota fija como en las cooperativas, con su tabla de amortización. Plazo en días o en meses.</p></div>
+        <div class="tarjeta"><div class="icono">⏰</div><h3>Mora automática</h3>
+          <p>La app sabe quién está al día, quién vence hoy y quién está atrasado, y calcula la mora sola.</p></div>
+        <div class="tarjeta"><div class="icono">💬</div><h3>Cobra por WhatsApp</h3>
+          <p>Un toque y le llega al cliente el mensaje con lo que debe. Anota promesas de pago y te avisa si no cumplen.</p></div>
+        <div class="tarjeta"><div class="icono">🧾</div><h3>Recibos y contratos</h3>
+          <p>Recibo con tu logo en PDF o impreso, contrato listo para firmar y el contrato firmado guardado.</p></div>
+        <div class="tarjeta"><div class="icono">🛵</div><h3>Cobradores</h3>
+          <p>Cada cobrador ve solo su ruta, cobra y te cuadra la caja del día. Tú ves lo que cobró cada uno.</p></div>
+        <div class="tarjeta"><div class="icono">🗺️</div><h3>Ruta en el mapa</h3>
+          <p>Los cobros del día en el mapa para ir de un cliente a otro sin dar vueltas.</p></div>
+        <div class="tarjeta"><div class="icono">📈</div><h3>Reportes y ganancia</h3>
+          <p>Cuánto tienes en la calle, cuánto ganaste, tus gastos y gráficas del negocio. Descárgalos en Excel.</p></div>
+        <div class="tarjeta"><div class="icono">🔒</div><h3>Tus datos seguros</h3>
+          <p>En la nube, con copias de seguridad. Cada prestamista ve solo lo suyo y las fotos son privadas.</p></div>
+      </div>
+    </section>
+
+    <section class="pasos">
+      <h2>Empieza en 3 pasos</h2>
+      <p class="sub">En menos de 5 minutos estás prestando.</p>
+      <div class="rejilla tres">
+        <div class="tarjeta"><h3>Crea tu cuenta</h3><p>Con tu correo y una contraseña. Pones tu negocio, tu WhatsApp y tu cédula.</p></div>
+        <div class="tarjeta"><h3>Comparte tu link</h3><p>Mándalo a tus clientes por WhatsApp. Sus solicitudes te llegan a la app.</p></div>
+        <div class="tarjeta"><h3>Presta y cobra</h3><p>Aprueba, presta y la app te dice cada día a quién cobrarle.</p></div>
+      </div>
+    </section>
+
+    <section id="planes">
+      <h2>Precios</h2>
+      <p class="sub">Por mes, en pesos dominicanos. 3 meses: 10% menos · 12 meses: 2 meses gratis.</p>
+      <div class="rejilla cuatro">
+        <div class="tarjeta plan"><h3>Gratis</h3><p class="precio">RD$0</p>
+          <ul><li>Hasta 10 clientes</li><li>Sin cobradores</li><li>No se vence</li></ul></div>
+        <div class="tarjeta plan"><h3>Básico</h3><p class="precio">RD$390 <small>/mes</small></p>
+          <ul><li>Hasta 60 clientes</li><li>1 cobrador</li></ul></div>
+        <div class="tarjeta plan destacado"><span class="etiqueta">El más elegido</span><h3>Pro</h3>
+          <p class="precio">RD$690 <small>/mes</small></p>
+          <ul><li>Hasta 200 clientes</li><li>3 cobradores</li></ul></div>
+        <div class="tarjeta plan"><h3>Premium</h3><p class="precio">RD$1,190 <small>/mes</small></p>
+          <ul><li>Clientes sin límite</li><li>Cobradores sin límite</li></ul></div>
+      </div>
+      <p class="incluye"><strong>Todo incluido en todos los planes</strong>, también en el Gratis: link de solicitudes,
+        interés sobre saldo, mora, recibos, contratos, WhatsApp, gestiones de cobro, reportes y gráficas.
+        Entre planes solo cambia cuántos clientes y cobradores puedes tener.</p>
+    </section>
+
+    <section class="final">
+      <h2>¿Listo para ordenar tu negocio?</h2>
+      <p class="sub">Empieza gratis hoy. Cuando crezcas, eliges tu plan.</p>
+      <a class="boton principal" href="/app">Crear cuenta gratis</a>
+      <a class="boton secundario" href="/app">Ya tengo cuenta</a>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div>CrediSantiago · República Dominicana</div>
+    <div><a href="/terminos">Términos de uso</a> · <a href="/privacidad">Privacidad</a> · <a href="/borrar-cuenta">Borrar cuenta</a></div>
+    <div style="margin-top:6px">CrediSantiago es una herramienta de gestión: no presta dinero.</div>
+  </footer>
+</body>
+</html>

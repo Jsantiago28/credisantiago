@@ -129,6 +129,24 @@ class SupabaseService {
     );
   }
 
+  /// Borra la cuenta de quien está usando la app, con todo lo suyo: primero
+  /// los archivos de su carpeta (fotos, logo, contratos) y luego su usuario,
+  /// que en la base de datos arrastra perfil, clientes, préstamos, cobros…
+  /// (ver migracion_2026_10_18_legal_y_borrar_cuenta.sql).
+  Future<void> borrarMiCuenta() async {
+    final uid = usuarioActual?.id;
+    if (uid == null) throw StateError('Hay que entrar para borrar la cuenta');
+    final carpeta = client.storage.from(fotos.bucketFotos);
+    while (true) {
+      final archivos = await carpeta.list(path: uid, searchOptions: const SearchOptions(limit: 100));
+      final rutas = [for (final a in archivos) if (a.id != null) '$uid/${a.name}'];
+      if (rutas.isEmpty) break;
+      await carpeta.remove(rutas);
+    }
+    await client.rpc('borrar_mi_cuenta');
+    await cerrarSesion();
+  }
+
   Future<void> cambiarClave(String clave) async {
     await client.auth.updateUser(UserAttributes(password: clave));
   }
@@ -195,6 +213,8 @@ class SupabaseService {
           'phone': telefono,
           'nombre': nombre,
           'slug': slug,
+          // Aceptó los Términos y la Política de privacidad al registrarse.
+          'acepto_terminos_en': DateTime.now().toUtc().toIso8601String(),
           if (invitadoPor != null) 'invitado_por': invitadoPor,
         });
         return slug;

@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/cobro_prestamo.dart';
 import '../widgets/contacto.dart';
 import '../widgets/gestiones.dart';
+import '../widgets/primeros_pasos.dart';
 import '../widgets/ui.dart';
 import 'calculadora_screen.dart';
 import 'mapa_cobros_screen.dart';
@@ -135,6 +136,13 @@ class _InicioScreenState extends State<InicioScreen> {
               else if (_error != null)
                 Vacio(icono: Icons.cloud_off, texto: 'No pudimos cargar tus préstamos.\n$_error')
               else ...[
+                if (!widget.modoCobrador)
+                  PrimerosPasos(
+                    perfil: widget.perfil,
+                    tienePrestamos: filas!.isNotEmpty,
+                    onCambio: _cargar,
+                    onVerClientes: widget.onBuscar,
+                  ),
                 _totales(filas!),
                 if (widget.solicitudesNuevas > 0) ...[
                   const SizedBox(height: 12),

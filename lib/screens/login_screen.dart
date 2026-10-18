@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 import '../services/inactividad.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/legal.dart';
 import '../widgets/ui.dart' show LogoApp;
 
 /// Lo que se ve en la pantalla de entrada.
@@ -43,6 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
   /// El código que se espera es del registro (si no, de "olvidé").
   bool _codigoDeRegistro = false;
   bool _verClave = false;
+
+  /// Al registrarse: aceptó los Términos y la Política de privacidad.
+  bool _aceptaTerminos = false;
   bool _cargando = false;
   String? _error;
 
@@ -151,6 +155,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     if (_claveCtrl.text != _clave2Ctrl.text) {
       setState(() => _error = 'Las dos contraseñas no son iguales');
+      return;
+    }
+    if (!_aceptaTerminos) {
+      setState(() => _error = 'Para crear la cuenta, acepta los Términos y la Política de privacidad');
       return;
     }
     await _hacer(() async {
@@ -332,6 +340,12 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 6),
         Text('Mínimo $minimoClave caracteres.',
             style: TextStyle(color: AppColors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
+        CasillaAcepto(
+          valor: _aceptaTerminos,
+          onCambio: (v) => setState(() => _aceptaTerminos = v),
+          texto: 'Acepto los',
+        ),
       ],
     ];
   }

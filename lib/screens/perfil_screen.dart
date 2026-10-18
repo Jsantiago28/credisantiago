@@ -4,6 +4,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/legal.dart';
+import '../widgets/primeros_pasos.dart';
 import '../widgets/selector_colores.dart';
 import '../widgets/ui.dart';
 import 'admin_screen.dart';
@@ -122,9 +124,10 @@ class _PerfilScreenState extends State<PerfilScreen> {
                 ),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
-                  onPressed: () => Share.share(
-                    'Solicita tu préstamo aquí sin venir a mi casa, llena esto y te digo si te apruebo: $_link',
-                  ),
+                  onPressed: () {
+                    Share.share(mensajeLinkSolicitudes(perfil['slug'] as String? ?? ''));
+                    marcarLinkCompartido(); // paso de la guía de primeros pasos
+                  },
                   icon: const Icon(Icons.share),
                   label: const Text('Compartir por WhatsApp'),
                 ),
@@ -293,6 +296,13 @@ class _PerfilScreenState extends State<PerfilScreen> {
             icon: const Icon(Icons.logout),
             label: const Text('Cerrar sesión'),
           ),
+          const SizedBox(height: 24),
+          // La cuenta del administrador no se borra desde la app.
+          if (perfil['es_admin'] != true)
+            const BotonBorrarCuenta(
+              queSeBorra: 'Se borran tu cuenta, tus clientes, solicitudes, préstamos, cobros, '
+                  'gastos, cobradores, fotos, logo y contratos firmados.',
+            ),
         ],
       ),
     );

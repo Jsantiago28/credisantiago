@@ -5,6 +5,7 @@ import '../logic/cobradores.dart';
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/legal.dart';
 import '../widgets/selector_colores.dart';
 import '../widgets/ui.dart';
 import 'inicio_screen.dart';
@@ -265,6 +266,11 @@ class _Yo extends StatelessWidget {
             onPressed: () => SupabaseService.instance.cerrarSesion(),
             icon: const Icon(Icons.logout),
             label: const Text('Cerrar sesión'),
+          ),
+          const SizedBox(height: 24),
+          const BotonBorrarCuenta(
+            queSeBorra: 'Se borra tu acceso a la app. Los cobros que hiciste siguen en la cuenta '
+                'de tu jefe, porque son parte de su negocio.',
           ),
         ],
       ),

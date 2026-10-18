@@ -10,6 +10,7 @@ import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/evidencias.dart';
 import '../widgets/formato_campos.dart';
+import '../widgets/legal.dart';
 
 /// Pantalla pública: prestamistacalle.com/s/{slug}
 /// El cliente NO necesita login. Llena 5 pasos y envía. Las fotos van de
@@ -52,6 +53,9 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
 
   /// El logo del negocio del prestamista (null si no tiene o no cargó).
   Uint8List? _logo;
+
+  /// Autorizó el uso de sus datos (casilla del último paso).
+  bool _autorizaDatos = false;
 
   // Paso 1: fotos — guardamos los bytes (no el File, que no funciona en web)
   Uint8List? _fotoCaraBytes;
@@ -175,6 +179,10 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
       _mostrarError('Toma las 3 fotos para enviar tu solicitud');
       return;
     }
+    if (_pasoId == _fotos && !_autorizaDatos) {
+      _mostrarError('Marca la casilla para autorizar el uso de tus datos');
+      return;
+    }
     if (_erroresDelPaso(_pasoId).any((e) => e != null)) {
       setState(() => _mostrarErrores = true);
       _mostrarError('Revisa los datos marcados en rojo');
@@ -255,6 +263,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
         'frecuencia_pago': _frecuenciaPago,
         'capacidad_pago': double.tryParse(_capacidadPagoCtrl.text.replaceAll(',', '')),
         'estado': 'nueva',
+        'acepto_privacidad_en': DateTime.now().toUtc().toIso8601String(),
       });
 
       setState(() => _enviado = true);
@@ -698,6 +707,15 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
           ayuda: 'Parte de atrás de tu cédula, que se lea bien',
           bytes: _fotoCedulaReversoBytes,
           onTomada: (b) => _fotoCedulaReversoBytes = b,
+        ),
+        // Ley 172-13: el cliente autoriza que el prestamista use sus datos.
+        CasillaAcepto(
+          valor: _autorizaDatos,
+          onCambio: (v) => setState(() => _autorizaDatos = v),
+          texto: 'Autorizo a $_negocio a guardar y usar mis datos y fotos para evaluar '
+              'mi solicitud y administrar mi préstamo, según la',
+          conTerminos: false,
+          color: _azul,
         ),
       ],
     );
