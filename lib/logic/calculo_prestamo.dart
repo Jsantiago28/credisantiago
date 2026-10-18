@@ -6,6 +6,92 @@ library;
 /// Tolerancia para comparar montos (sumas de doubles).
 const _centavo = 0.005;
 
+/// Cómo se cobra el interés de un préstamo.
+enum TipoInteres {
+  /// Sobre lo que todavía se debe, con cuota fija (sistema francés): como
+  /// bancos y cooperativas. Cada cuota paga el interés del saldo y el resto
+  /// baja el capital. Es el de los préstamos nuevos desde el 17-10-2026.
+  saldo,
+
+  /// Sobre el monto prestado, todos los períodos (interés "plano"): como se
+  /// calculaban los préstamos de antes. Sale más caro con la misma tasa.
+  fijo;
+
+  /// Lo que se guarda en la base de datos (prestamos.tipo_interes).
+  String get valor => name;
+
+  String get nombre => switch (this) {
+        TipoInteres.saldo => 'sobre saldo (cuota fija)',
+        TipoInteres.fijo => 'fijo sobre el monto',
+      };
+}
+
+/// El método de interés de un préstamo guardado. Los de antes de que
+/// existiera la columna son "fijo".
+TipoInteres tipoInteresDe(Map<String, dynamic> prestamo) =>
+    prestamo['tipo_interes'] == 'saldo' ? TipoInteres.saldo : TipoInteres.fijo;
+
+/// La tasa de cada cuota: la mensual repartida por días (30 días = 1 mes).
+/// Ej. 20% mensual semanal → 20% × 7 ÷ 30 = 4.67% por semana.
+double tasaPorCuota(double tasaMensual, String frecuencia) =>
+    tasaMensual / 100 * diasPorCuota(frecuencia) / 30;
+
+double _centavos(double v) => (v * 100).roundToDouble() / 100;
+
+/// Una fila de la tabla de amortización.
+class FilaAmortizacion {
+  final int numero;
+  final double cuota;
+  final double interes;
+  final double capital;
+
+  /// Lo que queda debiendo de capital después de pagar esta cuota.
+  final double saldo;
+
+  const FilaAmortizacion(this.numero, this.cuota, this.interes, this.capital, this.saldo);
+}
+
+/// Tabla de amortización con cuota fija sobre saldo: en cada cuota el
+/// interés es el saldo × la tasa de la cuota, y el resto baja el capital. La
+/// última cuota termina de pagar lo que falte (absorbe el redondeo).
+List<FilaAmortizacion> amortizacionSobreSaldo({
+  required double monto,
+  required double tasaMensual,
+  required String frecuencia,
+  required int cantidadCuotas,
+  required double cuota,
+}) {
+  final i = tasaPorCuota(tasaMensual, frecuencia);
+  var saldo = monto;
+  return [
+    for (var n = 1; n <= cantidadCuotas; n++)
+      () {
+        final interes = _centavos(saldo * i);
+        final ultima = n == cantidadCuotas;
+        final capital = ultima ? saldo : _centavos(cuota - interes);
+        final pago = ultima ? (saldo + interes).roundToDouble() : cuota;
+        saldo = ultima ? 0.0 : _centavos(saldo - capital);
+        return FilaAmortizacion(n, pago, ultima ? pago - capital : interes, capital, saldo);
+      }(),
+  ];
+}
+
+/// Cuota fija (en pesos enteros) de un préstamo sobre saldo.
+double cuotaSobreSaldo({
+  required double monto,
+  required double tasaMensual,
+  required String frecuencia,
+  required int cantidadCuotas,
+}) {
+  final i = tasaPorCuota(tasaMensual, frecuencia);
+  if (i == 0) return (monto / cantidadCuotas).floorToDouble();
+  var potencia = 1.0;
+  for (var k = 0; k < cantidadCuotas; k++) {
+    potencia *= 1 + i;
+  }
+  return (monto * i / (1 - 1 / potencia)).roundToDouble();
+}
+
 /// Resultado de calcular un préstamo nuevo antes de confirmarlo.
 class PlanPrestamo {
   /// Días por los que se cobra interés. Se completan los períodos: ej. 30
@@ -20,8 +106,13 @@ class PlanPrestamo {
   /// Cuota normal, en pesos enteros.
   final double cuota;
 
-  /// La última cuota absorbe la diferencia del redondeo (≥ cuota).
+  /// La última cuota absorbe la diferencia del redondeo.
   final double ultimaCuota;
+
+  final TipoInteres tipo;
+
+  /// Tabla de amortización: cuota, interés, capital y saldo de cada cuota.
+  final List<FilaAmortizacion> filas;
 
   const PlanPrestamo({
     required this.diasCobrados,
@@ -30,7 +121,27 @@ class PlanPrestamo {
     required this.cantidadCuotas,
     required this.cuota,
     required this.ultimaCuota,
+    this.tipo = TipoInteres.fijo,
+    this.filas = const [],
   });
+}
+
+/// Tabla de amortización con interés fijo: cada cuota lleva la misma parte
+/// de interés (proporcional) y el resto es capital.
+List<FilaAmortizacion> _amortizacionFija(
+    double monto, double montoTotal, double cuota, int cantidadCuotas) {
+  final proporcion = montoTotal > 0 ? (montoTotal - monto) / montoTotal : 0.0;
+  var saldo = monto;
+  return [
+    for (var n = 1; n <= cantidadCuotas; n++)
+      () {
+        final pago = n == cantidadCuotas ? montoTotal - cuota * (cantidadCuotas - 1) : cuota;
+        final interes = _centavos(pago * proporcion);
+        final capital = n == cantidadCuotas ? saldo : _centavos(pago - interes);
+        saldo = n == cantidadCuotas ? 0.0 : _centavos(saldo - capital);
+        return FilaAmortizacion(n, pago, pago - capital, capital, saldo);
+      }(),
+  ];
 }
 
 /// Frecuencias de cobro que se pueden elegir al prestar.
@@ -98,11 +209,15 @@ DateTime fechaCuota(DateTime desembolso, String frecuencia, int numero) {
 /// Redondeo: el total se redondea a pesos enteros, las cuotas son pesos
 /// enteros y la última cuota absorbe la diferencia (ej: 6,500 en 45 cuotas
 /// → 44 de 144 y una última de 164).
+///
+/// [tipo] sobre saldo: cuota fija como en bancos y cooperativas (ver
+/// [amortizacionSobreSaldo]); el interés total sale menor que el fijo.
 PlanPrestamo calcularPlan({
   required double monto,
   required double tasaInteresMensual,
   required int diasPlazo,
   required String frecuencia, // diario / semanal / quincenal / mensual
+  TipoInteres tipo = TipoInteres.fijo,
 }) {
   if (monto <= 0) throw ArgumentError.value(monto, 'monto', 'debe ser mayor que 0');
   if (diasPlazo < 1) {
@@ -115,6 +230,38 @@ PlanPrestamo calcularPlan({
   final periodo = diasPorCuota(frecuencia);
   final cantidadCuotas = (diasPlazo / periodo).ceil();
   final diasCobrados = cantidadCuotas * periodo;
+
+  if (tipo == TipoInteres.saldo) {
+    final cuota = cuotaSobreSaldo(
+        monto: monto,
+        tasaMensual: tasaInteresMensual,
+        frecuencia: frecuencia,
+        cantidadCuotas: cantidadCuotas);
+    if (cuota < 1) {
+      throw ArgumentError.value(monto, 'monto', 'es muy poco para $cantidadCuotas cuotas');
+    }
+    final filas = amortizacionSobreSaldo(
+        monto: monto,
+        tasaMensual: tasaInteresMensual,
+        frecuencia: frecuencia,
+        cantidadCuotas: cantidadCuotas,
+        cuota: cuota);
+    final ultima = filas.last.cuota;
+    if (ultima < 1) {
+      throw ArgumentError.value(monto, 'monto', 'es muy poco para $cantidadCuotas cuotas');
+    }
+    final montoTotal = cuota * (cantidadCuotas - 1) + ultima;
+    return PlanPrestamo(
+      diasCobrados: diasCobrados,
+      interesTotal: montoTotal - monto,
+      montoTotal: montoTotal,
+      cantidadCuotas: cantidadCuotas,
+      cuota: cuota,
+      ultimaCuota: ultima,
+      tipo: tipo,
+      filas: filas,
+    );
+  }
 
   final montoTotal =
       (monto + monto * (tasaInteresMensual / 100) * (diasCobrados / 30)).roundToDouble();
@@ -129,6 +276,7 @@ PlanPrestamo calcularPlan({
     cantidadCuotas: cantidadCuotas,
     cuota: cuota,
     ultimaCuota: montoTotal - cuota * (cantidadCuotas - 1),
+    filas: _amortizacionFija(monto, montoTotal, cuota, cantidadCuotas),
   );
 }
 
@@ -161,7 +309,8 @@ bool estaSaldado(Map<String, dynamic> prestamo, double totalPagado) {
 /// Cronograma de cuotas a partir del préstamo guardado y lo ya cobrado. No
 /// se guarda en la base de datos. Cada cuota trae:
 ///  - 'monto': lo que vale (la última absorbe el redondeo),
-///  - 'interes': la parte de ganancia de esa cuota (proporcional),
+///  - 'interes': la parte de ganancia de esa cuota (proporcional si el
+///    interés es fijo; según la tabla de amortización si es sobre saldo),
 ///  - 'pendiente': lo que falta por cobrarle (0 si está pagada),
 ///  - 'pagada' y 'fecha'.
 /// Los pagos van cubriendo las cuotas en orden: una cuota está pagada
@@ -183,6 +332,17 @@ List<Map<String, dynamic>> generarCronograma({
   final monto = (prestamo['monto'] as num?)?.toDouble() ?? 0;
   final proporcionInteres = montoTotal > 0 ? (montoTotal - monto) / montoTotal : 0.0;
   final ultimaCuota = montoTotal - cuota * (cantidadCuotas - 1);
+  // Sobre saldo: el interés de cada cuota sale de la tabla de amortización
+  // (alto al principio, bajo al final), no en partes iguales.
+  final sobreSaldo = tipoInteresDe(prestamo) == TipoInteres.saldo
+      ? amortizacionSobreSaldo(
+          monto: monto,
+          tasaMensual: (prestamo['tasa_interes'] as num?)?.toDouble() ?? 0,
+          frecuencia: frecuencia,
+          cantidadCuotas: cantidadCuotas,
+          cuota: cuota,
+        )
+      : null;
 
   var acumulado = 0.0;
   return List.generate(cantidadCuotas, (i) {
@@ -195,7 +355,9 @@ List<Map<String, dynamic>> generarCronograma({
       'numero': numero,
       'fecha': fecha,
       'monto': montoCuota,
-      'interes': montoCuota * proporcionInteres,
+      'interes': sobreSaldo != null && i < sobreSaldo.length
+          ? sobreSaldo[i].interes.clamp(0.0, montoCuota)
+          : montoCuota * proporcionInteres,
       'pendiente': pendiente < _centavo ? 0.0 : pendiente,
       'pagada': pendiente < _centavo,
     };

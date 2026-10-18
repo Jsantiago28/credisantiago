@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../logic/calculo_prestamo.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/plazo.dart';
 import '../widgets/ui.dart';
 
 class PrestarScreen extends StatefulWidget {
@@ -51,7 +52,9 @@ class _PrestarScreenState extends State<PrestarScreen> {
 
   double get _monto => double.tryParse(_montoCtrl.text.replaceAll(',', '')) ?? 0;
   double get _interes => double.tryParse(_interesCtrl.text) ?? 0;
-  int get _dias => int.tryParse(_diasCtrl.text) ?? 0;
+  /// El plazo se escribe en meses (si no, en días).
+  bool _enMeses = false;
+  int get _dias => diasDelPlazo(int.tryParse(_diasCtrl.text) ?? 0, enMeses: _enMeses);
   double get _mora => double.tryParse(_moraCtrl.text) ?? -1;
   int get _gracia => int.tryParse(_graciaCtrl.text) ?? -1;
 
@@ -66,6 +69,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
         tasaInteresMensual: _interes,
         diasPlazo: _dias,
         frecuencia: _frecuencia,
+        tipo: TipoInteres.saldo,
       );
     } on ArgumentError {
       return null;
@@ -138,7 +142,25 @@ class _PrestarScreenState extends State<PrestarScreen> {
               onCambio: (f) => setState(() => _frecuencia = f),
             ),
             const SizedBox(height: 16),
-            _campo(_diasCtrl, 'Plazo total (días)'),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                    child: _campo(
+                        _diasCtrl, _enMeses ? 'Plazo total (meses)' : 'Plazo total (días)')),
+                const SizedBox(width: 10),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: SelectorUnidadPlazo(
+                    enMeses: _enMeses,
+                    onCambio: (meses) => setState(() {
+                      _diasCtrl.text = convertirPlazo(_diasCtrl.text, aMeses: meses);
+                      _enMeses = meses;
+                    }),
+                  ),
+                ),
+              ],
+            ),
             Row(
               children: [
                 Expanded(child: _campo(_moraCtrl, 'Mora diaria (%)')),
@@ -176,7 +198,9 @@ class _PrestarScreenState extends State<PrestarScreen> {
                   if (_plan != null && _plan!.diasCobrados != _dias)
                     _resumenFila('Plazo real',
                         '${_plan!.diasCobrados} días (${_plan!.cantidadCuotas} ${nombrePeriodos(_frecuencia)})'),
-                  _resumenFila('Interés (${_interes.toStringAsFixed(0)}%/mes × ${((_plan?.diasCobrados ?? _dias) / 30).toStringAsFixed(1)} mes)',
+                  _resumenFila(
+                      'Interés ${_interes.toStringAsFixed(_interes == _interes.roundToDouble() ? 0 : 2)}%'
+                      '/mes sobre saldo',
                       'RD\$ ${(_plan?.interesTotal ?? 0).toStringAsFixed(0)}'),
                   _resumenFila('Total a devolver',
                       'RD\$ ${(_plan?.montoTotal ?? 0).toStringAsFixed(0)}'),
@@ -191,6 +215,10 @@ class _PrestarScreenState extends State<PrestarScreen> {
                 ],
               ),
             ),
+            if (_plan != null) ...[
+              const SizedBox(height: 16),
+              TablaAmortizacion(plan: _plan!, frecuencia: _frecuencia, desde: DateTime.now()),
+            ],
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _guardando ? null : _confirmar,

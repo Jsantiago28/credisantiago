@@ -90,6 +90,9 @@ class DatosContrato {
 
   final double monto;
   final double tasaMensual;
+
+  /// Sobre saldo (cuota fija) o fijo sobre el monto.
+  final TipoInteres tipoInteres;
   final double montoTotal;
   final String frecuencia;
   final double moraDiaria;
@@ -108,6 +111,7 @@ class DatosContrato {
     this.clienteDomicilio,
     required this.monto,
     required this.tasaMensual,
+    this.tipoInteres = TipoInteres.fijo,
     required this.montoTotal,
     required this.frecuencia,
     required this.moraDiaria,
@@ -128,7 +132,9 @@ class DatosContrato {
         _ => 'Mensual',
       };
 
-  String get tasaTexto => tasaMensual > 0 ? '${_porcentaje(tasaMensual)}% mensual' : 'No aplica';
+  String get tasaTexto => tasaMensual > 0
+      ? '${_porcentaje(tasaMensual)}% mensual, ${tipoInteres.nombre}'
+      : 'No aplica';
 
   /// Cómo se cobra la mora, o null si el préstamo no tiene mora.
   String? get moraTexto {
@@ -175,6 +181,7 @@ DatosContrato datosContrato({
     clienteDomicilio: _texto(cliente, 'direccion'),
     monto: (prestamo['monto'] as num?)?.toDouble() ?? 0,
     tasaMensual: (prestamo['tasa_interes'] as num?)?.toDouble() ?? 0,
+    tipoInteres: tipoInteresDe(prestamo),
     montoTotal: montoTotalGuardado(prestamo),
     frecuencia: prestamo['frecuencia'] as String? ?? 'diario',
     moraDiaria: (prestamo['mora_diaria'] as num?)?.toDouble() ?? 0,

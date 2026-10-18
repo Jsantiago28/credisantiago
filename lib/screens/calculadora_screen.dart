@@ -3,6 +3,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../theme/app_theme.dart';
+import '../widgets/plazo.dart';
 import '../widgets/ui.dart';
 import 'nuevo_cliente_screen.dart';
 
@@ -23,11 +24,15 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
   final _dias = TextEditingController(text: '30');
   String _elegida = 'diario';
 
+  /// El plazo se escribe en meses (si no, en días).
+  bool _enMeses = false;
+
   static const _plazosRapidos = [15, 30, 45, 60, 90, 120];
+  static const _mesesRapidos = [1, 2, 3, 6, 12, 24, 36, 60];
 
   double get _montoValor => double.tryParse(_monto.text.replaceAll(',', '')) ?? 0;
   double get _tasaValor => double.tryParse(_tasa.text) ?? -1;
-  int get _diasValor => int.tryParse(_dias.text) ?? 0;
+  int get _diasValor => diasDelPlazo(int.tryParse(_dias.text) ?? 0, enMeses: _enMeses);
 
   /// El plan de cada frecuencia, o null si con estos datos no aplica.
   PlanPrestamo? _plan(String frecuencia) {
@@ -38,6 +43,7 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
         tasaInteresMensual: _tasaValor,
         diasPlazo: _diasValor,
         frecuencia: frecuencia,
+        tipo: TipoInteres.saldo,
       );
     } on ArgumentError {
       return null; // ej. monto muy chico para tantas cuotas
@@ -55,7 +61,8 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
   String _cotizacion() {
     final hoy = DateTime.now();
     final lineas = <String>[
-      'Préstamo de ${rd(_montoValor)} (${_tasa.text}% mensual, $_diasValor días):',
+      'Préstamo de ${rd(_montoValor)} (${_tasa.text}% mensual sobre saldo, '
+          '${_enMeses ? '${_dias.text} meses' : '$_diasValor días'}):',
       '',
     ];
     for (final f in frecuencias) {
@@ -82,22 +89,35 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
             children: [
               Expanded(child: _campo(_tasa, 'Interés mensual (%)')),
               const SizedBox(width: 10),
-              Expanded(child: _campo(_dias, 'Plazo (días)')),
+              Expanded(child: _campo(_dias, _enMeses ? 'Plazo (meses)' : 'Plazo (días)')),
             ],
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: SelectorUnidadPlazo(
+              enMeses: _enMeses,
+              onCambio: (meses) => setState(() {
+                _dias.text = convertirPlazo(_dias.text, aMeses: meses);
+                _enMeses = meses;
+              }),
+            ),
+          ),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final d in _plazosRapidos)
+              for (final n in _enMeses ? _mesesRapidos : _plazosRapidos)
                 ChoiceChip(
-                  label: Text(d % 30 == 0 ? '$d días (${d ~/ 30} mes${d == 30 ? '' : 'es'})' : '$d días'),
-                  selected: _diasValor == d,
+                  label: Text(_enMeses
+                      ? '$n mes${n == 1 ? '' : 'es'}'
+                      : (n % 30 == 0 ? '$n días (${n ~/ 30} mes${n == 30 ? '' : 'es'})' : '$n días')),
+                  selected: _dias.text == '$n',
                   selectedColor: AppColors.greenDark,
                   labelStyle: TextStyle(
-                      color: _diasValor == d ? AppColors.green : AppColors.grey,
+                      color: _dias.text == '$n' ? AppColors.green : AppColors.grey,
                       fontWeight: FontWeight.w600),
-                  onSelected: (_) => setState(() => _dias.text = '$d'),
+                  onSelected: (_) => setState(() => _dias.text = '$n'),
                 ),
             ],
           ),
@@ -105,13 +125,13 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
           const Text('Cómo quedaría',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text('Toca una opción para ver sus fechas de pago.',
+          Text('Interés sobre saldo, con cuota fija. Toca una opción para ver su tabla de pagos.',
               style: TextStyle(color: AppColors.grey, fontSize: 13)),
           const SizedBox(height: 12),
           for (final f in frecuencias) _opcion(f),
           if (elegido != null) ...[
             const SizedBox(height: 8),
-            _fechas(_elegida, elegido),
+            TablaAmortizacion(plan: elegido, frecuencia: _elegida, desde: DateTime.now()),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => Share.share(_cotizacion()),
@@ -189,44 +209,6 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
                 ),
               ],
             ),
-    );
-  }
-
-  /// Fechas de pago de la opción elegida, empezando hoy.
-  Widget _fechas(String f, PlanPrestamo p) {
-    final hoy = DateTime.now();
-    final n = p.cantidadCuotas;
-    // En diario pueden ser 90+ fechas: se muestran las primeras y la última.
-    final mostrar = n <= 8 ? List.generate(n, (i) => i + 1) : [1, 2, 3, 4, 5, n];
-    return Panel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Fechas de pago · ${_titulo(f)}',
-              style: const TextStyle(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          for (final numero in mostrar) ...[
-            if (numero == n && n > 8)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text('…', style: TextStyle(color: AppColors.grey)),
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  SizedBox(
-                      width: 44,
-                      child: Text('#$numero', style: TextStyle(color: AppColors.grey))),
-                  Expanded(child: Text(fechaLarga(fechaCuota(hoy, f, numero)))),
-                  Text(rd(numero == n ? p.ultimaCuota : p.cuota),
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 

@@ -119,7 +119,8 @@ void main() {
     expect(datos['estado'], 'en_calle');
     expect(datos['fecha_desembolso'], '2026-09-01');
     final plan = calcularPlan(
-        monto: 10000, tasaInteresMensual: 20, diasPlazo: 60, frecuencia: 'semanal');
+        monto: 10000, tasaInteresMensual: 20, diasPlazo: 60, frecuencia: 'semanal',
+        tipo: TipoInteres.saldo);
     expect(datos['monto_total'], plan.montoTotal);
     expect(datos['cantidad_cuotas'], plan.cantidadCuotas);
 

@@ -91,8 +91,12 @@ class SupabaseService {
   /// seguir, la app pide crear una contraseña nueva.
   bool pedirNuevaClave = false;
 
+  /// Acaba de iniciar sesión: el Inicio le da la bienvenida con su nombre.
+  bool bienvenidaPendiente = false;
+
   Future<void> entrarConClave(String email, String clave) async {
     await client.auth.signInWithPassword(email: email, password: clave);
+    bienvenidaPendiente = true;
   }
 
   /// Crea la cuenta con correo y contraseña. Supabase manda un código al
@@ -150,12 +154,14 @@ class SupabaseService {
     required String email,
     required String codigo,
     bool recuperarClave = false,
-  }) {
-    return client.auth.verifyOTP(
+  }) async {
+    final r = await client.auth.verifyOTP(
       email: email,
       token: codigo,
       type: recuperarClave ? OtpType.recovery : OtpType.email,
     );
+    bienvenidaPendiente = true;
+    return r;
   }
 
   // ---------------------------------------------------------
@@ -657,6 +663,7 @@ class SupabaseService {
     required int diasPlazo,
     required double moraDiaria, // % diario de lo que falta de la cuota
     required int diasGracia,
+    calc.TipoInteres tipo = calc.TipoInteres.saldo,
   }) async {
     if (moraDiaria < 0) throw ArgumentError.value(moraDiaria, 'moraDiaria');
     if (diasGracia < 0) throw ArgumentError.value(diasGracia, 'diasGracia');
@@ -665,6 +672,7 @@ class SupabaseService {
       tasaInteresMensual: tasaInteresMensual,
       diasPlazo: diasPlazo,
       frecuencia: frecuencia,
+      tipo: tipo,
     );
     final datos = {
       'monto': monto,
@@ -675,6 +683,7 @@ class SupabaseService {
       'mora_diaria': moraDiaria,
       'dias_gracia': diasGracia,
       'frecuencia': frecuencia,
+      'tipo_interes': tipo.valor,
       'fecha_desembolso': calc.fechaSql(DateTime.now()),
       'estado': 'en_calle',
     };

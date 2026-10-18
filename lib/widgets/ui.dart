@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'foto_privada.dart';
 
@@ -69,6 +70,31 @@ class Panel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "¡Bienvenido, Juan!" justo después de iniciar sesión (una sola vez por
+/// entrada; no al volver a abrir la app con la sesión ya abierta).
+void darBienvenida(BuildContext context, String nombre) {
+  final servicio = SupabaseService.instance;
+  if (!servicio.bienvenidaPendiente) return;
+  servicio.bienvenidaPendiente = false;
+  final primero = nombre.trim().split(RegExp(r'\s+')).first;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      duration: const Duration(seconds: 4),
+      content: Row(
+        children: [
+          const LogoApp(tamano: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(primero.isEmpty ? '¡Bienvenido a CrediSantiago!' : '¡Bienvenido, $primero!',
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+          ),
+        ],
+      ),
+    ));
+  });
 }
 
 /// El logo de CrediSantiago (la "C" con la flecha), con las esquinas

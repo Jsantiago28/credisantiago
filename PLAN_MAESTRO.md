@@ -31,6 +31,7 @@
 | Gráficas del negocio | ✅ Completo |
 | Colores claro y oscuro (lo elige cada quien en Perfil) | ✅ Hecho (13-10-2026) |
 | Historial de pagos del cliente (todos sus préstamos, en pantalla y en PDF para mandárselo) | ✅ Hecho (15-10-2026) |
+| Interés sobre saldo (como la cooperativa), plazo en meses, tabla de amortización, cierre de sesión a los 40 minutos sin uso y bienvenida con el nombre | ✅ Hecho (17-10-2026) |
 | Invitar a otros prestamistas (link /i/..., 1 mes gratis al que invita cuando el invitado paga) | ✅ Hecho (14-10-2026) |
 | Entrar con correo y contraseña; "Registrarme" aparte (código al correo solo para confirmarlo); "¿Olvidaste tu contraseña?" entra con código y pide una nueva; cédula y fotos del prestamista al registrarse | ✅ Hecho (14-10-2026) |
 | Plan para ser competitivos (precios nuevos, recibo personalizado, gastos, cobradores, impresora, contrato, APK) | 🔨 En curso: precios nuevos, recibo personalizado y gastos hechos (29-09-2026); cobradores hechos (29-09-2026); impresora hecha sin probar con una real (29-09-2026); importar desde Excel hecho (29-09-2026); contrato hecho (13-10-2026); sigue el APK |
@@ -285,6 +286,7 @@ Con esto, el mercado cobra **entre RD$180 y RD$400 al mes**. Nuestro Básico de 
 | Tema | Regla |
 |---|---|
 | Interés | La tasa es **mensual** y se reparte por días (30 días = 1 mes). |
+| Método de interés (17-10-2026) | Los préstamos nuevos se cobran **sobre saldo con cuota fija** (sistema francés), igual que la cooperativa: cada cuota paga el interés de lo que se debe y el resto baja el capital (`lib/logic/calculo_prestamo.dart`, `TipoInteres.saldo`). Comprobado con su tabla: 2,060,000 al 1.8333% por 60 meses da cuota 56,894 (ellos 56,894.49) e interés total ~1,353,669. Los préstamos de antes quedan "fijo" (sobre el monto, columna `prestamos.tipo_interes`), que con la misma tasa cobraba ~912 mil más en ese ejemplo. Calculadora y Prestar muestran la tabla de amortización y aceptan el plazo en días o meses (1 mes = 30 días). |
 | Tasa semanal | Se deja como está: `20% × 7 ÷ 30 = 4.67%` por semana (RD$10,000 a 4 semanas = RD$1,867). La regla `20% ÷ 4 = 5%` daría RD$2,000. |
 | Plazo que no cuadra | Se completa el período: 30 días semanal = 5 semanas (35 días de interés); 45 días mensual = 2 meses. |
 | Mensual | Mismo día de cada mes; si el mes es más corto, el último día (31 ene → 28 feb). |
@@ -334,6 +336,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 19 | `migracion_2026_10_13_contrato.sql` | Cédula o RNC y ciudad del prestamista para el contrato |
 | 20 | `migracion_2026_10_13_link_publico.sql` | El link de solicitudes encuentra al prestamista sin sesión (solo id, nombre, negocio, teléfono y si exige evidencias) |
 | 21 | `migracion_2026_10_14_invitaciones.sql` | Invitaciones entre prestamistas: link /i/{slug}, "invitado por" y premio de 1 mes gratis (lo da el admin cuando el invitado paga su primer plan) |
+| 23 | `migracion_2026_10_17_interes_sobre_saldo.sql` | Columna `tipo_interes` en préstamos (los de antes quedan "fijo"; los nuevos, "saldo"). Correr ANTES de publicar la versión que presta sobre saldo |
 | 22 | `migracion_2026_10_14_registro.sql` | Cédula del prestamista (número y fotos de los dos lados) al registrarse; solo el admin ve esas fotos |
 
 `schema.sql` refleja el esquema completo al día.

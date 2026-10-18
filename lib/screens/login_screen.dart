@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
+import '../services/inactividad.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart' show LogoApp;
@@ -46,6 +47,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   String get _email => _emailCtrl.text.trim();
+
+  @override
+  void initState() {
+    super.initState();
+    // Se cerró sola por 40 minutos sin usarse: se le explica por qué.
+    if (Inactividad.cerradaPorInactividad) {
+      Inactividad.cerradaPorInactividad = false;
+      _error = 'Tu sesión se cerró porque la app estuvo '
+          '${Inactividad.limite.inMinutes} minutos sin usarse. Entra de nuevo.';
+    }
+  }
 
   @override
   void dispose() {

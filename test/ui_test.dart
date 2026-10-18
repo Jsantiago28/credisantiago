@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prestamistas_rd/logic/caja.dart';
+import 'package:prestamistas_rd/logic/calculo_prestamo.dart';
 import 'package:prestamistas_rd/logic/gastos.dart';
 import 'package:prestamistas_rd/screens/caja_screen.dart';
 import 'package:prestamistas_rd/screens/calculadora_screen.dart';
@@ -78,9 +79,13 @@ void main() {
     expect(find.text('Diario'), findsOneWidget);
     expect(find.text('Quincenal'), findsOneWidget);
     expect(find.text('Mensual'), findsOneWidget);
-    expect(find.text('RD\$400'), findsWidgets); // 30 cuotas diarias de 400
-    expect(find.text('RD\$6,000'), findsOneWidget); // 2 quincenas
-    expect(find.text('RD\$12,000'), findsOneWidget); // 1 mes
+    // Interés sobre saldo: la cuota sale de la misma fórmula que usa la app.
+    String cuota(String f) => rd(calcularPlan(
+            monto: 10000, tasaInteresMensual: 20, diasPlazo: 30, frecuencia: f, tipo: TipoInteres.saldo)
+        .cuota);
+    expect(find.text(cuota('diario')), findsWidgets);
+    expect(find.text(cuota('quincenal')), findsWidgets);
+    expect(find.text('RD\$12,000'), findsWidgets); // 1 mes: 10,000 + 20%
 
     // Monto grande: nada se desborda.
     await tester.enterText(find.byType(TextField).first, '1250000');
@@ -109,8 +114,10 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'con monto "$texto"');
     }
     expect(find.textContaining('muy bajo'), findsNothing);
-    // 45 días semanal = 7 semanas (49 días): 15,000 + 20% × 49/30 = 19,900 → cuotas de 2,842.
-    expect(find.text('RD\$ 2842'), findsOneWidget);
+    // 45 días semanal = 7 semanas, interés sobre saldo.
+    final plan = calcularPlan(
+        monto: 15000, tasaInteresMensual: 20, diasPlazo: 45, frecuencia: 'semanal', tipo: TipoInteres.saldo);
+    expect(find.text('RD\$ ${plan.cuota.toStringAsFixed(0)}'), findsOneWidget);
   });
 
   testWidgets('Prestar: con "1" peso avisa que el monto es muy bajo', (tester) async {

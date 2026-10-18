@@ -94,6 +94,7 @@ class PrestamoImportado {
       tasaInteresMensual: interesMensual,
       diasPlazo: diasPlazo,
       frecuencia: frecuencia,
+      tipo: TipoInteres.saldo,
     );
     final d = <String, dynamic>{
       'monto': monto,
@@ -104,6 +105,7 @@ class PrestamoImportado {
       'mora_diaria': moraDiaria,
       'dias_gracia': diasGracia,
       'frecuencia': frecuencia,
+      'tipo_interes': TipoInteres.saldo.valor,
       'fecha_desembolso': fechaSql(fecha),
     };
     final saldado = yaPago >= plan.montoTotal;
@@ -118,6 +120,7 @@ class PrestamoImportado {
         tasaInteresMensual: interesMensual,
         diasPlazo: diasPlazo,
         frecuencia: frecuencia,
+        tipo: TipoInteres.saldo,
       ).montoTotal;
 }
 

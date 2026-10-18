@@ -87,7 +87,7 @@ void main() {
       expect(d.ciudad, 'Santo Domingo Este');
       expect(d.cliente, 'Juan Pérez');
       expect(d.clienteDomicilio, 'Calle 5 #12, Los Mina');
-      expect(d.tasaTexto, '20% mensual');
+      expect(d.tasaTexto, '20% mensual, fijo sobre el monto'); // préstamo de antes, sin tipo
       expect(d.frecuenciaTexto, 'Semanal');
       expect(d.moraTexto,
           '5% diario sobre lo que falte de la cuota vencida, después de 1 día de gracia');

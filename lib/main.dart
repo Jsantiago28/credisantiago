@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/inactividad.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
@@ -19,7 +20,9 @@ Future<void> main() async {
     publishableKey: SupabaseConfig.anonKey,
   );
   await ModoColor.cargar();
-  runApp(const PrestamistasRDApp());
+  // Si la app se dejó más de 40 minutos sin usar, se entra de nuevo.
+  await Inactividad.revisarAlAbrir();
+  runApp(const VigilanteInactividad(child: PrestamistasRDApp()));
 }
 
 class PrestamistasRDApp extends StatelessWidget {

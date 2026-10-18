@@ -33,6 +33,12 @@ class _CobradorShellState extends State<CobradorShell> {
       });
 
   @override
+  void initState() {
+    super.initState();
+    darBienvenida(context, widget.sesion.cobradorNombre);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = widget.sesion;
     return Scaffold(
