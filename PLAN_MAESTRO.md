@@ -189,7 +189,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 - ✅ Aviso de "versión nueva" dentro del APK (18-10-2026): en Admin → Ajustes se pone la última versión y el enlace de Drive.
 - ✅ Huecos menores de seguridad (18-10-2026): freno a solicitudes falsas en la base de datos, cobradores bloqueados si al jefe se le vence el plan, funciones del plan cerradas. Un captcha de verdad (Cloudflare Turnstile, gratis) queda para cuando haya dominio.
 - ✅ Ganancias exactas con el descuento al saldar antes (18-10-2026): gráficas, "Ya llevas" y Saldados.
-- ✅ El cobrador ve la foto de la cara de sus clientes (18-10-2026; tocarla la agranda). Falta: entrar con WhatsApp/SMS.
+- ✅ El cobrador ve la foto de la cara de sus clientes (18-10-2026; tocarla la agranda). Entrar con WhatsApp/SMS: descartado por el dueño (18-10-2026).
 - ⬜ Funcionar sin internet (el cambio más grande; ya está pensado cómo).
 
 **3. Cuando haya dinero:** dominio credisantiago.com (US$10.46/año), correo con el dominio (Resend, gratis), Google Play (US$25 una vez), Supabase Pro (US$25/mes, con unos 5 prestamistas pagando) y avisos al instante con Firebase.
