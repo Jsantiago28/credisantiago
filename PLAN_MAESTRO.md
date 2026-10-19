@@ -170,6 +170,32 @@
 
 La app ya hace todo lo que un prestamista necesita (solicitudes por link, préstamos con interés sobre saldo, cobros, mora, recibos, contrato, cobradores, reportes, planes, web y APK). Lo que falta es sobre todo **legal, de confianza y de prueba con gente real**. ✅ = hecho · ⬜ = falta.
 
+### 📋 Resumen de lo que falta (al 18-10-2026, APK 1.0.6)
+
+**Ya listo en código:** todo lo de la app. Lo último: eliminar (archivar) clientes, saldar préstamo antes de tiempo, aviso de errores, GPS de cobros, recordatorio diario, términos y privacidad, borrar cuenta, página de presentación y primeros pasos.
+
+**1. Lo que hace el dueño (sin programar), lo primero:**
+- ⬜ Correr en Supabase las migraciones 23 a 29 (de interés sobre saldo a saldar antes) y subir el zip a Netlify.
+- ⬜ Probar el APK 1.0.6 en un teléfono Android (permisos de avisos y ubicación, saldar, eliminar cliente).
+- ⬜ Admin → Ajustes: WhatsApp de soporte y las cuentas de banco (BHD y Popular).
+- ⬜ Limpiar los datos de prueba con `supabase/limpieza_datos_de_prueba.sql`.
+- ⬜ Prueba piloto: 3 a 5 prestamistas reales por 2-4 semanas (y una impresora térmica de verdad).
+- ⬜ ONAPI: registrar el nombre CrediSantiago.
+- ⬜ Contador: RNC y cómo declarar lo que se cobre por los planes.
+- ⬜ Cambiar la contraseña de aplicación de Gmail (se escribió en el chat).
+
+**2. Lo que falta programar (gratis):**
+- ⬜ Activar el plan cuando pagan: elegir A (sola al subir el comprobante), B (el admin con un toque) o C (tarjeta, más adelante).
+- ⬜ Aviso de "versión nueva" dentro del APK.
+- ⬜ Huecos menores de seguridad: captcha en el link de solicitudes, cobradores activos cuando al jefe se le vence el plan, funciones de consulta abiertas.
+- ⬜ Gráfica de ganancias: tomar en cuenta el descuento al saldar antes (hoy sale un poco más alta en esos préstamos).
+- ⬜ Que el cobrador vea las fotos de sus clientes; entrar con WhatsApp/SMS.
+- ⬜ Funcionar sin internet (el cambio más grande; ya está pensado cómo).
+
+**3. Cuando haya dinero:** dominio credisantiago.com (US$10.46/año), correo con el dominio (Resend, gratis), Google Play (US$25 una vez), Supabase Pro (US$25/mes, con unos 5 prestamistas pagando) y avisos al instante con Firebase.
+
+**4. Bloqueado:** app de iPhone (US$99/año + una Mac). En iPhone se usa la web.
+
 ### A. Imprescindible antes de cobrarle a alguien
 1. ⬜ **ONAPI:** buscar y registrar "CrediSantiago" (nombre comercial y marca). Sin esto, otro puede registrarlo y obligarte a cambiar el nombre.
 2. ✅ (18-10-2026: `web/terminos.html` y `web/privacidad.html`, en /terminos y /privacidad; casilla obligatoria al registrarse y al enviar la solicitud; se anota cuándo se aceptó) **Términos de uso y política de privacidad** (Ley 172-13 de datos personales), publicados en la web y aceptados con una casilla al registrarse (prestamista) y al enviar la solicitud (cliente). La app guarda cédulas, fotos e ingresos: es lo mínimo. Deben decir que CrediSantiago es una herramienta y **no presta dinero** (cada prestamista responde por sus préstamos). Se pueden redactar en la app sin abogado (decisión del dueño, 14-10-2026).
@@ -381,6 +407,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 19 | `migracion_2026_10_13_contrato.sql` | Cédula o RNC y ciudad del prestamista para el contrato |
 | 20 | `migracion_2026_10_13_link_publico.sql` | El link de solicitudes encuentra al prestamista sin sesión (solo id, nombre, negocio, teléfono y si exige evidencias) |
 | 21 | `migracion_2026_10_14_invitaciones.sql` | Invitaciones entre prestamistas: link /i/{slug}, "invitado por" y premio de 1 mes gratis (lo da el admin cuando el invitado paga su primer plan) |
+| 22 | `migracion_2026_10_14_registro.sql` | Cédula del prestamista (número y fotos de los dos lados) al registrarse; solo el admin ve esas fotos |
 | 23 | `migracion_2026_10_17_interes_sobre_saldo.sql` | Columna `tipo_interes` en préstamos (los de antes quedan "fijo"; los nuevos, "saldo"). Correr ANTES de publicar la versión que presta sobre saldo |
 | 24 | `migracion_2026_10_17_logo_prestamista.sql` | El logo del prestamista sale en su app y en su formulario /s/... (los logos se pueden ver sin sesión; lo demás sigue privado) |
 | 25 | `migracion_2026_10_18_contrato_firmado.sql` | Contrato firmado de cada préstamo (fotos o PDF) en la carpeta privada del prestamista; la carpeta acepta PDF |
@@ -388,17 +415,16 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 27 | `migracion_2026_10_18_errores_y_gps.sql` | Tabla de errores de la app (solo el admin la ve) y dónde se hizo cada cobro (pagos.lat / pagos.lng) |
 | 28 | `migracion_2026_10_18_archivar_clientes.sql` | Eliminar (archivar) clientes sin préstamo en la calle y restaurarlos; los archivados no cuentan para el límite del plan |
 | 29 | `migracion_2026_10_18_saldar_antes.sql` | Saldar antes de tiempo: pagos.descuento (interés perdonado, no es dinero recibido); el cobrador no puede dar descuentos |
-| 22 | `migracion_2026_10_14_registro.sql` | Cédula del prestamista (número y fotos de los dos lados) al registrarse; solo el admin ve esas fotos |
 
 `schema.sql` refleja el esquema completo al día.
 
 ## Cómo sacar el APK de Android
-1. En esta PC ya están Java 17 y el Android SDK, en `C:SERSYPENANDROID` (INSTALADOS SIN ADMINISTRADOR).
-2. `FLUTTER BUILD APK --RELEASE` � QUEDA EN `BUILDPPOUTPUTSLUTTER-APKPP-RELEASE.APK`. SE MANDA POR WHATSAPP; AL INSTALAR, ANDROID PIDE PERMITIR "INSTALAR APPS DE ORIGEN DESCONOCIDO".
-3. �ϸ� **LA LLAVE DE FIRMA** ESTá EN `C:SERSYPENANDROIDEDISANTIAGO-FIRMA.JKS` Y SU CONTRASEñA EN `ANDROIDKEY.PROPERTIES` (LOS DOS FUERA DE GITHUB). **HAY QUE GUARDAR COPIA DE LOS DOS** (DRIVE, USB): SIN ELLOS NO SE PUEDEN PUBLICAR ACTUALIZACIONES DEL APK NI SUBIRLO A GOOGLE PLAY CON LA MISMA APP.
-4. PARA CADA VERSIóN NUEVA, SUBIR `VERSION:` EN `PUBSPEC.YAML` (EJ. `1.0.1+2`): ANDROID NO INSTALA ENCIMA UNA VERSIóN CON EL MISMO NúMERO.
+1. En esta PC ya están Java 17 y el Android SDK, en `C:\Users\ypena\android` (instalados sin administrador). Antes de compilar: `JAVA_HOME=C:\Users\ypena\android\jdk` y `ANDROID_HOME=C:\Users\ypena\android\sdk`.
+2. `flutter build apk --release` → queda en `build\app\outputs\flutter-apk\app-release.apk` (se copia al escritorio como `CrediSantiago.apk`). Se manda por WhatsApp o Drive; al instalar, Android pide permitir "instalar apps desconocidas".
+3. ⚠️ **La llave de firma** está en `C:\Users\ypena\android\credisantiago-firma.jks` y su contraseña en `android\key.properties` (los dos fuera de GitHub; copia en el correo y en Drive). **Si se pierde, los teléfonos no podrán actualizar la app.**
+4. Para cada versión nueva, subir `version:` en `pubspec.yaml` (ej. `1.0.6+7` → `1.0.7+8`): Android no instala encima una versión con el mismo número. El APK se saca solo cuando se terminan todos los cambios del día.
 
-## CóMO PUBLICAR UNA VERSIóN NUEVA
+## Cómo publicar una versión nueva (web)
 1. `flutter build web --release`
 2. En app.netlify.com → proyecto **prestamistas-rd** → arrastrar el .zip de `build\web` en el recuadro de subir.
 3. En el celular, cerrar la pestaña y abrir de nuevo.
