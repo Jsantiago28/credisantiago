@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../logic/archivo_clientes.dart';
 import '../logic/busqueda.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -91,7 +92,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
   }
 
   Widget _cuerpo() {
-    final todos = _todos;
+    // Los eliminados (archivados) no salen en la lista: se ven aparte.
+    final todos = _todos?.where((c) => !estaArchivado(c)).toList();
+    final eliminados = _todos?.where(estaArchivado).toList() ?? const [];
     if (todos == null) {
       if (_error == null) return const Center(child: CircularProgressIndicator());
       return Center(
@@ -136,7 +139,7 @@ class _ClientesScreenState extends State<ClientesScreen> {
               onVolver: _cargar,
             );
           }
-          if (todos.isEmpty) {
+          if (todos.isEmpty && eliminados.isEmpty) {
             return const Vacio(
               icono: Icons.people_outline,
               texto: 'Todavía no tienes clientes.\n'
@@ -170,11 +173,23 @@ class _ClientesScreenState extends State<ClientesScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text(
-                    busqueda.isEmpty
-                        ? '${todos.length} cliente(s)'
-                        : '${clientes.length} de ${todos.length} cliente(s)',
-                    style: TextStyle(color: AppColors.grey)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                          busqueda.isEmpty
+                              ? '${todos.length} cliente(s)'
+                              : '${clientes.length} de ${todos.length} cliente(s)',
+                          style: TextStyle(color: AppColors.grey)),
+                    ),
+                    if (eliminados.isNotEmpty)
+                      TextButton.icon(
+                        onPressed: () => _abrir(ClientesEliminadosScreen(clientes: eliminados)),
+                        icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                        label: Text('Eliminados (${eliminados.length})'),
+                      ),
+                  ],
+                ),
               ],
             ),
           );
@@ -307,6 +322,80 @@ class _ClienteCardState extends State<_ClienteCard> {
           ),
           const SizedBox(width: 8),
           accion,
+        ],
+      ),
+    );
+  }
+}
+
+/// Clientes eliminados de la lista (archivados): se pueden ver y restaurar.
+class ClientesEliminadosScreen extends StatefulWidget {
+  final List<Map<String, dynamic>> clientes;
+  const ClientesEliminadosScreen({super.key, required this.clientes});
+
+  @override
+  State<ClientesEliminadosScreen> createState() => _ClientesEliminadosScreenState();
+}
+
+class _ClientesEliminadosScreenState extends State<ClientesEliminadosScreen> {
+  late final _clientes = [...widget.clientes];
+
+  Future<void> _restaurar(Map<String, dynamic> c) async {
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      await SupabaseService.instance.restaurarCliente(c['id'] as String);
+      setState(() => _clientes.remove(c));
+      mensajero.showSnackBar(SnackBar(content: Text('${c['nombre'] ?? 'Cliente'} volvió a tu lista')));
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo restaurar: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Clientes eliminados')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+              'Sus préstamos pagados, cobros y fotos se guardaron. Restaura uno para que '
+              'vuelva a tu lista y le puedas prestar otra vez.',
+              style: TextStyle(color: AppColors.grey, fontSize: 13)),
+          const SizedBox(height: 12),
+          if (_clientes.isEmpty)
+            const Vacio(icono: Icons.inventory_2_outlined, texto: 'No hay clientes eliminados.'),
+          for (final c in _clientes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Panel(
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => ClienteDetalleScreen(clienteId: c['id'] as String),
+                )),
+                child: Row(
+                  children: [
+                    AvatarIniciales(
+                        nombre: c['nombre'] ?? '', fotoUrl: c['foto_cara_url'] as String?),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(c['nombre'] ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w800)),
+                          if ((c['cedula'] as String?)?.isNotEmpty == true)
+                            Text('Cédula ${c['cedula']}',
+                                style: TextStyle(color: AppColors.grey, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    TextButton(onPressed: () => _restaurar(c), child: const Text('Restaurar')),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../logic/archivo_clientes.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/historial.dart';
 import '../logic/historial_pagos.dart';
@@ -89,6 +90,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
   }
 
   bool get _puedePrestar =>
+      !estaArchivado(_cliente ?? const {}) &&
       !_prestamos.any((p) => p.prestamo['estado'] == 'en_calle' || p.prestamo['estado'] == 'borrador');
 
   Future<void> _prestar(Map<String, dynamic> prestamo) async {
@@ -148,7 +150,8 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                     children: [
-                      _encabezado(c!),
+                      if (estaArchivado(c!)) _avisoArchivado(c),
+                      _encabezado(c),
                       SelectorCobrador(cliente: c),
                       _fotos(c),
                       _titulo('Préstamos'),
@@ -219,6 +222,18 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                             ]),
                       _titulo('Historial de cambios'),
                       _historial(c),
+                      if (!estaArchivado(c)) ...[
+                        const SizedBox(height: 24),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.red,
+                            side: BorderSide(color: AppColors.red.withValues(alpha: 0.5)),
+                          ),
+                          onPressed: () => _eliminar(c),
+                          icon: const Icon(Icons.person_remove_rounded),
+                          label: const Text('Eliminar cliente'),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -456,6 +471,78 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
       await compartirContrato(prestamo);
     } catch (e) {
       mensajero.showSnackBar(SnackBar(content: Text('No se pudo hacer el contrato: $e')));
+    }
+  }
+
+  /// Arriba de la ficha de un cliente archivado: desde cuándo, y Restaurar.
+  Widget _avisoArchivado(Map<String, dynamic> c) {
+    final fecha = DateTime.tryParse(c['archivado_en'] as String? ?? '')?.toLocal();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Panel(
+        borde: AppColors.amber.withValues(alpha: 0.5),
+        child: Row(
+          children: [
+            Icon(Icons.inventory_2_rounded, color: AppColors.amber),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                  'Cliente eliminado de tu lista${fecha == null ? '' : ' el ${fechaLarga(fecha)}'}. '
+                  'Sus préstamos y cobros se guardaron.',
+                  style: const TextStyle(fontSize: 13)),
+            ),
+            TextButton(onPressed: _restaurar, child: const Text('Restaurar')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Quita al cliente de la lista (queda archivado y se puede restaurar).
+  /// Solo si no tiene un préstamo en la calle.
+  Future<void> _eliminar(Map<String, dynamic> c) async {
+    final mensajero = ScaffoldMessenger.of(context);
+    if (_prestamos.any((p) => prestamoActivo(p.prestamo['estado'] as String?))) {
+      mensajero.showSnackBar(SnackBar(content: Text('${const ClienteConPrestamo()}')));
+      return;
+    }
+    final seguro = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('¿Eliminar a ${c['nombre'] ?? 'este cliente'}?'),
+        content: const Text(
+            'Sale de tu lista de clientes y deja de contar para tu plan. No se pierde nada: '
+            'sus préstamos pagados, cobros y fotos quedan guardados en "Clientes eliminados", '
+            'y lo puedes restaurar cuando quieras.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text('Sí, eliminar', style: TextStyle(color: AppColors.red)),
+          ),
+        ],
+      ),
+    );
+    if (seguro != true || !mounted) return;
+    final navegador = Navigator.of(context);
+    try {
+      await SupabaseService.instance.archivarCliente(c['id'] as String);
+      mensajero.showSnackBar(SnackBar(content: Text('${c['nombre'] ?? 'Cliente'} eliminado de tu lista')));
+      navegador.pop();
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo eliminar: $e')));
+    }
+  }
+
+  Future<void> _restaurar() async {
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      await SupabaseService.instance.restaurarCliente(widget.clienteId);
+      mensajero.showSnackBar(const SnackBar(content: Text('Cliente restaurado: ya está en tu lista')));
+      _cargar();
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo restaurar: $e')));
     }
   }
 

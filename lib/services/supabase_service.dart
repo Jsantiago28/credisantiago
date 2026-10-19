@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../logic/archivo_clientes.dart';
 import '../logic/caja.dart' as caja;
 import '../logic/cobradores.dart' as cob;
 import '../logic/calculo_prestamo.dart' as calc;
@@ -470,10 +471,14 @@ class SupabaseService {
   Future<Map<String, dynamic>?> obtenerAjustes() =>
       client.from('ajustes_app').select().eq('id', 1).maybeSingle();
 
-  /// Cuántos clientes tiene el prestamista.
+  /// Cuántos clientes tiene el prestamista en su lista (los archivados no
+  /// cuentan para el plan).
   Future<int> contarClientes(String prestamistaId) async {
-    final filas = await client.from('clientes').select('id').eq('prestamista_id', prestamistaId);
-    return filas.length;
+    final filas = await _conArchivo(() => client
+        .from('clientes')
+        .select(_hayArchivoClientes ? 'id, archivado_en' : 'id')
+        .eq('prestamista_id', prestamistaId));
+    return filas.where((c) => !estaArchivado(c)).length;
   }
 
   // ---------------------------------------------------------
@@ -601,12 +606,12 @@ class SupabaseService {
   }) async {
     final repetido = await client
         .from('clientes')
-        .select('id, nombre')
+        .select() // con archivado_en, si ya se corrió la migración
         .eq('prestamista_id', prestamistaId)
         .eq('cedula', datos['cedula'])
         .maybeSingle();
     if (repetido != null) {
-      throw ClienteRepetido(repetido['nombre'] as String? ?? '');
+      throw ClienteRepetido(repetido['nombre'] as String? ?? '', eliminado: estaArchivado(repetido));
     }
 
     final cliente = await _conLimite(() => client
@@ -627,13 +632,65 @@ class SupabaseService {
     return (cliente: cliente, prestamo: prestamo);
   }
 
-  /// Lista corta de clientes (para buscar mientras se escribe).
+  /// Lista corta de clientes (para buscar mientras se escribe). Trae
+  /// también los archivados (con `archivado_en`), para avisar de repetidos.
   Future<List<Map<String, dynamic>>> listarClientes(String prestamistaId) {
-    return client
+    return _conArchivo(() => client
         .from('clientes')
-        .select('id, prestamista_id, nombre, cedula, telefono, direccion, foto_cara_url')
+        .select('id, prestamista_id, nombre, cedula, telefono, direccion, foto_cara_url'
+            '')
         .eq('prestamista_id', prestamistaId)
-        .order('nombre');
+        .order('nombre'));
+  }
+
+  /// false si la base de datos todavía no tiene clientes.archivado_en.
+  bool _hayArchivoClientes = true;
+
+  Future<T> _conArchivo<T>(Future<T> Function() consulta) async {
+    try {
+      return await consulta();
+    } on PostgrestException catch (e) {
+      if (!_hayArchivoClientes || !e.message.contains('archivado_en')) rethrow;
+      _hayArchivoClientes = false;
+      return consulta();
+    }
+  }
+
+  /// Quita al cliente de la lista sin borrarlo: queda archivado con sus
+  /// préstamos pagados, cobros y fotos, y se puede restaurar. Solo si no
+  /// tiene un préstamo en la calle; los préstamos sin entregar (borrador)
+  /// se cancelan.
+  Future<void> archivarCliente(String clienteId) async {
+    final prestamos = await client
+        .from('prestamos')
+        .select('id, estado')
+        .eq('cliente_id', clienteId);
+    if (prestamos.any((p) => prestamoActivo(p['estado'] as String?))) {
+      throw const ClienteConPrestamo();
+    }
+    try {
+      await client.from('clientes').update({
+        'archivado_en': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', clienteId);
+    } on PostgrestException catch (e) {
+      if (e.message.contains('TIENE_PRESTAMO')) throw const ClienteConPrestamo();
+      if (e.message.contains('archivado_en')) throw const FaltaMigracionArchivo();
+      rethrow;
+    }
+    final borradores = [
+      for (final p in prestamos)
+        if (p['estado'] == 'borrador') p['id'] as String,
+    ];
+    if (borradores.isNotEmpty) {
+      await client.from('prestamos').update({'estado': 'cancelado'}).inFilter('id', borradores);
+    }
+  }
+
+  /// Vuelve a poner en la lista a un cliente archivado (respeta el límite
+  /// del plan).
+  Future<void> restaurarCliente(String clienteId) async {
+    await _conLimite(
+        () => client.from('clientes').update({'archivado_en': null}).eq('id', clienteId));
   }
 
   /// Todos los datos de un cliente (los que copió de su solicitud).
@@ -1224,11 +1281,12 @@ class SupabaseService {
 
   /// Clientes con su cobrador, para repartir la ruta.
   Future<List<Map<String, dynamic>>> clientesParaRepartir(String prestamistaId) async {
-    return client
+    final filas = await _conArchivo(() => client
         .from('clientes')
         .select('id, nombre, direccion, cobrador_id')
         .eq('prestamista_id', prestamistaId)
-        .order('nombre');
+        .order('nombre'));
+    return filas.where((c) => !estaArchivado(c)).toList();
   }
 
   /// Cobros de hoy del cobrador que usa la app (para "Mi caja").
@@ -1442,10 +1500,31 @@ class PrestamoConDatos {
 /// Ya existe un cliente con esa cédula para este prestamista.
 class ClienteRepetido implements Exception {
   final String nombre;
-  const ClienteRepetido(this.nombre);
+  /// El que tiene esa cédula está en "Clientes eliminados".
+  final bool eliminado;
+  const ClienteRepetido(this.nombre, {this.eliminado = false});
 
   @override
-  String toString() => 'Ya tienes un cliente con esa cédula: $nombre';
+  String toString() => eliminado
+      ? 'Ya tienes un cliente con esa cédula: $nombre. Está en Clientes → Eliminados: restáuralo.'
+      : 'Ya tienes un cliente con esa cédula: $nombre';
+}
+
+/// No se puede archivar: el cliente tiene un préstamo en la calle.
+class ClienteConPrestamo implements Exception {
+  const ClienteConPrestamo();
+
+  @override
+  String toString() =>
+      'Tiene un préstamo en la calle. Solo se puede eliminar cuando lo termine de pagar.';
+}
+
+/// Falta correr migracion_2026_10_18_archivar_clientes.sql.
+class FaltaMigracionArchivo implements Exception {
+  const FaltaMigracionArchivo();
+
+  @override
+  String toString() => 'Falta actualizar la base de datos (migración archivar_clientes).';
 }
 
 /// El plan del prestamista no permite más clientes.
