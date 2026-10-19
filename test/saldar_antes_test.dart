@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prestamistas_rd/logic/calculo_prestamo.dart';
+import 'package:prestamistas_rd/logic/graficas.dart';
 
 /// RD$10,000 al 10% mensual, 3 cuotas mensuales sobre saldo, desde el 1/1/2026.
 Map<String, dynamic> prestamo() {
@@ -65,5 +66,27 @@ void main() {
     expect(r.monto, s.monto); // el dinero recibido, sin el descuento
     expect(r.cubre.first, 'Saldo del préstamo (cuotas #1 a #3)');
     expect(r.cubre.last, contains('Descuento de interés'));
+  });
+
+  test('el descuento no cuenta como dinero cobrado ni como ganancia', () {
+    final p = prestamo();
+    final hoy = DateTime(2026, 1, 10);
+    final s = calcularSaldarHoy(p, const [], hoy);
+    final pago = PagoRegistrado(fecha: hoy, monto: s.monto, descuento: s.descuento);
+    final estado = estadoPrestamo(p, [pago], hoy);
+    expect(estado.cobradoCuotas, s.monto); // solo el dinero
+    expect(estado.descuentos, s.descuento);
+
+    // Gráficas: el interés del cobro es lo ganado de verdad (los días de interés).
+    final cobro = CobroGrafica(
+        prestamoId: 'p', fecha: hoy, monto: s.monto, descuento: s.descuento);
+    expect(interesDelCobro(cobro, parteInteres(p)), closeTo(s.interesDias, 0.01));
+
+    // Reportes: "Ya llevas" y la proyectada quedan en lo ganado de verdad.
+    final g = gananciaDelMes([
+      {...p, 'total_pagado': estado.cobradoCuotas, 'total_descuento': estado.descuentos}
+    ], hoy);
+    expect(g.proyectada, closeTo(s.interesDias, 0.01));
+    expect(g.yaLlevas, closeTo(s.interesDias, 0.01));
   });
 }

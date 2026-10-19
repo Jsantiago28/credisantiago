@@ -270,7 +270,11 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     } catch (e) {
       // ignore: avoid_print
       print('ERROR REAL SOLICITUD: $e');
-      _mostrarError('No pudimos enviar tu solicitud. Intenta de nuevo.');
+      // Freno contra solicitudes repetidas (migracion_2026_10_18_seguridad.sql).
+      final repetida = '$e'.contains('DEMASIADAS_SOLICITUDES');
+      _mostrarError(repetida
+          ? 'Ya recibimos tu solicitud. Si necesitas cambiar algo, escríbele al prestamista.'
+          : 'No pudimos enviar tu solicitud. Intenta de nuevo.');
     } finally {
       setState(() => _enviando = false);
     }

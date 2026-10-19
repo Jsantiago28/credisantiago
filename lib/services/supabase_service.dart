@@ -47,6 +47,10 @@ class SupabaseService {
 
   bool get esCobrador => sesionCobrador != null;
 
+  /// Cobrador cuyo jefe no tiene plan para cobradores (se le venció o lo
+  /// bajó): el negocio del jefe, para avisarle. Null si no es el caso.
+  String? cobradorSinPlan;
+
   // ---------------------------------------------------------
   // AUTH - Login solo por teléfono + OTP
   // ---------------------------------------------------------
@@ -1102,11 +1106,12 @@ class SupabaseService {
   /// gráficas de Reportes.
   Future<List<graficas.CobroGrafica>> obtenerCobrosGraficas(
       String prestamistaId, DateTime desde) async {
-    final filas = await client
+    final filas = await _conColumnasPago(() => client
         .from('pagos')
-        .select('prestamo_id, monto, monto_mora, fecha_pago, anulado, metodo')
+        .select('prestamo_id, monto, monto_mora, fecha_pago, anulado, metodo'
+            '${_hayDescuentoEnPagos ? ', descuento' : ''}')
         .eq('prestamista_id', prestamistaId)
-        .gte('fecha_pago', desde.toUtc().toIso8601String());
+        .gte('fecha_pago', desde.toUtc().toIso8601String()));
     return filas.where(_noImportado).map(graficas.CobroGrafica.desdeFila).toList();
   }
 
@@ -1188,10 +1193,18 @@ class SupabaseService {
   /// cobrador (o si falta la migración de cobradores).
   Future<cob.SesionCobrador?> entrarComoCobrador() async {
     sesionCobrador = null;
+    cobradorSinPlan = null;
     try {
       await client.rpc('aceptar_invitacion_cobrador');
       final filas = await client.rpc('mi_jefe') as List;
-      if (filas.isEmpty) return null;
+      if (filas.isEmpty) {
+        try {
+          cobradorSinPlan = await client.rpc('cobrador_sin_plan') as String?;
+        } catch (_) {
+          // Sin la migración de seguridad todavía.
+        }
+        return null;
+      }
       return sesionCobrador =
           cob.SesionCobrador.desdeFila(Map<String, dynamic>.from(filas.first as Map));
     } catch (e) {
@@ -1469,6 +1482,8 @@ class SupabaseService {
         'monto_total': estado.montoTotal,
         // Solo lo que fue a cuotas (capital + interés), sin mora.
         'total_pagado': estado.cobradoCuotas,
+        // Interés perdonado al saldar antes (no es dinero recibido).
+        'total_descuento': estado.descuentos,
         'mora_cobrada': estado.moraCobrada,
         'mora_cobrada_mes': calc.moraCobradaEnMes(pagos, hoy),
         // Día del último cobro: para un préstamo pagado, es cuando se saldó.

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/recordatorio.dart';
 import '../services/supabase_service.dart';
+import '../services/version_nueva.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart' show darBienvenida;
 import 'clientes_screen.dart';
@@ -59,6 +60,8 @@ class _HomeShellState extends State<HomeShell> {
     darBienvenida(context, (perfil['nombre'] as String?) ?? '');
     // Deja programado el aviso diario de cobros (solo en Android).
     Recordatorio.alEntrar();
+    // Si hay un APK más nuevo, lo dice (solo en Android).
+    VersionNueva.revisar(context);
     // Solo las cuentas aprobadas escuchan sus solicitudes (antes de la
     // migración de planes no existe "aprobado": se toma como aprobada).
     if (perfil['aprobado'] != false) _escucharSolicitudes(perfil['id'] as String);

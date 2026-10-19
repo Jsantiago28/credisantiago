@@ -95,7 +95,10 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
           children: [
             Row(
               children: [
-                AvatarIniciales(nombre: p.datos.nombre, tamano: 44),
+                AvatarIniciales(
+                    nombre: p.datos.nombre,
+                    fotoUrl: p.datos.cliente?['foto_cara_url'] as String?,
+                    tamano: 44),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

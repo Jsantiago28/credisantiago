@@ -175,7 +175,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 **Ya listo en código:** todo lo de la app. Lo último: eliminar (archivar) clientes, saldar préstamo antes de tiempo, aviso de errores, GPS de cobros, recordatorio diario, términos y privacidad, borrar cuenta, página de presentación y primeros pasos.
 
 **1. Lo que hace el dueño (sin programar), lo primero:**
-- ⬜ Correr en Supabase las migraciones 23 a 29 (de interés sobre saldo a saldar antes) y subir el zip a Netlify.
+- ⬜ Correr en Supabase las migraciones 23 a 30 (de interés sobre saldo a seguridad) y subir el zip a Netlify.
 - ⬜ Probar el APK 1.0.6 en un teléfono Android (permisos de avisos y ubicación, saldar, eliminar cliente).
 - ⬜ Admin → Ajustes: WhatsApp de soporte y las cuentas de banco (BHD y Popular).
 - ⬜ Limpiar los datos de prueba con `supabase/limpieza_datos_de_prueba.sql`.
@@ -185,11 +185,11 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 - ⬜ Cambiar la contraseña de aplicación de Gmail (se escribió en el chat).
 
 **2. Lo que falta programar (gratis):**
-- ⬜ Activar el plan cuando pagan: elegir A (sola al subir el comprobante), B (el admin con un toque) o C (tarjeta, más adelante).
-- ⬜ Aviso de "versión nueva" dentro del APK.
-- ⬜ Huecos menores de seguridad: captcha en el link de solicitudes, cobradores activos cuando al jefe se le vence el plan, funciones de consulta abiertas.
-- ⬜ Gráfica de ganancias: tomar en cuenta el descuento al saldar antes (hoy sale un poco más alta en esos préstamos).
-- ⬜ Que el cobrador vea las fotos de sus clientes; entrar con WhatsApp/SMS.
+- ⏸️ Activar el plan cuando pagan: se queda como está (WhatsApp + el admin lo activa en Admin), decisión del 18-10-2026.
+- ✅ Aviso de "versión nueva" dentro del APK (18-10-2026): en Admin → Ajustes se pone la última versión y el enlace de Drive.
+- ✅ Huecos menores de seguridad (18-10-2026): freno a solicitudes falsas en la base de datos, cobradores bloqueados si al jefe se le vence el plan, funciones del plan cerradas. Un captcha de verdad (Cloudflare Turnstile, gratis) queda para cuando haya dominio.
+- ✅ Ganancias exactas con el descuento al saldar antes (18-10-2026): gráficas, "Ya llevas" y Saldados.
+- ✅ El cobrador ve la foto de la cara de sus clientes (18-10-2026; tocarla la agranda). Falta: entrar con WhatsApp/SMS.
 - ⬜ Funcionar sin internet (el cambio más grande; ya está pensado cómo).
 
 **3. Cuando haya dinero:** dominio credisantiago.com (US$10.46/año), correo con el dominio (Resend, gratis), Google Play (US$25 una vez), Supabase Pro (US$25/mes, con unos 5 prestamistas pagando) y avisos al instante con Firebase.
@@ -415,6 +415,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 27 | `migracion_2026_10_18_errores_y_gps.sql` | Tabla de errores de la app (solo el admin la ve) y dónde se hizo cada cobro (pagos.lat / pagos.lng) |
 | 28 | `migracion_2026_10_18_archivar_clientes.sql` | Eliminar (archivar) clientes sin préstamo en la calle y restaurarlos; los archivados no cuentan para el límite del plan |
 | 29 | `migracion_2026_10_18_saldar_antes.sql` | Saldar antes de tiempo: pagos.descuento (interés perdonado, no es dinero recibido); el cobrador no puede dar descuentos |
+| 30 | `migracion_2026_10_18_seguridad.sql` | Freno a solicitudes falsas (30 por hora, 3 por día por cédula), cobradores bloqueados si el plan del jefe no los cubre, el cobrador ve la cara de sus clientes, funciones del plan cerradas a quien no tiene cuenta y aviso de versión nueva del APK (ajustes_app.apk_version y apk_enlace) |
 
 `schema.sql` refleja el esquema completo al día.
 

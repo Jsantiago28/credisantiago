@@ -7,6 +7,7 @@ import '../recibos/recibo_pdf.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'contacto.dart';
+import 'foto_privada.dart' show verFoto;
 import 'gestiones.dart';
 import 'ubicacion.dart' show ubicacionSinAvisar;
 import 'ui.dart';
@@ -23,6 +24,7 @@ class CobroPrestamo {
 
   Map<String, dynamic> get _prestamo => datos.prestamo;
   String get _nombre => datos.nombre;
+  String? get _fotoCara => datos.cliente?['foto_cara_url'] as String?;
 
   static RoundedRectangleBorder get _forma => const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -58,7 +60,11 @@ class CobroPrestamo {
               padding: const EdgeInsets.fromLTRB(20, 16, 12, 4),
               child: Row(
                 children: [
-                  AvatarIniciales(nombre: _nombre, tamano: 44),
+                  // Tocar la foto la agranda (para reconocer al cliente en la calle).
+                  GestureDetector(
+                    onTap: _fotoCara == null ? null : () => verFoto(context, _fotoCara),
+                    child: AvatarIniciales(nombre: _nombre, fotoUrl: _fotoCara, tamano: 44),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

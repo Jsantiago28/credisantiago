@@ -408,8 +408,10 @@ double interesCobrado(Map<String, dynamic> prestamo, double totalPagado) {
   var proyectada = 0.0;
   var yaLlevas = 0.0;
   for (final p in deEsteMes) {
-    proyectada += montoTotalGuardado(p) - ((p['monto'] as num?)?.toDouble() ?? 0);
-    yaLlevas += interesCobrado(p, (p['total_pagado'] as num).toDouble());
+    // Saldado antes de tiempo: el interés perdonado no se gana.
+    final descuento = (p['total_descuento'] as num?)?.toDouble() ?? 0;
+    proyectada += montoTotalGuardado(p) - ((p['monto'] as num?)?.toDouble() ?? 0) - descuento;
+    yaLlevas += interesCobrado(p, (p['total_pagado'] as num).toDouble() + descuento) - descuento;
   }
   final falta = (proyectada - yaLlevas).clamp(0.0, double.infinity);
   return (proyectada: proyectada, yaLlevas: yaLlevas, falta: falta);
@@ -554,16 +556,21 @@ class EstadoPrestamo {
   final double montoTotal;
 
   /// Lo cobrado que fue a cuotas (capital + interés), incluye sobrepagos.
+  /// Solo dinero recibido: sin el descuento por saldar antes.
   final double cobradoCuotas;
   final double moraCobrada;
 
-  const EstadoPrestamo._(this.cuotas, this.montoTotal, this.cobradoCuotas, this.moraCobrada);
+  /// Interés perdonado al saldar antes (no es dinero recibido).
+  final double descuentos;
+
+  const EstadoPrestamo._(
+      this.cuotas, this.montoTotal, this.cobradoCuotas, this.moraCobrada, this.descuentos);
 
   double get moraGenerada => cuotas.fold(0.0, (s, c) => s + c.moraGenerada);
   double get moraPendiente => cuotas.fold(0.0, (s, c) => s + c.moraPendiente);
 
   /// Lo que falta de las cuotas, sin mora.
-  double get balanceCuotas => montoTotal - cobradoCuotas;
+  double get balanceCuotas => montoTotal - cobradoCuotas - descuentos;
 
   /// Lo que debe en total: cuotas + mora.
   double get balance => balanceCuotas + moraPendiente;
@@ -613,6 +620,7 @@ EstadoPrestamo estadoPrestamo(
 
   final ordenados = pagosValidos(pagos)..sort(_compararPagos);
   var cobradoCuotas = 0.0;
+  var descuentos = 0.0;
   var moraCobrada = 0.0;
 
   void abonarCuotas(double monto) {
@@ -627,7 +635,8 @@ EstadoPrestamo estadoPrestamo(
 
   for (final pago in ordenados) {
     generarMoraHasta(_dia(pago.fecha));
-    cobradoCuotas += pago.aCuotas;
+    cobradoCuotas += pago.montoCuota;
+    descuentos += pago.descuento;
     moraCobrada += pago.montoMora;
     abonarCuotas(pago.aCuotas);
 
@@ -649,7 +658,7 @@ EstadoPrestamo estadoPrestamo(
   }
   generarMoraHasta(_dia(hoy));
 
-  return EstadoPrestamo._(cuotas, montoTotal, cobradoCuotas, moraCobrada);
+  return EstadoPrestamo._(cuotas, montoTotal, cobradoCuotas, moraCobrada, descuentos);
 }
 
 /// Reparte un cobro nuevo entre cuota y mora según el orden de las reglas.
@@ -728,7 +737,7 @@ SaldarHoy calcularSaldarHoy(
   final vencidas = cuotas.where((c) => _dia(c.fecha) <= hoyDia).length;
   final interesVencido = cuotas.take(vencidas).fold(0.0, (s, c) => s + c.interes);
   final capital =
-      (monto + interesVencido - estado.cobradoCuotas).clamp(0.0, double.infinity).toDouble();
+      (monto + interesVencido - estado.cobradoCuotas - estado.descuentos).clamp(0.0, double.infinity).toDouble();
 
   if (vencidas >= cuotas.length || balance < _centavo) {
     return SaldarHoy(

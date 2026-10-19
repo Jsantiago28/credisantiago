@@ -128,6 +128,12 @@ class _RouterState extends State<_Router> {
             }
             final quien = snapshot.data;
             if (quien?.cobrador != null) return CobradorShell(sesion: quien!.cobrador!);
+            // Cobrador cuyo jefe no tiene plan para cobradores: se le avisa
+            // (no se le manda a registrar un negocio).
+            final jefeSinPlan = SupabaseService.instance.cobradorSinPlan;
+            if (quien?.perfil == null && jefeSinPlan != null) {
+              return CobradorSinPlan(negocio: jefeSinPlan);
+            }
             if (quien?.perfil == null) {
               return const RegistroScreen();
             }

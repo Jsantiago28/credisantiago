@@ -30,6 +30,8 @@ class _AdminScreenState extends State<AdminScreen> {
   final _instrucciones = TextEditingController();
   final _descuento3 = TextEditingController();
   final _mesesGratis12 = TextEditingController();
+  final _apkVersion = TextEditingController();
+  final _apkEnlace = TextEditingController();
   List<Map<String, dynamic>> _pagos = const [];
   bool _requiereAprobacion = true;
 
@@ -45,6 +47,8 @@ class _AdminScreenState extends State<AdminScreen> {
     _instrucciones.dispose();
     _descuento3.dispose();
     _mesesGratis12.dispose();
+    _apkVersion.dispose();
+    _apkEnlace.dispose();
     super.dispose();
   }
 
@@ -69,6 +73,8 @@ class _AdminScreenState extends State<AdminScreen> {
           final d = DescuentosPlan.desde(ajustes);
           _descuento3.text = '${d.descuento3}';
           _mesesGratis12.text = '${d.mesesGratis12}';
+          _apkVersion.text = ajustes['apk_version'] as String? ?? '';
+          _apkEnlace.text = ajustes['apk_enlace'] as String? ?? '';
         }
         _ajustes = ajustes;
       });
@@ -180,6 +186,11 @@ class _AdminScreenState extends State<AdminScreen> {
         if (_ajustes?.containsKey('descuento_3_meses') == true) ...{
           'descuento_3_meses': (int.tryParse(_descuento3.text) ?? 10).clamp(0, 90),
           'meses_gratis_12': (int.tryParse(_mesesGratis12.text) ?? 2).clamp(0, 11),
+        },
+        // Solo si ya se corrió la migración de seguridad (aviso de versión).
+        if (_ajustes?.containsKey('apk_version') == true) ...{
+          'apk_version': _apkVersion.text.trim(),
+          'apk_enlace': _apkEnlace.text.trim(),
         },
       }).eq('id', 1);
       _ajustes = await SupabaseService.instance.obtenerAjustes();
@@ -589,6 +600,27 @@ class _AdminScreenState extends State<AdminScreen> {
                   ),
                 ),
               ],
+            ),
+          ],
+          if (_ajustes?.containsKey('apk_version') == true) ...[
+            const SizedBox(height: 10),
+            TextField(
+              controller: _apkVersion,
+              decoration: const InputDecoration(
+                labelText: 'Última versión del APK',
+                hintText: '1.0.7',
+                helperText: 'Los que tengan una más vieja ven un aviso para bajarla.',
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _apkEnlace,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: 'Enlace para bajar el APK',
+                hintText: 'https://drive.google.com/...',
+                helperText: 'En Drive: compartir → "Cualquier persona con el enlace".',
+              ),
             ),
           ],
           SwitchListTile(

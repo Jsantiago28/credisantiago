@@ -8,12 +8,16 @@ class CobroGrafica {
   final double montoMora;
   final bool anulado;
 
+  /// Interés perdonado al saldar antes de tiempo (no es dinero).
+  final double descuento;
+
   const CobroGrafica({
     required this.prestamoId,
     required this.fecha,
     required this.monto,
     this.montoMora = 0,
     this.anulado = false,
+    this.descuento = 0,
   });
 
   double get montoCuota => monto - montoMora;
@@ -24,6 +28,7 @@ class CobroGrafica {
         monto: (fila['monto'] as num).toDouble(),
         montoMora: (fila['monto_mora'] as num?)?.toDouble() ?? 0,
         anulado: fila['anulado'] == true,
+        descuento: (fila['descuento'] as num?)?.toDouble() ?? 0,
       );
 }
 
@@ -63,6 +68,14 @@ double parteInteres(Map<String, dynamic> prestamo) {
   return ((total - monto) / total).clamp(0.0, 1.0);
 }
 
+/// La parte de interés de un cobro. Si saldó antes de tiempo, al cobro le
+/// toca la proporción normal menos el interés que se perdonó (así la suma de
+/// todos los cobros da justo el interés que de verdad se ganó).
+double interesDelCobro(CobroGrafica c, double parte) {
+  final interes = c.montoCuota * parte - c.descuento * (1 - parte);
+  return interes < 0 ? 0 : interes;
+}
+
 /// Ganancia que entró cada mes (el más viejo primero): el interés de lo
 /// cobrado a cuotas y la mora cobrada. Sin anulados.
 List<({DateTime mes, double interes, double mora})> gananciaPorMes(
@@ -78,7 +91,7 @@ List<({DateTime mes, double interes, double mora})> gananciaPorMes(
     final m = _mes(c.fecha);
     if (!interes.containsKey(m)) continue;
     final p = prestamos[c.prestamoId];
-    interes[m] = interes[m]! + (p == null ? 0 : c.montoCuota * parteInteres(p));
+    interes[m] = interes[m]! + (p == null ? 0 : interesDelCobro(c, parteInteres(p)));
     mora[m] = mora[m]! + c.montoMora;
   }
   return [for (final m in lista) (mes: m, interes: interes[m]!, mora: mora[m]!)];

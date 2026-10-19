@@ -5,6 +5,7 @@ import '../logic/cobradores.dart';
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
 import '../services/recordatorio.dart';
 import '../services/supabase_service.dart';
+import '../services/version_nueva.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ajuste_recordatorio.dart';
 import '../widgets/legal.dart';
@@ -40,6 +41,9 @@ class _CobradorShellState extends State<CobradorShell> {
     super.initState();
     darBienvenida(context, widget.sesion.cobradorNombre);
     Recordatorio.alEntrar();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) VersionNueva.revisar(context);
+    });
   }
 
   @override
@@ -278,6 +282,48 @@ class _Yo extends StatelessWidget {
                 'de tu jefe, porque son parte de su negocio.',
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Lo que ve un cobrador cuando el plan de su jefe no cubre cobradores (se
+/// le venció o lo bajó): no puede ver clientes ni cobrar hasta que renueve.
+class CobradorSinPlan extends StatelessWidget {
+  final String negocio;
+  const CobradorSinPlan({super.key, required this.negocio});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_clock_rounded, size: 64, color: AppColors.amber),
+                const SizedBox(height: 16),
+                Text('El plan de $negocio no está activo',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                Text(
+                    'Mientras tanto no puedes ver la ruta ni cobrar. Pídele a tu jefe que '
+                    'renueve su plan y vuelve a entrar.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.grey)),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: () => SupabaseService.instance.cerrarSesion(),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Salir'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
