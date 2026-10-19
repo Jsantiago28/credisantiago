@@ -209,9 +209,9 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 8. ⬜ **Correo de la app con el dominio** (Resend gratis hasta 3,000 correos/mes): hoy sale de un Gmail personal (applej904), con límite de ~500/día, riesgo de caer en spam y se rompe si cambia la contraseña de Google.
 9. ✅ (18-10-2026: `web/presentacion.html` en la dirección principal; la app pasa a /app; los links /s/ e /i/ siguen igual) **Página de presentación** en la dirección principal: qué es CrediSantiago, precios, "Registrarme" y WhatsApp. Hoy la dirección principal abre directo el login.
 10. ⬜ **Google Play** (US$25 una vez): las actualizaciones llegan solas. Pide política de privacidad (punto 2), borrar cuenta (punto 3), formulario de "Seguridad de los datos" y la **declaración de funciones financieras**; por ser de préstamos, Google la revisa con más cuidado.
-11. ⬜ **Aviso de "versión nueva"** dentro del APK mientras no esté en Google Play.
+11. ✅ (18-10-2026: Admin → Ajustes, última versión y enlace) **Aviso de "versión nueva"** dentro del APK mientras no esté en Google Play.
 12. ⬜ **Respaldo de las fotos y contratos firmados:** la copia semanal solo guarda la base de datos, no los archivos. Con Supabase Pro (US$25/mes) hay copias diarias; contratarlo cuando haya ~5 prestamistas pagando o las fotos se acerquen a 1 GB.
-13. ⬜ **Cerrar huecos menores de seguridad:** funciones de solo lectura que cualquiera puede consultar, posible relleno de solicitudes falsas en el link público (captcha), y cobradores que siguen activos cuando al jefe se le vence el plan. Cambiar la contraseña de aplicación de Gmail que se escribió en el chat.
+13. 🟡 (18-10-2026: hecho todo menos el captcha, que espera el dominio, y cambiar la contraseña de Gmail) **Cerrar huecos menores de seguridad:** funciones de solo lectura que cualquiera puede consultar, posible relleno de solicitudes falsas en el link público (captcha), y cobradores que siguen activos cuando al jefe se le vence el plan. Cambiar la contraseña de aplicación de Gmail que se escribió en el chat.
 14. ✅ (18-10-2026: tarjeta "Primeros pasos" en el Inicio, con 5 pasos que se marcan solos y se puede ocultar) **Ayuda para empezar:** una guía corta (o video) de los primeros pasos: subir logo, configurar recibo y contrato, mandar el link, prestar y cobrar.
 
 ### C. Para competir mejor (después del lanzamiento)
