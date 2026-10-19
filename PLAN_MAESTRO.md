@@ -219,7 +219,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 16. 🟡 **Notificaciones**: hecho el 18-10-2026 el **recordatorio diario** en la app de Android (Perfil → "Recordatorio de cobros", a las 8:00 a. m. o la hora que elija; lo hace el teléfono, sin internet). Falta el aviso al instante de "solicitud nueva" con la app cerrada: necesita Firebase (gratis) y una función en Supabase.
 17. ✅ **Reporte de errores automático** — hecho el 18-10-2026, sin Sentry: las fallas se guardan en la tabla `errores_app` (sin datos de clientes, máximo 15 por vez que se abre la app) y el admin las ve en Admin → "Errores de la app".
 18. ⛔ App de **iPhone** (necesita US$99/año de Apple y una Mac para compilarla). Mientras tanto, en iPhone se usa la web.
-19. 🟡 **GPS de los cobros** — hecho el 18-10-2026: cada cobro guarda dónde se hizo (si el teléfono da permiso; si no, se guarda igual) y en la Caja del día sale un 📍 para verlo en Google Maps. Falta: entrar con WhatsApp/SMS, que el cobrador vea fotos de sus clientes.
+19. ✅ **GPS de los cobros** — hecho el 18-10-2026: cada cobro guarda dónde se hizo (si el teléfono da permiso; si no, se guarda igual) y en la Caja del día sale un 📍 para verlo en Google Maps. El cobrador ya ve la foto de la cara de sus clientes. Entrar con WhatsApp/SMS: descartado.
 
 ### D. Lo de impuestos (consultar con un contador)
 20. ⬜ Al cobrar los planes se reciben ingresos: preguntar a un contador si conviene sacar **RNC** como persona física, cómo declararlos en la DGII y si los clientes van a pedir comprobante fiscal. También lo pide Azul/CardNET para cobrar con tarjeta.
