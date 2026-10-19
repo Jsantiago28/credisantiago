@@ -470,6 +470,10 @@ class PagoRegistrado {
   final String? motivoAnulacion;
   final DateTime? anuladoEn;
 
+  /// Interés que se le perdonó al saldar antes de tiempo: cuenta para las
+  /// cuotas pero no es dinero recibido (ver [calcularSaldarHoy]).
+  final double descuento;
+
   /// El cobrador que lo cobró (null si lo cobró el prestamista).
   final String? cobradorId;
 
@@ -479,6 +483,7 @@ class PagoRegistrado {
     required this.fecha,
     required this.monto,
     this.montoMora = 0,
+    this.descuento = 0,
     this.anulado = false,
     this.motivoAnulacion,
     this.anuladoEn,
@@ -487,12 +492,16 @@ class PagoRegistrado {
 
   double get montoCuota => monto - montoMora;
 
+  /// Lo que baja de las cuotas: lo cobrado a cuota más el descuento.
+  double get aCuotas => montoCuota + descuento;
+
   factory PagoRegistrado.desdeFila(Map<String, dynamic> fila) => PagoRegistrado(
         id: fila['id'] as String?,
         numeroRecibo: (fila['numero_recibo'] as num?)?.toInt(),
         fecha: DateTime.parse(fila['fecha_pago'] as String).toLocal(),
         monto: (fila['monto'] as num).toDouble(),
         montoMora: (fila['monto_mora'] as num?)?.toDouble() ?? 0,
+        descuento: (fila['descuento'] as num?)?.toDouble() ?? 0,
         anulado: fila['anulado'] == true,
         motivoAnulacion: fila['motivo_anulacion'] as String?,
         anuladoEn: DateTime.tryParse(fila['anulado_en'] as String? ?? '')?.toLocal(),
@@ -618,9 +627,9 @@ EstadoPrestamo estadoPrestamo(
 
   for (final pago in ordenados) {
     generarMoraHasta(_dia(pago.fecha));
-    cobradoCuotas += pago.montoCuota;
+    cobradoCuotas += pago.aCuotas;
     moraCobrada += pago.montoMora;
-    abonarCuotas(pago.montoCuota);
+    abonarCuotas(pago.aCuotas);
 
     var resto = pago.montoMora;
     for (final c in cuotas) {
@@ -660,6 +669,99 @@ EstadoPrestamo estadoPrestamo(
   // Todo lo que no fue a mora cuenta como cuota (incluye si pagó de más).
   mora = double.parse(mora.toStringAsFixed(2));
   return (cuota: monto - mora, mora: mora);
+}
+
+/// Cuánto paga el cliente si salda HOY todo el préstamo, antes de tiempo.
+class SaldarHoy {
+  /// Lo que debe hoy según las cuotas (cuotas que faltan + mora), sin
+  /// descuento.
+  final double balance;
+
+  /// Lo que paga para quedar saldado (pesos enteros).
+  final double monto;
+
+  /// El interés de las cuotas que todavía no llegan, menos el de los días
+  /// ya corridos: no se cobra.
+  final double descuento;
+
+  /// Días de interés que se cobran de la cuota en curso (incluye el día de
+  /// cierre) y cuánto es ese interés.
+  final int dias;
+  final double interesDias;
+
+  /// Capital que falta (sin intereses) y mora pendiente.
+  final double capital;
+  final double mora;
+
+  const SaldarHoy({
+    required this.balance,
+    required this.monto,
+    required this.descuento,
+    required this.dias,
+    required this.interesDias,
+    required this.capital,
+    required this.mora,
+  });
+
+  /// Hay algo que perdonar (si todas las cuotas ya vencieron, no).
+  bool get conDescuento => descuento >= 1;
+}
+
+/// REGLA PARA SALDAR ANTES: se cobra lo que falte de las cuotas que ya
+/// vencieron (con su mora), el capital que falta y el interés de la cuota
+/// en curso solo por los días que pasaron desde la cuota anterior (o el
+/// desembolso) hasta hoy, MÁS 1 DÍA de cierre. El interés de las cuotas
+/// futuras no se cobra. Ej.: cuota mensual de interés 3,000; pasaron 9 días
+/// → 10 días × 100 = 1,000 de interés.
+SaldarHoy calcularSaldarHoy(
+  Map<String, dynamic> prestamo,
+  List<PagoRegistrado> pagos,
+  DateTime hoy,
+) {
+  final estado = estadoPrestamo(prestamo, pagos, hoy);
+  final cuotas = estado.cuotas;
+  final hoyDia = _dia(hoy);
+  final balance = estado.balance;
+  final monto = (prestamo['monto'] as num?)?.toDouble() ?? 0;
+
+  // Cuotas que ya vencieron (o vencen hoy): esas se pagan completas.
+  final vencidas = cuotas.where((c) => _dia(c.fecha) <= hoyDia).length;
+  final interesVencido = cuotas.take(vencidas).fold(0.0, (s, c) => s + c.interes);
+  final capital =
+      (monto + interesVencido - estado.cobradoCuotas).clamp(0.0, double.infinity).toDouble();
+
+  if (vencidas >= cuotas.length || balance < _centavo) {
+    return SaldarHoy(
+        balance: balance,
+        monto: balance,
+        descuento: 0,
+        dias: 0,
+        interesDias: 0,
+        capital: capital,
+        mora: estado.moraPendiente);
+  }
+
+  final desembolso =
+      DateTime.tryParse(prestamo['fecha_desembolso'] as String? ?? '') ?? cuotas.first.fecha;
+  final inicio = _dia(vencidas == 0 ? desembolso : cuotas[vencidas - 1].fecha);
+  final enCurso = cuotas[vencidas];
+  final diasPeriodo = _dia(enCurso.fecha) - inicio;
+  final dias = (hoyDia - inicio + 1).clamp(1, diasPeriodo < 1 ? 1 : diasPeriodo);
+  final interesDias =
+      diasPeriodo < 1 ? enCurso.interes : (enCurso.interes * dias / diasPeriodo).roundToDouble();
+  final interesFuturo = cuotas.skip(vencidas).fold(0.0, (s, c) => s + c.interes);
+
+  final pagar = (balance - interesFuturo + interesDias).roundToDouble().clamp(0.0, balance);
+  final descuento = balance - pagar;
+  return SaldarHoy(
+    balance: balance,
+    monto: descuento < 1 ? balance : pagar,
+    descuento: descuento < 1 ? 0 : descuento,
+    dias: dias,
+    interesDias: interesDias,
+    capital: capital,
+    mora: estado.moraPendiente,
+  );
 }
 
 /// Mora cobrada en el mes de `hoy` (por fecha del cobro).
@@ -735,6 +837,16 @@ DatosRecibo datosRecibo(
     } else {
       cubre.add('Abono a la cuota #${a.numero}: RD\$ ${_pesosTexto(abonado)}');
     }
+  }
+
+  // Saldó antes de tiempo: en vez de cuota por cuota, una línea con lo que
+  // saldó y el interés que se le perdonó.
+  if (pago.descuento > 0 && cubre.isNotEmpty) {
+    final primera = despues.cuotas.firstWhere((c) => antes.cuotas[c.numero - 1].pendiente >= _centavo);
+    cubre
+      ..clear()
+      ..add('Saldo del préstamo (cuotas #${primera.numero} a #${despues.cuotas.length})')
+      ..add('Descuento de interés por saldar antes: RD\$ ${_pesosTexto(pago.descuento)}');
   }
 
   EstadoCuota? proxima;

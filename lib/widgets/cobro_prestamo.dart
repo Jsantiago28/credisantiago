@@ -132,6 +132,19 @@ class CobroPrestamo {
                 ],
               ),
             ),
+            // Saldar todo antes de tiempo: lo decide el prestamista, no el cobrador.
+            if (!SupabaseService.instance.esCobrador && !estado.saldado)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    _saldar();
+                  },
+                  icon: const Icon(Icons.task_alt_rounded),
+                  label: const Text('Saldar préstamo hoy'),
+                ),
+              ),
             const Divider(height: 12),
             Expanded(
               child: ListView.builder(
@@ -260,6 +273,92 @@ class CobroPrestamo {
     }
   }
 
+  /// Saldar todo hoy, antes de tiempo: muestra cuánto paga (capital, interés
+  /// solo hasta hoy más 1 día, y mora) y cuánto interés se le perdona.
+  Future<void> _saldar() async {
+    final s = calcularSaldarHoy(_prestamo, datos.pagos, DateTime.now());
+    Widget fila(String texto, double valor, {bool negrita = false, Color? color}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              Expanded(
+                  child: Text(texto,
+                      style: TextStyle(
+                          color: color ?? (negrita ? null : AppColors.grey),
+                          fontWeight: negrita ? FontWeight.w800 : null))),
+              Text(rd(valor),
+                  style: TextStyle(
+                      color: color,
+                      fontSize: negrita ? 20 : 14,
+                      fontWeight: negrita ? FontWeight.w800 : FontWeight.w600)),
+            ],
+          ),
+        );
+
+    final confirmado = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: _forma,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Saldar el préstamo de $_nombre',
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text(
+                s.conDescuento
+                    ? 'Paga hoy todo lo que debe. Del interés solo se cobran los días que '
+                        'pasaron más 1 día de cierre; el resto se le descuenta.'
+                    : 'Ya vencieron todas las cuotas: para saldar paga todo lo que debe.',
+                style: TextStyle(color: AppColors.grey, fontSize: 13)),
+            const SizedBox(height: 12),
+            fila('Capital que falta', s.capital),
+            if (s.conDescuento)
+              fila('Interés de ${s.dias} día${s.dias == 1 ? '' : 's'} (incluye 1 de cierre)',
+                  s.interesDias),
+            if (s.mora > 0) fila('Mora', s.mora, color: AppColors.red),
+            const Divider(height: 20),
+            fila('Total a pagar hoy', s.monto, negrita: true),
+            if (s.conDescuento) ...[
+              fila('Debía según las cuotas', s.balance),
+              fila('Se le descuenta', s.descuento, color: AppColors.green),
+            ],
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              icon: const Icon(Icons.task_alt_rounded),
+              label: Text('Cobrar ${rd(s.monto)} y saldar'),
+            ),
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
+          ],
+        ),
+      ),
+    );
+    if (confirmado != true || !context.mounted) return;
+
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      final donde = await ubicacionSinAvisar();
+      final pago = await SupabaseService.instance.registrarPago(
+        prestamoId: _prestamo['id'],
+        prestamistaId: _prestamo['prestamista_id'] as String,
+        monto: s.monto,
+        descuento: s.descuento,
+        ubicacion: donde,
+      );
+      onCambio();
+      if (context.mounted) await _mostrarCobroRegistrado(pago);
+    } catch (e) {
+      // ignore: avoid_print
+      print('ERROR REAL SALDAR: $e');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo saldar: $e')));
+    }
+  }
+
   /// Genera y comparte el PDF del recibo, avisando si algo falla.
   Future<void> _compartirRecibo(PagoRegistrado pago) async {
     final mensajero = ScaffoldMessenger.of(context);
@@ -299,6 +398,9 @@ class CobroPrestamo {
             if (pago.montoMora > 0)
               Text('Cuota ${rd(pago.montoCuota)} + mora ${rd(pago.montoMora)}',
                   style: TextStyle(color: AppColors.grey)),
+            if (pago.descuento > 0)
+              Text('Préstamo saldado · se descontaron ${rd(pago.descuento)} de interés',
+                  style: TextStyle(color: AppColors.green)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => _compartirRecibo(pago),

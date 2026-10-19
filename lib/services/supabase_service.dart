@@ -831,16 +831,28 @@ class SupabaseService {
   /// Con el cobrador que lo hizo; sin él mientras falte la migración de
   /// cobradores (para que la app siga funcionando).
   bool _hayCobradorEnPagos = true;
-  String get _columnasPago =>
-      _hayCobradorEnPagos ? '$_columnasPagoSinCobrador, cobrador_id' : _columnasPagoSinCobrador;
+
+  /// false mientras falte la migración de saldar antes (pagos.descuento).
+  bool _hayDescuentoEnPagos = true;
+  String get _columnasPago => [
+        _columnasPagoSinCobrador,
+        if (_hayCobradorEnPagos) 'cobrador_id',
+        if (_hayDescuentoEnPagos) 'descuento',
+      ].join(', ');
 
   Future<T> _conColumnasPago<T>(Future<T> Function() consulta) async {
-    try {
-      return await consulta();
-    } on PostgrestException catch (e) {
-      if (!_hayCobradorEnPagos || !e.message.contains('cobrador_id')) rethrow;
-      _hayCobradorEnPagos = false;
-      return consulta();
+    while (true) {
+      try {
+        return await consulta();
+      } on PostgrestException catch (e) {
+        if (_hayCobradorEnPagos && e.message.contains('cobrador_id')) {
+          _hayCobradorEnPagos = false;
+        } else if (_hayDescuentoEnPagos && e.message.contains('descuento')) {
+          _hayDescuentoEnPagos = false;
+        } else {
+          rethrow;
+        }
+      }
     }
   }
 
@@ -871,6 +883,10 @@ class SupabaseService {
     required String prestamistaId,
     required double monto,
     ({double lat, double lng})? ubicacion,
+
+    /// Interés que se perdona al saldar antes de tiempo (ver
+    /// calc.calcularSaldarHoy). Solo el prestamista.
+    double descuento = 0,
   }) async {
     final prestamo = await client
         .from('prestamos')
@@ -878,6 +894,8 @@ class SupabaseService {
         .eq('id', prestamoId)
         .single();
     final pagos = await obtenerPagos(prestamoId);
+    // obtenerPagos ya revisó si existe la columna del descuento.
+    if (descuento > 0 && !_hayDescuentoEnPagos) throw const FaltaMigracionSaldar();
     final ahora = DateTime.now();
     final reparto = calc.repartirPago(calc.estadoPrestamo(prestamo, pagos, ahora), monto);
 
@@ -890,6 +908,7 @@ class SupabaseService {
           'monto': monto,
           'monto_mora': reparto.mora,
           'metodo': 'efectivo',
+          if (descuento > 0) 'descuento': descuento,
           if (conUbicacion && ubicacion != null) ...{
             'lat': ubicacion.lat,
             'lng': ubicacion.lng,
@@ -1517,6 +1536,14 @@ class ClienteConPrestamo implements Exception {
   @override
   String toString() =>
       'Tiene un préstamo en la calle. Solo se puede eliminar cuando lo termine de pagar.';
+}
+
+/// Falta correr migracion_2026_10_18_saldar_antes.sql.
+class FaltaMigracionSaldar implements Exception {
+  const FaltaMigracionSaldar();
+
+  @override
+  String toString() => 'Falta actualizar la base de datos (migración saldar_antes).';
 }
 
 /// Falta correr migracion_2026_10_18_archivar_clientes.sql.
