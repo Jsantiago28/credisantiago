@@ -99,6 +99,7 @@ List<LineaTicket> lineasTicket({
     const LineaTicket(''),
     const LineaTicket('RECIBO DE PAGO', centro: true, negrita: true),
     LineaTicket(numeroReciboTexto(r.numero), centro: true),
+    if (r.pendiente) const LineaTicket('PENDIENTE DE SUBIR (sin señal)', centro: true, negrita: true),
     LineaTicket(_fechaHora(r.fecha), centro: true),
     LineaTicket(raya),
     ...fila('Cliente', cliente),

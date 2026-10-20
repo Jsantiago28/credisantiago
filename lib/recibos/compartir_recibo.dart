@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:printing/printing.dart';
 
 import '../logic/calculo_prestamo.dart';
@@ -16,11 +18,30 @@ typedef ReciboListo = ({
 
 /// Junta los datos del recibo de `pago`: cómo quedó el préstamo después de
 /// ese cobro, el negocio, el cliente y quién cobró.
+///
+/// Un cobro hecho sin señal ([PagoRegistrado.sinSubir]) se arma con lo que
+/// ya hay en el teléfono: [pagosLocales] (los cobros del préstamo, con ese)
+/// y [cliente].
 Future<ReciboListo> prepararRecibo({
   required Map<String, dynamic> prestamo,
   required PagoRegistrado pago,
+  List<PagoRegistrado>? pagosLocales,
+  Map<String, dynamic>? cliente,
 }) async {
   final servicio = SupabaseService.instance;
+  if (pago.sinSubir) {
+    final pagos = [...?pagosLocales];
+    if (!pagos.contains(pago)) pagos.add(pago);
+    final perfil = await servicio.perfilDelNegocio();
+    return (
+      r: datosRecibo(prestamo, pagos, pago),
+      negocio: NegocioRecibo.dePerfil(perfil),
+      cliente: cliente?['nombre'] as String? ?? '',
+      cedula: null,
+      cobradoPor: servicio.sesionCobrador?.cobradorNombre,
+      numero: null,
+    );
+  }
   final pagos = await servicio.obtenerPagos(prestamo['id']);
   // El pago ya está guardado; se usa la versión de la lista para que el
   // recibo se calcule con el mismo orden que el resto de la app.
@@ -28,13 +49,13 @@ Future<ReciboListo> prepararRecibo({
   if (!pagos.contains(guardado)) pagos.add(guardado);
 
   final perfil = await servicio.perfilDelNegocio();
-  final cliente = await servicio.obtenerClienteDePrestamo(prestamo);
+  final datosCliente = await servicio.obtenerClienteDePrestamo(prestamo);
 
   return (
     r: datosRecibo(prestamo, pagos, guardado),
     negocio: NegocioRecibo.dePerfil(perfil),
-    cliente: cliente?['nombre'] as String? ?? '',
-    cedula: cliente?['cedula'] as String?,
+    cliente: datosCliente?['nombre'] as String? ?? '',
+    cedula: datosCliente?['cedula'] as String?,
     cobradoPor: await _cobradoPor(guardado, prestamo),
     numero: guardado.numeroRecibo,
   );
@@ -45,12 +66,21 @@ Future<ReciboListo> prepararRecibo({
 Future<void> compartirRecibo({
   required Map<String, dynamic> prestamo,
   required PagoRegistrado pago,
+  List<PagoRegistrado>? pagosLocales,
+  Map<String, dynamic>? cliente,
 }) async {
-  final recibo = await prepararRecibo(prestamo: prestamo, pago: pago);
+  final recibo = await prepararRecibo(
+      prestamo: prestamo, pago: pago, pagosLocales: pagosLocales, cliente: cliente);
+  Uint8List? logo;
+  try {
+    logo = await SupabaseService.instance.bajarFoto(recibo.negocio.logo);
+  } catch (_) {
+    // Sin señal: el recibo sale sin el logo.
+  }
   final bytes = await reciboPdf(
     r: recibo.r,
     negocio: recibo.negocio,
-    logo: await SupabaseService.instance.bajarFoto(recibo.negocio.logo),
+    logo: logo,
     cobradoPor: recibo.cobradoPor,
     cliente: recibo.cliente,
     cedula: recibo.cedula,

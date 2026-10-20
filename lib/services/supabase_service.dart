@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -15,6 +16,7 @@ import '../logic/gastos.dart' as gastos;
 import '../logic/historial.dart' as historial;
 import '../logic/importar.dart' as importar;
 import '../logic/validacion.dart' show soloDigitos;
+import 'sin_conexion.dart';
 
 /// Configura estas dos constantes con los datos de tu proyecto Supabase
 /// (Project Settings -> API).
@@ -264,7 +266,19 @@ class SupabaseService {
   Future<Map<String, dynamic>?> obtenerMiPerfil() async {
     final uid = usuarioActual?.id;
     if (uid == null) return null;
-    return client.from('profiles').select().eq('id', uid).maybeSingle();
+    try {
+      final perfil = await client.from('profiles').select().eq('id', uid).maybeSingle();
+      if (perfil != null) unawaited(SinConexion.guardarIdentidad('perfil', perfil));
+      return perfil;
+    } catch (e) {
+      // Sin señal en la app de Android: el perfil guardado, para poder cobrar.
+      if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
+        SinConexion.sinSenal.value = true;
+        final guardado = await SinConexion.identidad('perfil');
+        if (guardado != null) return guardado;
+      }
+      rethrow;
+    }
   }
   /// El perfil del negocio: el propio, o el del jefe si quien usa la app
   /// es un cobrador. Es lo que llevan los recibos y los mensajes.
@@ -838,6 +852,9 @@ class SupabaseService {
 
   /// false mientras falte la migración de saldar antes (pagos.descuento).
   bool _hayDescuentoEnPagos = true;
+
+  /// false mientras falte la migración de cobrar sin señal (pagos.revisar).
+  bool _hayRevisarEnPagos = true;
   String get _columnasPago => [
         _columnasPagoSinCobrador,
         if (_hayCobradorEnPagos) 'cobrador_id',
@@ -853,6 +870,9 @@ class SupabaseService {
           _hayCobradorEnPagos = false;
         } else if (_hayDescuentoEnPagos && e.message.contains('descuento')) {
           _hayDescuentoEnPagos = false;
+        } else if (_hayRevisarEnPagos &&
+            (e.message.contains('revisar') || e.message.contains('sin_conexion'))) {
+          _hayRevisarEnPagos = false;
         } else {
           rethrow;
         }
@@ -891,6 +911,12 @@ class SupabaseService {
     /// Interés que se perdona al saldar antes de tiempo (ver
     /// calc.calcularSaldarHoy). Solo el prestamista.
     double descuento = 0,
+
+    /// Cobro hecho sin señal que se sube ahora (ver SinConexion): su id
+    /// (para no guardarlo dos veces) y la hora del teléfono al cobrarlo. La
+    /// base de datos lo revisa y lo marca si algo no cuadra.
+    String? id,
+    DateTime? fechaSinConexion,
   }) async {
     final prestamo = await client
         .from('prestamos')
@@ -901,7 +927,10 @@ class SupabaseService {
     // obtenerPagos ya revisó si existe la columna del descuento.
     if (descuento > 0 && !_hayDescuentoEnPagos) throw const FaltaMigracionSaldar();
     final ahora = DateTime.now();
-    final reparto = calc.repartirPago(calc.estadoPrestamo(prestamo, pagos, ahora), monto);
+    // Sin señal: se reparte con lo que había cobrado hasta la hora del cobro.
+    final cuando = fechaSinConexion ?? ahora;
+    final antes = [for (final p in pagos) if (!p.fecha.isAfter(cuando)) p];
+    final reparto = calc.repartirPago(calc.estadoPrestamo(prestamo, antes, cuando), monto);
 
     // numero_recibo lo asigna la base de datos (trigger), por eso se lee de vuelta.
     Future<Map<String, dynamic>> guardar(bool conUbicacion) => _conColumnasPago(() => client
@@ -913,6 +942,12 @@ class SupabaseService {
           'monto_mora': reparto.mora,
           'metodo': 'efectivo',
           if (descuento > 0) 'descuento': descuento,
+          if (id != null) 'id': id,
+          if (fechaSinConexion != null) ...{
+            'sin_conexion': true,
+            'fecha_pago': fechaSinConexion.toUtc().toIso8601String(),
+            'reloj_telefono': DateTime.now().toUtc().toIso8601String(),
+          },
           if (conUbicacion && ubicacion != null) ...{
             'lat': ubicacion.lat,
             'lng': ubicacion.lng,
@@ -1029,6 +1064,7 @@ class SupabaseService {
               .from('pagos')
               .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
                   '${_hayCobradorEnPagos ? 'cobrador_id, ' : ''}'
+                  '${_hayRevisarEnPagos ? 'sin_conexion, revisar, ' : ''}'
                   '${_hayGpsEnPagos ? 'lat, lng, ' : ''}prestamos(clientes(nombre))')
               .eq('prestamista_id', prestamistaId);
           if (desde != null) {
@@ -1050,6 +1086,12 @@ class SupabaseService {
 
   /// false si la base de datos todavía no tiene pagos.lat / pagos.lng.
   bool _hayGpsEnPagos = true;
+
+  /// El prestamista revisó un cobro marcado (hecho sin señal): se quita la
+  /// marca. El cobrador no puede (no tiene permiso de cambiar cobros).
+  Future<void> marcarRevisado(String pagoId) async {
+    await client.from('pagos').update({'revisar': null}).eq('id', pagoId);
+  }
 
   /// Entregas de los cobradores de un día, por cobrador. Vacío si falta la
   /// migración de entregas.
@@ -1205,9 +1247,16 @@ class SupabaseService {
         }
         return null;
       }
-      return sesionCobrador =
-          cob.SesionCobrador.desdeFila(Map<String, dynamic>.from(filas.first as Map));
+      final fila = Map<String, dynamic>.from(filas.first as Map);
+      unawaited(SinConexion.guardarIdentidad('jefe', fila));
+      return sesionCobrador = cob.SesionCobrador.desdeFila(fila);
     } catch (e) {
+      // Sin señal en la app de Android: con lo guardado, para poder cobrar.
+      if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
+        SinConexion.sinSenal.value = true;
+        final guardado = await SinConexion.identidad('jefe');
+        if (guardado != null) return sesionCobrador = cob.SesionCobrador.desdeFila(guardado);
+      }
       // ignore: avoid_print
       print('ERROR REAL ENTRAR COMO COBRADOR: $e');
       return null;
@@ -1428,9 +1477,17 @@ class SupabaseService {
     }));
   }
 
-  Future<void> cerrarSesion() {
+  Future<void> cerrarSesion() async {
+    // La ruta guardada en el teléfono se borra; los cobros sin subir no.
+    await SinConexion.olvidarDatos();
     sesionCobrador = null;
-    return client.auth.signOut();
+    try {
+      await client.auth.signOut();
+    } catch (e) {
+      // Sin señal: igual se cierra en este teléfono.
+      if (!SinConexion.esFaltaDeConexion(e)) rethrow;
+      await client.auth.signOut(scope: SignOutScope.local);
+    }
   }
 
   /// Cliente de un préstamo (para el recibo y el contrato).

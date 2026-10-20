@@ -476,6 +476,10 @@ class PagoRegistrado {
   /// cuotas pero no es dinero recibido (ver [calcularSaldarHoy]).
   final double descuento;
 
+  /// Cobrado sin señal: está guardado en el teléfono y todavía no sube (no
+  /// tiene número de recibo).
+  final bool sinSubir;
+
   /// El cobrador que lo cobró (null si lo cobró el prestamista).
   final String? cobradorId;
 
@@ -486,6 +490,7 @@ class PagoRegistrado {
     required this.monto,
     this.montoMora = 0,
     this.descuento = 0,
+    this.sinSubir = false,
     this.anulado = false,
     this.motivoAnulacion,
     this.anuladoEn,
@@ -801,6 +806,9 @@ class DatosRecibo {
   final double proximoPagoMonto;
   final bool saldado;
 
+  /// Cobrado sin señal y todavía sin subir: el recibo lo dice.
+  final bool pendiente;
+
   const DatosRecibo({
     required this.numero,
     required this.fecha,
@@ -813,6 +821,7 @@ class DatosRecibo {
     required this.proximoPagoFecha,
     required this.proximoPagoMonto,
     required this.saldado,
+    this.pendiente = false,
   });
 }
 
@@ -878,6 +887,7 @@ DatosRecibo datosRecibo(
     proximoPagoFecha: proxima?.fecha,
     proximoPagoMonto: proxima?.porCobrar ?? 0,
     saldado: despues.saldado,
+    pendiente: pago.sinSubir,
   );
 }
 

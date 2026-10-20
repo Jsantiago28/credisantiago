@@ -15,11 +15,14 @@ Future<void> imprimirTicket(
   BuildContext context, {
   required Map<String, dynamic> prestamo,
   required PagoRegistrado pago,
+  List<PagoRegistrado>? pagosLocales,
+  Map<String, dynamic>? cliente,
 }) async {
   final mensajero = ScaffoldMessenger.of(context);
   final ReciboListo recibo;
   try {
-    recibo = await prepararRecibo(prestamo: prestamo, pago: pago);
+    recibo = await prepararRecibo(
+        prestamo: prestamo, pago: pago, pagosLocales: pagosLocales, cliente: cliente);
   } catch (e) {
     mensajero.showSnackBar(SnackBar(content: Text('No se pudo preparar el ticket: $e')));
     return;

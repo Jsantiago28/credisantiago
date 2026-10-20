@@ -150,6 +150,8 @@ Future<Uint8List> reciboPdf({
           pw.SizedBox(height: 6),
           pw.Text('RECIBO DE PAGO', textAlign: pw.TextAlign.center, style: negrita),
           pw.Text(numeroReciboTexto(r.numero), textAlign: pw.TextAlign.center, style: normal),
+          if (r.pendiente)
+            pw.Text('PENDIENTE DE SUBIR (sin señal)', textAlign: pw.TextAlign.center, style: negrita),
           pw.Text(_fechaHora(r.fecha), textAlign: pw.TextAlign.center, style: chico),
           linea(),
           fila('Cliente', textoPdf(cliente)),

@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../logic/gestiones.dart';
+import '../services/sin_conexion.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/aviso_sin_conexion.dart';
 import '../widgets/cobro_prestamo.dart';
 import '../widgets/contacto.dart';
 import '../widgets/gestiones.dart';
@@ -90,12 +92,43 @@ class _InicioScreenState extends State<InicioScreen> {
   @override
   void dispose() {
     _cambios?.cancel();
+    _reintento?.cancel();
     super.dispose();
+  }
+
+  /// Mientras haya cobros sin subir o no haya señal, se reintenta solo.
+  Timer? _reintento;
+
+  /// La cartera: en vivo (y se guarda para cuando no haya señal) o, sin
+  /// señal, la guardada en el teléfono. Siempre con los cobros sin subir.
+  Future<List<PrestamoConDatos>> _cartera() async {
+    final servicio = SupabaseService.instance;
+    if (!SinConexion.disponible) return servicio.obtenerCartera(_prestamistaId);
+    await SinConexion.subir();
+    try {
+      final cartera = await servicio.obtenerCartera(_prestamistaId);
+      await SinConexion.guardarRuta(cartera);
+      return SinConexion.mezclar(cartera, await SinConexion.cola());
+    } catch (e) {
+      if (!SinConexion.esFaltaDeConexion(e)) rethrow;
+      SinConexion.sinSenal.value = true;
+      final guardada = await SinConexion.ruta();
+      if (guardada == null) {
+        throw 'No hay señal y este teléfono no tiene la ruta guardada (o ya pasaron '
+            '${SinConexion.validez.inDays} días). Conéctate un momento para bajarla.';
+      }
+      SinConexion.rutaGuardadaDe.value = guardada.guardada;
+      return SinConexion.mezclar(guardada.cartera, await SinConexion.cola());
+    } finally {
+      final seguir = SinConexion.sinSenal.value || SinConexion.pendientes.value > 0;
+      _reintento?.cancel();
+      _reintento = seguir ? Timer(const Duration(minutes: 1), _cargar) : null;
+    }
   }
 
   Future<void> _cargar() async {
     try {
-      final cartera = await SupabaseService.instance.obtenerCartera(_prestamistaId);
+      final cartera = await _cartera();
       final ahora = DateTime.now();
       final filas = cartera.map((d) {
         final e = d.estado(ahora);
@@ -128,6 +161,7 @@ class _InicioScreenState extends State<InicioScreen> {
             children: [
               _encabezado(),
               const SizedBox(height: 16),
+              const AvisoSinConexion(),
               if (filas == null && _error == null)
                 const Padding(
                   padding: EdgeInsets.all(40),

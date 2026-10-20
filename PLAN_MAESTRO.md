@@ -175,7 +175,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 **Ya listo en código:** todo lo de la app. Lo último: eliminar (archivar) clientes, saldar préstamo antes de tiempo, aviso de errores, GPS de cobros, recordatorio diario, términos y privacidad, borrar cuenta, página de presentación y primeros pasos.
 
 **1. Lo que hace el dueño (sin programar), lo primero:**
-- ⬜ Correr en Supabase las migraciones 23 a 30 (de interés sobre saldo a seguridad) y subir el zip a Netlify.
+- ✅ Migraciones 23 a 30 corridas (revisado el 19-10-2026). ⬜ Correr la 31 (sin conexión) y subir el zip a Netlify.
 - ⬜ Probar el APK 1.0.6 en un teléfono Android (permisos de avisos y ubicación, saldar, eliminar cliente).
 - ⬜ Admin → Ajustes: WhatsApp de soporte y las cuentas de banco (BHD y Popular).
 - ⬜ Limpiar los datos de prueba con `supabase/limpieza_datos_de_prueba.sql`.
@@ -190,7 +190,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 - ✅ Huecos menores de seguridad (18-10-2026): freno a solicitudes falsas en la base de datos, cobradores bloqueados si al jefe se le vence el plan, funciones del plan cerradas. Un captcha de verdad (Cloudflare Turnstile, gratis) queda para cuando haya dominio.
 - ✅ Ganancias exactas con el descuento al saldar antes (18-10-2026): gráficas, "Ya llevas" y Saldados.
 - ✅ El cobrador ve la foto de la cara de sus clientes (18-10-2026; tocarla la agranda). Entrar con WhatsApp/SMS: descartado por el dueño (18-10-2026).
-- ⬜ Funcionar sin internet (el cambio más grande; ya está pensado cómo).
+- ✅ Funcionar sin internet (19-10-2026), con vigilancia contra trampas en la base de datos.
 
 **3. Cuando haya dinero:** dominio credisantiago.com (US$10.46/año), correo con el dominio (Resend, gratis), Google Play (US$25 una vez), Supabase Pro (US$25/mes, con unos 5 prestamistas pagando) y avisos al instante con Firebase.
 
@@ -215,7 +215,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 14. ✅ (18-10-2026: tarjeta "Primeros pasos" en el Inicio, con 5 pasos que se marcan solos y se puede ocultar) **Ayuda para empezar:** una guía corta (o video) de los primeros pasos: subir logo, configurar recibo y contrato, mandar el link, prestar y cobrar.
 
 ### C. Para competir mejor (después del lanzamiento)
-15. ⬜ **Funcionar sin internet** para los cobradores en la calle (PrestaCOP y PrestamosCloud lo tienen). Es el cambio más grande.
+15. ✅ **Funcionar sin internet** — hecho el 19-10-2026 (solo app de Android): la ruta se guarda cifrada en el teléfono (sin cédulas, fotos ni ingresos; vence a los 3 días y se borra al salir), sin señal solo se puede cobrar, el cobro queda en cola y sube solo; el recibo dice "pendiente de subir". La base de datos marca para revisar lo que no cuadra y el prestamista lo ve en la Caja con "Ya lo revisé". Sin señal no se cierra la sesión por inactividad.
 16. 🟡 **Notificaciones**: hecho el 18-10-2026 el **recordatorio diario** en la app de Android (Perfil → "Recordatorio de cobros", a las 8:00 a. m. o la hora que elija; lo hace el teléfono, sin internet). Falta el aviso al instante de "solicitud nueva" con la app cerrada: necesita Firebase (gratis) y una función en Supabase.
 17. ✅ **Reporte de errores automático** — hecho el 18-10-2026, sin Sentry: las fallas se guardan en la tabla `errores_app` (sin datos de clientes, máximo 15 por vez que se abre la app) y el admin las ve en Admin → "Errores de la app".
 18. ⛔ App de **iPhone** (necesita US$99/año de Apple y una Mac para compilarla). Mientras tanto, en iPhone se usa la web.
@@ -416,6 +416,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 28 | `migracion_2026_10_18_archivar_clientes.sql` | Eliminar (archivar) clientes sin préstamo en la calle y restaurarlos; los archivados no cuentan para el límite del plan |
 | 29 | `migracion_2026_10_18_saldar_antes.sql` | Saldar antes de tiempo: pagos.descuento (interés perdonado, no es dinero recibido); el cobrador no puede dar descuentos |
 | 30 | `migracion_2026_10_18_seguridad.sql` | Freno a solicitudes falsas (30 por hora, 3 por día por cédula), cobradores bloqueados si el plan del jefe no los cubre, el cobrador ve la cara de sus clientes, funciones del plan cerradas a quien no tiene cuenta y aviso de versión nueva del APK (ajustes_app.apk_version y apk_enlace) |
+| 31 | `migracion_2026_10_19_sin_conexion.sql` | Cobrar sin señal: pagos.sin_conexion, registrado_en, reloj_telefono y revisar; el vigilante pone la fecha del servidor a los cobros con señal del cobrador y marca para revisar los cobros sin señal que no cuadran (reloj cambiado, subidos más de 12 h después, otro cobro mientras tanto) |
 
 `schema.sql` refleja el esquema completo al día.
 

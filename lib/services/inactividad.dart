@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'sin_conexion.dart';
 import 'supabase_service.dart';
 
 /// Cierra la sesión si nadie usa la app por [limite]: así un teléfono
@@ -56,8 +57,28 @@ class Inactividad {
   }
 
   static Future<void> _cerrar() async {
+    // Sin señal no se cierra: para volver a entrar hace falta internet y el
+    // cobrador se quedaría sin poder cobrar. Se cierra cuando vuelva.
+    if (await _sinSenal()) return;
     cerradaPorInactividad = true;
     await SupabaseService.instance.cerrarSesion();
+  }
+}
+
+/// No hay internet ahora mismo (solo cuenta en la app de Android, donde se
+/// puede cobrar sin señal).
+Future<bool> _sinSenal() async {
+  if (!SinConexion.disponible) return false;
+  if (SinConexion.sinSenal.value) return true;
+  try {
+    await SupabaseService.instance.client
+        .from('ajustes_app')
+        .select('id')
+        .limit(1)
+        .timeout(const Duration(seconds: 5));
+    return false;
+  } catch (e) {
+    return SinConexion.esFaltaDeConexion(e);
   }
 }
 

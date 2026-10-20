@@ -20,6 +20,12 @@ class CobroCaja {
   /// Dónde se hizo el cobro (null si el teléfono no dio la ubicación).
   final ({double lat, double lng})? ubicacion;
 
+  /// Se cobró sin señal y subió después.
+  final bool sinConexion;
+
+  /// Por qué hay que revisarlo (lo pone la base de datos; null = sin novedad).
+  final String? revisar;
+
   const CobroCaja({
     this.id,
     this.numeroRecibo,
@@ -30,6 +36,8 @@ class CobroCaja {
     required this.cliente,
     this.cobradorId,
     this.ubicacion,
+    this.sinConexion = false,
+    this.revisar,
   });
 
   double get montoCuota => monto - montoMora;
@@ -52,6 +60,8 @@ class CobroCaja {
         (final num lat, final num lng) => (lat: lat.toDouble(), lng: lng.toDouble()),
         _ => null,
       },
+      sinConexion: fila['sin_conexion'] == true,
+      revisar: fila['revisar'] as String?,
     );
   }
 }

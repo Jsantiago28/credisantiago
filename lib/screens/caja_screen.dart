@@ -53,6 +53,10 @@ class FilaDiaCaja extends StatelessWidget {
                       : '${dia.cantidad} cobro(s)${dia.mora > 0 ? ' · mora ${rd(dia.mora)}' : ''}',
                   style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
+                if (dia.cobros.where((c) => c.revisar != null).length case final n when n > 0)
+                  Text('⚠️ $n por revisar (sin señal)',
+                      style: TextStyle(
+                          color: AppColors.red, fontSize: 12, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -198,6 +202,19 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
   bool _trabajando = false;
 
   DiaCaja get _d => widget.dia;
+
+  /// Cobros marcados que el prestamista ya revisó en esta pantalla.
+  final _revisados = <String>{};
+
+  Future<void> _marcarRevisado(String pagoId) async {
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      await SupabaseService.instance.marcarRevisado(pagoId);
+      if (mounted) setState(() => _revisados.add(pagoId));
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo: $e')));
+    }
+  }
 
   Map<String, String> get _nombres => {for (final c in _cobradores) c.id: c.nombre};
 
@@ -611,11 +628,33 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                       fontWeight: FontWeight.w700,
                       color: c.anulado ? AppColors.grey : null,
                       decoration: c.anulado ? TextDecoration.lineThrough : null)),
-              subtitle: Text(
-                'Recibo ${numeroReciboTexto(c.numeroRecibo)}'
-                '${c.montoMora > 0 ? ' · mora ${rd(c.montoMora)}' : ''}'
-                '${c.anulado ? ' · ANULADO' : ''}',
-                style: TextStyle(color: c.anulado ? AppColors.red : AppColors.grey, fontSize: 12),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Recibo ${numeroReciboTexto(c.numeroRecibo)}'
+                    '${c.montoMora > 0 ? ' · mora ${rd(c.montoMora)}' : ''}'
+                    '${c.sinConexion ? ' · sin señal' : ''}'
+                    '${c.anulado ? ' · ANULADO' : ''}',
+                    style:
+                        TextStyle(color: c.anulado ? AppColors.red : AppColors.grey, fontSize: 12),
+                  ),
+                  // La base de datos lo marcó (cobro sin señal que no cuadra).
+                  if (c.revisar != null && c.id != null && !_revisados.contains(c.id))
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('⚠️ Revisar: ${c.revisar}',
+                              style: TextStyle(
+                                  color: AppColors.red, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ),
+                        TextButton(
+                          onPressed: () => _marcarRevisado(c.id!),
+                          child: const Text('Ya lo revisé'),
+                        ),
+                      ],
+                    ),
+                ],
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,

@@ -4,6 +4,7 @@ import '../logic/calculo_prestamo.dart';
 import '../recibos/compartir_recibo.dart';
 import '../recibos/imprimir_ticket.dart';
 import '../recibos/recibo_pdf.dart';
+import '../services/sin_conexion.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'contacto.dart';
@@ -183,8 +184,7 @@ class CobroPrestamo {
                         style: TextStyle(
                             color: cuota.moraPendiente > 0 ? AppColors.red : AppColors.grey)),
                     trailing: alDia
-                        ? Text('Pagada',
-                            style: TextStyle(color: AppColors.green, fontSize: 12))
+                        ? Text('Pagada', style: TextStyle(color: AppColors.green, fontSize: 12))
                         : TextButton(
                             onPressed: () {
                               Navigator.of(ctx).pop();
@@ -259,10 +259,10 @@ class CobroPrestamo {
     if (monto == null || monto <= 0 || !context.mounted) return;
     final mensajero = ScaffoldMessenger.of(context);
 
+    // Dónde se cobró (si el teléfono lo da), para que el prestamista vea
+    // en la caja dónde cobró cada cobrador. El GPS no necesita internet.
+    final donde = await ubicacionSinAvisar();
     try {
-      // Dónde se cobró (si el teléfono lo da), para que el prestamista vea
-      // en la caja dónde cobró cada cobrador.
-      final donde = await ubicacionSinAvisar();
       // El cobro es del dueño del préstamo, aunque lo haga un cobrador.
       final pago = await SupabaseService.instance.registrarPago(
         prestamoId: _prestamo['id'],
@@ -275,8 +275,37 @@ class CobroPrestamo {
     } catch (e) {
       // ignore: avoid_print
       print('ERROR REAL COBRAR: $e');
+      if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
+        await _guardarSinSenal(monto, donde);
+        return;
+      }
       mensajero.showSnackBar(SnackBar(content: Text('No se pudo registrar el cobro: $e')));
     }
+  }
+
+  /// Los cobros del préstamo con el que se acaba de guardar sin señal (para
+  /// armar su recibo sin internet).
+  List<PagoRegistrado>? _pagosLocales;
+
+  /// Sin señal: el cobro se guarda cifrado en el teléfono y se sube solo
+  /// cuando vuelva (ver SinConexion). El recibo dice "pendiente de subir".
+  Future<void> _guardarSinSenal(double monto, ({double lat, double lng})? donde) async {
+    final ahora = DateTime.now();
+    final reparto = repartirPago(estadoPrestamo(_prestamo, datos.pagos, ahora), monto);
+    final cobro = CobroPendiente(
+      id: SinConexion.nuevoId(),
+      prestamoId: _prestamo['id'] as String,
+      prestamistaId: _prestamo['prestamista_id'] as String,
+      monto: monto,
+      montoMora: reparto.mora,
+      fecha: ahora,
+      ubicacion: donde,
+    );
+    await SinConexion.agregar(cobro);
+    SinConexion.sinSenal.value = true;
+    _pagosLocales = [...datos.pagos, cobro.comoPago];
+    onCambio();
+    if (context.mounted) await _mostrarCobroRegistrado(cobro.comoPago);
   }
 
   /// Saldar todo hoy, antes de tiempo: muestra cuánto paga (capital, interés
@@ -361,7 +390,10 @@ class CobroPrestamo {
     } catch (e) {
       // ignore: avoid_print
       print('ERROR REAL SALDAR: $e');
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo saldar: $e')));
+      mensajero.showSnackBar(SnackBar(
+          content: Text(SinConexion.esFaltaDeConexion(e)
+              ? 'Para saldar con descuento hace falta internet.'
+              : 'No se pudo saldar: $e')));
     }
   }
 
@@ -369,7 +401,11 @@ class CobroPrestamo {
   Future<void> _compartirRecibo(PagoRegistrado pago) async {
     final mensajero = ScaffoldMessenger.of(context);
     try {
-      await compartirRecibo(prestamo: _prestamo, pago: pago);
+      await compartirRecibo(
+          prestamo: _prestamo,
+          pago: pago,
+          pagosLocales: _pagosLocales ?? datos.pagos,
+          cliente: datos.cliente);
     } catch (e) {
       // ignore: avoid_print
       print('ERROR REAL RECIBO: $e');
@@ -399,8 +435,14 @@ class CobroPrestamo {
               ],
             ),
             const SizedBox(height: 8),
-            Text('Recibo ${numeroReciboTexto(pago.numeroRecibo)}',
-                style: TextStyle(color: AppColors.grey)),
+            if (pago.sinSubir)
+              Text(
+                  'Sin señal: quedó guardado en este teléfono y se sube solo cuando vuelva '
+                  'el internet. El recibo dice "pendiente de subir".',
+                  style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600))
+            else
+              Text('Recibo ${numeroReciboTexto(pago.numeroRecibo)}',
+                  style: TextStyle(color: AppColors.grey)),
             if (pago.montoMora > 0)
               Text('Cuota ${rd(pago.montoCuota)} + mora ${rd(pago.montoMora)}',
                   style: TextStyle(color: AppColors.grey)),
@@ -415,7 +457,11 @@ class CobroPrestamo {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () => imprimirTicket(context, prestamo: _prestamo, pago: pago),
+              onPressed: () => imprimirTicket(context,
+                  prestamo: _prestamo,
+                  pago: pago,
+                  pagosLocales: _pagosLocales ?? datos.pagos,
+                  cliente: datos.cliente),
               icon: const Icon(Icons.print_rounded),
               label: const Text('Imprimir ticket'),
             ),
@@ -423,8 +469,10 @@ class CobroPrestamo {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text('Listo'),
             ),
-            // El cobrador no anula: le avisa al jefe.
-            if (!SupabaseService.instance.esCobrador)
+            // El cobrador no anula: le avisa al jefe. Sin subir no se anula.
+            if (pago.sinSubir)
+              const SizedBox.shrink()
+            else if (!SupabaseService.instance.esCobrador)
               TextButton.icon(
                 style: TextButton.styleFrom(foregroundColor: AppColors.red),
                 onPressed: () async {
@@ -545,10 +593,12 @@ class CobroPrestamo {
                   }
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(Icons.receipt_long, color: AppColors.grey),
+                    leading: Icon(pago.sinSubir ? Icons.cloud_upload_outlined : Icons.receipt_long,
+                        color: pago.sinSubir ? AppColors.amber : AppColors.grey),
                     title: Text('${numeroReciboTexto(pago.numeroRecibo)} — ${rd(pago.monto)}',
                         style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(fechaLarga(pago.fecha) +
+                    subtitle: Text((pago.sinSubir ? 'Pendiente de subir · ' : '') +
+                        fechaLarga(pago.fecha) +
                         (pago.montoMora > 0 ? ' · incluye mora ${rd(pago.montoMora)}' : '')),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -561,10 +611,13 @@ class CobroPrestamo {
                         IconButton(
                           tooltip: 'Imprimir ticket',
                           icon: Icon(Icons.print_rounded, color: AppColors.grey),
-                          onPressed: () =>
-                              imprimirTicket(context, prestamo: _prestamo, pago: pago),
+                          onPressed: () => imprimirTicket(context,
+                              prestamo: _prestamo,
+                              pago: pago,
+                              pagosLocales: _pagosLocales ?? datos.pagos,
+                              cliente: datos.cliente),
                         ),
-                        if (!SupabaseService.instance.esCobrador)
+                        if (!SupabaseService.instance.esCobrador && !pago.sinSubir)
                           PopupMenuButton<String>(
                             tooltip: 'Más opciones',
                             color: AppColors.surfaceAlt,
