@@ -34,6 +34,7 @@
 | Interés sobre saldo (como la cooperativa), plazo en meses, tabla de amortización, cierre de sesión a los 40 minutos sin uso y bienvenida con el nombre | ✅ Hecho (17-10-2026) |
 | Logo del prestamista en su app y su formulario; contrato firmado (fotos o PDF) en cada préstamo, solo lo ve el prestamista | ✅ Hecho (17/18-10-2026) |
 | Eliminar clientes sin préstamo en la calle (quedan archivados en Clientes → Eliminados y se pueden restaurar; solo el prestamista) | ✅ Hecho (18-10-2026) |
+| Registro sin cédula para probar en Gratis (nombre y WhatsApp); la cédula con sus fotos se pide al tocar "Enviar comprobante" en Planes; Admin muestra "Sin cédula todavía" y avisa antes de activar un plan pagado | ✅ Hecho (21-10-2026) |
 | Saldar préstamo antes de tiempo: solo el interés hasta ese día más 1 día de cierre; el resto se descuenta (solo el prestamista) | ✅ Hecho (18-10-2026) |
 | Invitar a otros prestamistas (link /i/..., 1 mes gratis al que invita cuando el invitado paga) | ✅ Hecho (14-10-2026) |
 | Entrar con correo y contraseña; "Registrarme" aparte (código al correo solo para confirmarlo); "¿Olvidaste tu contraseña?" entra con código y pide una nueva; cédula y fotos del prestamista al registrarse | ✅ Hecho (14-10-2026) |

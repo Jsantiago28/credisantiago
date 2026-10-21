@@ -5,6 +5,7 @@ import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contacto.dart';
 import '../widgets/ui.dart';
+import 'registro_formal_screen.dart';
 
 /// Carga lo que necesitan las pantallas de planes: mi perfil, los planes,
 /// los ajustes (WhatsApp de soporte, cómo pagar) y cuántos clientes tengo.
@@ -132,6 +133,9 @@ class PlanesScreen extends StatefulWidget {
 class _PlanesScreenState extends State<PlanesScreen> {
   late final _datos = _cargarPlanes();
   int _meses = 1;
+
+  /// Acaba de completar el registro formal en esta pantalla.
+  bool _registroFormal = false;
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +295,19 @@ class _PlanesScreenState extends State<PlanesScreen> {
                       ? () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                           content: Text('Todavía no se puede pedir el plan por aquí: falta el '
                               'WhatsApp de soporte. Escríbele al administrador de la app.')))
-                      : () => abrirWhatsApp(
+                      : () async {
+                          // Para un plan pagado se pide el registro formal
+                          // (la cédula), si todavía no lo hizo.
+                          if (!_registroFormal && !tieneRegistroFormal(d.perfil)) {
+                            final listo = await Navigator.of(context).push<bool>(MaterialPageRoute(
+                              builder: (_) =>
+                                  RegistroFormalScreen(prestamistaId: d.perfil['id'] as String),
+                            ));
+                            if (listo != true || !mounted) return;
+                            _registroFormal = true;
+                          }
+                          if (!context.mounted) return;
+                          await abrirWhatsApp(
                             context,
                             soporte,
                             mensajePedidoPlan(
@@ -301,7 +317,8 @@ class _PlanesScreenState extends State<PlanesScreen> {
                               precio: precio,
                               yaPago: cuentasPublicadas,
                             ),
-                          ),
+                          );
+                        },
                   icon: const Icon(Icons.chat_rounded, size: 18),
                   label: Text(cuentasPublicadas
                       ? 'Enviar comprobante'

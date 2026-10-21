@@ -1,10 +1,7 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import '../services/supabase_service.dart';
 import '../logic/validacion.dart';
 import '../theme/app_theme.dart';
-import '../widgets/elegir_foto.dart';
 import '../widgets/formato_campos.dart';
 import 'link_generado_screen.dart';
 
@@ -18,12 +15,9 @@ class RegistroScreen extends StatefulWidget {
 class _RegistroScreenState extends State<RegistroScreen> {
   final _nombreCtrl = TextEditingController();
   final _whatsappCtrl = TextEditingController();
-  final _cedulaCtrl = TextEditingController();
-  Uint8List? _fotoFrente;
-  Uint8List? _fotoReverso;
 
-  /// Link ya creado: si después falla subir la cédula, al reintentar no se
-  /// crea otro perfil.
+  /// Link ya creado: si después algo falla, al reintentar no se crea otro
+  /// perfil.
   String? _slugCreado;
   bool _cargando = false;
   String? _error;
@@ -49,15 +43,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
       setState(() => _error = 'WhatsApp: $errorWhatsApp');
       return;
     }
-    final errorDeCedula = errorCedula(_cedulaCtrl.text);
-    if (errorDeCedula != null) {
-      setState(() => _error = 'Cédula: $errorDeCedula');
-      return;
-    }
-    if (_fotoFrente == null || _fotoReverso == null) {
-      setState(() => _error = 'Sube la foto de tu cédula de los dos lados');
-      return;
-    }
     setState(() {
       _cargando = true;
       _error = null;
@@ -80,14 +65,8 @@ class _RegistroScreenState extends State<RegistroScreen> {
         invitadoPor: _invito?.id == user.id ? null : _invito?.id,
       );
       await servicio.olvidarInvitacion();
-      // La cédula va después del perfil: la carpeta de fotos de un
-      // prestamista solo existe cuando ya tiene perfil.
-      final frente =
-          await servicio.subirFoto(bytes: _fotoFrente!, prestamistaId: user.id, tipo: 'mi_cedula_f');
-      final reverso = await servicio.subirFoto(
-          bytes: _fotoReverso!, prestamistaId: user.id, tipo: 'mi_cedula_r');
-      await servicio.guardarCedulaPrestamista(user.id,
-          cedula: _cedulaCtrl.text.trim(), frente: frente, reverso: reverso);
+      // La cédula NO se pide aquí: para probar en Gratis basta el nombre y el
+      // WhatsApp. Se pide al comprar un plan (RegistroFormalScreen).
       // Aparte: si falta la migración de pagos de planes (sin la columna
       // whatsapp), el registro igual se completa.
       try {
@@ -185,46 +164,6 @@ class _RegistroScreenState extends State<RegistroScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('Tu cédula', style: TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 4),
-            Text('Para verificar quién eres al aprobar tu cuenta. Solo la ve el administrador.',
-                style: TextStyle(color: AppColors.grey, fontSize: 13)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _cedulaCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [FormatoCedula()],
-              style: const TextStyle(fontSize: 18),
-              decoration: InputDecoration(
-                hintText: '001-0000000-1',
-                prefixIcon: Icon(Icons.badge_rounded, color: AppColors.green),
-                filled: true,
-                fillColor: AppColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _foto('Cédula de frente', _fotoFrente, () async {
-                    final b = await elegirFoto(context);
-                    if (b != null) setState(() => _fotoFrente = b);
-                  }),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _foto('Cédula de atrás', _fotoReverso, () async {
-                    final b = await elegirFoto(context);
-                    if (b != null) setState(() => _fotoReverso = b);
-                  }),
-                ),
-              ],
-            ),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TextStyle(color: AppColors.red)),
@@ -239,37 +178,13 @@ class _RegistroScreenState extends State<RegistroScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Generar mi link'),
             ),
+            const SizedBox(height: 12),
+            Text('Empiezas gratis: sin cédula y sin tarjeta. La cédula solo se pide si '
+                'después quieres un plan pagado.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.grey, fontSize: 13)),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Recuadro para subir una foto (o verla si ya se eligió).
-  Widget _foto(String etiqueta, Uint8List? bytes, VoidCallback alTocar) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: _cargando ? null : alTocar,
-      child: Container(
-        height: 110,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: bytes != null ? AppColors.green : AppColors.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: bytes != null
-            ? Image.memory(bytes, fit: BoxFit.cover, width: double.infinity)
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.add_a_photo_rounded, color: AppColors.grey),
-                  const SizedBox(height: 6),
-                  Text(etiqueta,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.grey, fontSize: 12)),
-                ],
-              ),
       ),
     );
   }

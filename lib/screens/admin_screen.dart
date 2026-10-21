@@ -227,6 +227,7 @@ class _AdminScreenState extends State<AdminScreen> {
       ),
     );
     if (elegido == null) return;
+    if (elegido != 'gratis' && !await _cedulaOConfirmar(p)) return;
     // Plan pagado: vence en un mes desde hoy (o se mantiene si ya tenía
     // fecha futura). Gratis: sin vencimiento.
     final vence = DateTime.tryParse(p['plan_vence'] as String? ?? '');
@@ -247,9 +248,33 @@ class _AdminScreenState extends State<AdminScreen> {
   /// Registrar una mensualidad recibida: plan, 1/3/12 meses, monto (ya
   /// puesto con el precio y su descuento), cómo pagó y una nota. La base
   /// de datos extiende el plan y guarda el pago.
+  /// Antes de un plan pagado: si el prestamista no ha dejado su cédula (se
+  /// registró en Gratis sin ella), avisa y pregunta si seguir igual.
+  Future<bool> _cedulaOConfirmar(Map<String, dynamic> p) async {
+    final tiene = ((p['cedula'] as String?) ?? '').trim().isNotEmpty &&
+        p['cedula_frente_url'] != null &&
+        p['cedula_reverso_url'] != null;
+    if (tiene) return true;
+    final seguir = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Sin cédula'),
+        content: Text('${p['nombre']} todavía no ha dejado su cédula. Se le pide sola al tocar '
+            '"Enviar comprobante" en Planes. ¿Activarle el plan pagado de todas formas?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Sí, seguir')),
+        ],
+      ),
+    );
+    return seguir == true;
+  }
+
   Future<void> _registrarPago(Map<String, dynamic> p) async {
     final pagados = _planes.where((x) => ((x['precio_mensual'] as num?) ?? 0) > 0).toList();
     if (pagados.isEmpty) return;
+    if (!await _cedulaOConfirmar(p) || !mounted) return;
     final descuentos = DescuentosPlan.desde(_ajustes);
     var plan = pagados.any((x) => x['id'] == p['plan']) ? p['plan'] as String : pagados.first['id'] as String;
     var meses = 1;
@@ -729,6 +754,14 @@ class _AdminScreenState extends State<AdminScreen> {
                   onPressed: () => _verCedula(p),
                   icon: const Icon(Icons.badge_rounded, size: 18),
                   label: const Text('Ver cédula'),
+                )
+              else if (!esAdmin)
+                // Se registró sin cédula (para probar en Gratis): la deja al
+                // pedir un plan pagado.
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Text('Sin cédula todavía',
+                      style: TextStyle(color: AppColors.amber, fontSize: 12)),
                 ),
               if (!aprobado)
                 TextButton.icon(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prestamistas_rd/screens/login_screen.dart';
+import 'package:prestamistas_rd/screens/registro_formal_screen.dart';
 import 'package:prestamistas_rd/screens/registro_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,26 +65,38 @@ void main() {
     });
   });
 
-  testWidgets('registro del perfil: pide la cédula y sus dos fotos', (tester) async {
+  testWidgets('registro para probar gratis: solo nombre y WhatsApp, sin cédula', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await abrir(tester, const RegistroScreen());
-    expect(find.text('Tu cédula'), findsOneWidget);
+    expect(find.text('Tu cédula'), findsNothing);
+    expect(find.text('Cédula de frente'), findsNothing);
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.textContaining('sin cédula'), findsOneWidget);
+
+    await tester.tap(find.text('Generar mi link'));
+    await tester.pump();
+    expect(find.textContaining('Escribe tu nombre'), findsOneWidget);
+  });
+
+  testWidgets('el registro formal (al comprar un plan) pide la cédula y sus dos fotos',
+      (tester) async {
+    await abrir(tester, const RegistroFormalScreen(prestamistaId: 'x'));
     expect(find.text('Cédula de frente'), findsOneWidget);
     expect(find.text('Cédula de atrás'), findsOneWidget);
-
-    await tester.enterText(find.byType(TextField).at(0), 'Juan Préstamos');
-    await tester.enterText(find.byType(TextField).at(1), '809-555-1234');
-    await tester.tap(find.text('Generar mi link'));
+    await tester.tap(find.text('Guardar y seguir'));
     await tester.pump();
     expect(find.textContaining('Cédula:'), findsOneWidget); // falta el número
+  });
 
-    await tester.enterText(find.byType(TextField).at(2), '001-0000000-1');
-    await tester.tap(find.text('Generar mi link'));
-    await tester.pump();
-    final sinFotos = find.text('Sube la foto de tu cédula de los dos lados');
-    final cedulaMala = find.textContaining('Cédula:');
-    // Con un número válido pide las fotos; si el dígito verificador no
-    // cuadra, sigue marcando la cédula.
-    expect(sinFotos.evaluate().isNotEmpty || cedulaMala.evaluate().isNotEmpty, isTrue);
+  test('registro formal: hace falta el número y las dos fotos', () {
+    expect(tieneRegistroFormal({}), isFalse);
+    expect(tieneRegistroFormal({'contrato_cedula': '001-0000000-1'}), isFalse);
+    expect(
+        tieneRegistroFormal({
+          'contrato_cedula': '001-0000000-1',
+          'cedula_frente_url': 'a/f.jpg',
+          'cedula_reverso_url': 'a/r.jpg',
+        }),
+        isTrue);
   });
 }
