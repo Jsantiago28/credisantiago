@@ -74,16 +74,23 @@ void main() {
     expect(find.text('Primeros pasos'), findsNothing);
   });
 
-  test('las páginas legales y la presentación existen y Netlify las sirve', () {
+  test('las páginas legales y la presentación existen y Cloudflare las sirve', () {
     for (final pagina in ['terminos', 'privacidad', 'borrar-cuenta', 'presentacion']) {
       final html = File('web/$pagina.html').readAsStringSync();
       expect(html, contains('<title>'), reason: pagina);
       expect(html, contains('/sitio.css'), reason: pagina);
     }
-    final reglas = File('web/_redirects').readAsLinesSync();
+    // Reglas de Cloudflare Pages: sin comentarios ni líneas vacías.
+    final reglas = File('web/_redirects')
+        .readAsLinesSync()
+        .map((r) => r.trim())
+        .where((r) => r.isNotEmpty && !r.startsWith('#'))
+        .toList();
     expect(reglas.first, startsWith('/ ')); // la presentación en la dirección principal
-    expect(reglas.last, startsWith('/*')); // y la app en todo lo demás
-    expect(reglas.any((r) => r.startsWith('/app')), isTrue);
+    expect(reglas.any((r) => r.startsWith('/s/*')), isTrue); // link de solicitudes
+    expect(reglas.any((r) => r.startsWith('/i/*')), isTrue); // link de invitación
+    // Cloudflare quita el ".html" solo: un destino con ".html" daría vueltas.
+    expect(reglas.any((r) => r.contains('.html')), isFalse);
     expect(File('web/presentacion.html').readAsStringSync(), contains('no presta dinero'));
   });
 }
