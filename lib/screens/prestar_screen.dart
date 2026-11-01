@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/ultimos_valores_prestamo.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/plazo.dart';
@@ -14,6 +15,7 @@ class PrestarScreen extends StatefulWidget {
   final double? tasaInicial;
   final int? diasInicial;
   final String? frecuenciaInicial;
+  final TipoInteres? tipoInicial;
 
   const PrestarScreen({
     super.key,
@@ -22,6 +24,7 @@ class PrestarScreen extends StatefulWidget {
     this.tasaInicial,
     this.diasInicial,
     this.frecuenciaInicial,
+    this.tipoInicial,
   });
 
   @override
@@ -37,6 +40,25 @@ class _PrestarScreenState extends State<PrestarScreen> {
   late String _frecuencia;
   bool _guardando = false;
 
+  /// Cómo se cobra el interés (por defecto sobre saldo, o el del último
+  /// préstamo).
+  TipoInteres _tipo = TipoInteres.saldo;
+
+  /// Fecha del primer pago que eligió el prestamista. Null = la de siempre
+  /// (un período después de hoy). Se borra al cambiar la frecuencia.
+  DateTime? _primerPagoElegido;
+
+  DateTime get _hoy {
+    final h = DateTime.now();
+    return DateTime(h.year, h.month, h.day);
+  }
+
+  DateTime get _primerPago => _primerPagoElegido ?? primerPagoNormal(_hoy, _frecuencia);
+
+  /// La fecha desde la que sale el cronograma (ver baseParaPrimerPago).
+  DateTime get _baseCronograma =>
+      fechaDesembolsoParaPrimerPago(_hoy, _frecuencia, _primerPagoElegido);
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +69,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
     _interesCtrl = TextEditingController(text: numeroCorto(widget.tasaInicial ?? 20));
     _diasCtrl = TextEditingController(text: '${widget.diasInicial ?? 30}');
     _frecuencia = widget.frecuenciaInicial ?? 'diario';
+    _tipo = widget.tipoInicial ?? TipoInteres.saldo;
     _usarUltimosValores();
   }
 
@@ -57,7 +80,10 @@ class _PrestarScreenState extends State<PrestarScreen> {
   /// que mandó quien abrió la pantalla (ej. la calculadora) mandan.
   Future<void> _usarUltimosValores() async {
     final v = await leerUltimosValoresPrestamo();
-    if (v == null || !mounted || _tocado) return;
+    final tipo = widget.tipoInicial == null ? await leerUltimoTipoInteres() : null;
+    if (!mounted || _tocado) return;
+    if (tipo != null) setState(() => _tipo = tipo);
+    if (v == null) return;
     setState(() {
       if (widget.tasaInicial == null) _interesCtrl.text = numeroCorto(v.tasa);
       if (widget.diasInicial == null) {
@@ -89,11 +115,35 @@ class _PrestarScreenState extends State<PrestarScreen> {
         tasaInteresMensual: _interes,
         diasPlazo: _dias,
         frecuencia: _frecuencia,
-        tipo: TipoInteres.saldo,
+        tipo: _tipo,
       );
     } on ArgumentError {
       return null;
     }
+  }
+
+  /// Elegir la fecha del primer pago (desde mañana).
+  Future<void> _elegirPrimerPago() async {
+    final hoy = _hoy;
+    bool permitido(DateTime d) => primerPagoPermitido(hoy, _frecuencia, d);
+    var inicial = _primerPago;
+    if (!permitido(inicial)) inicial = primerPagoNormal(hoy, _frecuencia);
+    final elegida = await showDatePicker(
+      context: context,
+      initialDate: inicial,
+      firstDate: hoy.add(const Duration(days: 1)),
+      lastDate: hoy.add(const Duration(days: maxDiasPrimerPago)),
+      selectableDayPredicate: permitido,
+      helpText: 'Fecha del primer pago',
+      cancelText: 'Cancelar',
+      confirmText: 'Listo',
+    );
+    if (elegida == null || !mounted) return;
+    setState(() {
+      _tocado = true;
+      final normal = primerPagoNormal(hoy, _frecuencia);
+      _primerPagoElegido = DateUtils.isSameDay(elegida, normal) ? null : elegida;
+    });
   }
 
   /// Por qué no se puede calcular todavía (null si todo está bien).
@@ -102,6 +152,9 @@ class _PrestarScreenState extends State<PrestarScreen> {
     if (_monto <= 0) return 'Escribe el monto a prestar.';
     if (_dias < 1) return 'El plazo debe ser de al menos 1 día.';
     if (_interes < 0) return 'El interés no puede ser negativo.';
+    if (_tipo == TipoInteres.reditos) {
+      return 'Con solo réditos el interés tiene que dar al menos RD\$1 por cuota.';
+    }
     return 'El monto es muy bajo para ${(_dias / diasPorCuota(_frecuencia)).ceil()} '
         '${nombreCuotas(_frecuencia)}.';
   }
@@ -127,6 +180,8 @@ class _PrestarScreenState extends State<PrestarScreen> {
         diasPlazo: _dias,
         moraDiaria: _mora,
         diasGracia: _gracia,
+        tipo: _tipo,
+        primerPago: _primerPagoElegido,
       );
       // La próxima vez la pantalla abre con estos mismos valores.
       await guardarUltimosValoresPrestamo(UltimosValoresPrestamo(
@@ -137,16 +192,18 @@ class _PrestarScreenState extends State<PrestarScreen> {
         mora: _mora,
         gracia: _gracia,
       ));
+      await guardarUltimoTipoInteres(_tipo);
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('¡${widget.cliente['nombre']} ya está en la calle!')),
         );
       }
-    } catch (e) {
+    } catch (e, pila) {
+      registrarError(e, pila, 'PRESTAR');
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('No pudimos guardar el préstamo')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No pudimos guardar el préstamo. ${mensajeError(e)}')));
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
@@ -163,6 +220,17 @@ class _PrestarScreenState extends State<PrestarScreen> {
           children: [
             _campo(_montoCtrl, 'Monto a prestar (RD\$)'),
             _campo(_interesCtrl, 'Interés mensual (%)'),
+            const Text('Cómo se cobra el interés',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            SelectorTipoInteres(
+              valor: _tipo,
+              onCambio: (t) => setState(() {
+                _tocado = true;
+                _tipo = t;
+              }),
+            ),
+            const SizedBox(height: 16),
             const Text('Frecuencia de cobro',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -171,7 +239,35 @@ class _PrestarScreenState extends State<PrestarScreen> {
               onCambio: (f) => setState(() {
                 _tocado = true;
                 _frecuencia = f;
+                // Con otra frecuencia, el primer pago vuelve a ser el de siempre.
+                _primerPagoElegido = null;
               }),
+            ),
+            const SizedBox(height: 12),
+            Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              child: ListTile(
+                key: const Key('primer_pago'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Icon(Icons.event_rounded, color: AppColors.green),
+                title: const Text('Fecha del primer pago'),
+                subtitle: Text(
+                  _primerPagoElegido == null
+                      ? '${fechaLarga(_primerPago)}. Toca para elegir otra.'
+                      : '${fechaLarga(_primerPago)}. La primera cuota lleva el interés '
+                          'normal de una cuota, aunque falten más o menos días.',
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
+                ),
+                trailing: _primerPagoElegido == null
+                    ? const Icon(Icons.edit_calendar_rounded)
+                    : IconButton(
+                        tooltip: 'Volver a la de siempre',
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () => setState(() => _primerPagoElegido = null),
+                      ),
+                onTap: _elegirPrimerPago,
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -233,7 +329,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
                         '${_plan!.diasCobrados} días (${_plan!.cantidadCuotas} ${nombrePeriodos(_frecuencia)})'),
                   _resumenFila(
                       'Interés ${_interes.toStringAsFixed(_interes == _interes.roundToDouble() ? 0 : 2)}%'
-                      '/mes sobre saldo',
+                      '/mes ${_tipo.nombre}',
                       'RD\$ ${(_plan?.interesTotal ?? 0).toStringAsFixed(0)}'),
                   _resumenFila('Total a devolver',
                       'RD\$ ${(_plan?.montoTotal ?? 0).toStringAsFixed(0)}'),
@@ -250,7 +346,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
             ),
             if (_plan != null) ...[
               const SizedBox(height: 16),
-              TablaAmortizacion(plan: _plan!, frecuencia: _frecuencia, desde: DateTime.now()),
+              TablaAmortizacion(plan: _plan!, frecuencia: _frecuencia, desde: _baseCronograma),
             ],
             const SizedBox(height: 24),
             ElevatedButton(

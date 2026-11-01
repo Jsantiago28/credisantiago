@@ -162,6 +162,7 @@ Future<Uint8List> reciboPdf({
           fila('MONTO RECIBIDO', _rd(r.monto), estilo: negrita),
           fila('A cuota', _rd(r.aCuota), sangria: 8),
           if (r.aMora > 0) fila('A mora', _rd(r.aMora), sangria: 8),
+          if (r.metodo != null) fila('Forma de pago', r.metodo!),
           if (r.cubre.isNotEmpty) ...[
             pw.SizedBox(height: 4),
             pw.Text('Cubre:', style: normal),

@@ -51,7 +51,8 @@ class FilaDiaCaja extends StatelessWidget {
                 Text(
                   dia.cantidad == 0
                       ? 'Sin cobros'
-                      : '${dia.cantidad} cobro(s)${dia.mora > 0 ? ' · mora ${rd(dia.mora)}' : ''}',
+                      : '${dia.cantidad} cobro(s)${dia.mora > 0 ? ' · mora ${rd(dia.mora)}' : ''}'
+                          '${dia.transferencia > 0 ? ' · transferencias ${rd(dia.transferencia)}' : ''}',
                   style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
                 if (dia.cobros.where((c) => c.revisar != null).length case final n when n > 0)
@@ -261,7 +262,9 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Cobró ${rd(cobrado)} el ${fechaLarga(_d.dia)}.',
+                Text(
+                    'Cobró ${rd(cobrado)} en efectivo el ${fechaLarga(_d.dia)}. '
+                    'Las transferencias no cuentan aquí: ya te llegaron al banco.',
                     style: TextStyle(color: AppColors.grey)),
                 const SizedBox(height: 12),
                 TextField(
@@ -339,22 +342,27 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
         const SizedBox(height: 4),
         const Text('Por cobrador', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        for (final f in cajaPorCobrador(_d)) _filaCobrador(f.cobradorId, f.total, f.cantidad),
+        for (final f in cajaPorCobrador(_d))
+          _filaCobrador(f.cobradorId, f.total, f.cantidad, f.efectivo),
       ],
     );
   }
 
-  Widget _filaCobrador(String? cobradorId, double total, int cantidad) {
+  /// [efectivo]: lo que cobró en la mano. La entrega cuadra SOLO contra eso
+  /// (las transferencias ya le llegaron al prestamista al banco).
+  Widget _filaCobrador(String? cobradorId, double total, int cantidad, double efectivo) {
     final entrega = cobradorId == null ? null : _entregas[cobradorId];
-    final c = entrega == null ? null : cuadre(cobrado: total, entregado: entrega.entregado);
+    final c = entrega == null ? null : cuadre(cobrado: efectivo, entregado: entrega.entregado);
     final color = c == null ? AppColors.grey : _colorCuadre(c.diferencia);
-    final cambio = entrega != null && (entrega.cobrado - total).abs() >= 0.5;
+    final cambio = entrega != null && (entrega.cobrado - efectivo).abs() >= 0.5;
+    final transferido = total - efectivo;
     final nota = entrega?.nota?.trim() ?? '';
     return Panel(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       borde: c == null ? null : color.withValues(alpha: 0.5),
-      onTap: cobradorId == null || _trabajando ? null : () => _anotarEntrega(cobradorId, total),
+      onTap:
+          cobradorId == null || _trabajando ? null : () => _anotarEntrega(cobradorId, efectivo),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -369,6 +377,9 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w800)),
                     Text('$cantidad cobro(s)',
                         style: TextStyle(color: AppColors.grey, fontSize: 12)),
+                    if (transferido >= 0.5)
+                      Text(efectivoYTransferencia(efectivo, transferido),
+                          style: TextStyle(color: AppColors.grey, fontSize: 12)),
                   ],
                 ),
               ),
@@ -386,8 +397,8 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                   style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w800)),
             if (cambio)
               Text(
-                  'Cuando te entregó había cobrado ${rd(entrega.cobrado)}; ahora suma ${rd(total)}. '
-                  'Se anuló o se agregó un cobro después.',
+                  'Cuando te entregó había cobrado ${rd(entrega.cobrado)} en efectivo; ahora '
+                  'suma ${rd(efectivo)}. Se anuló o se agregó un cobro después.',
                   style: TextStyle(color: AppColors.amber, fontSize: 12)),
             if (nota.isNotEmpty)
               Text('Nota: $nota', style: TextStyle(color: AppColors.grey, fontSize: 12)),
@@ -530,6 +541,10 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                 Text(rd(_d.total),
                     style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
                 Text('${_d.cantidad} cobro(s)', style: TextStyle(color: AppColors.grey)),
+                if (_d.cantidad > 0)
+                  Text(efectivoYTransferencia(_d.efectivo, _d.transferencia),
+                      key: const Key('caja_metodos'),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
                 const Divider(height: 24),
                 Row(
                   children: [
@@ -641,6 +656,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                 children: [
                   Text(
                     'Recibo ${numeroReciboTexto(c.numeroRecibo)}'
+                    '${c.esTransferencia ? ' · transferencia' : ''}'
                     '${c.montoMora > 0 ? ' · mora ${rd(c.montoMora)}' : ''}'
                     '${c.sinConexion ? ' · sin señal' : ''}'
                     '${c.anulado ? ' · ANULADO' : ''}',

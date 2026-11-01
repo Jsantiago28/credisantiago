@@ -14,6 +14,41 @@ import 'gestiones.dart';
 import 'ubicacion.dart' show ubicacionSinAvisar;
 import 'ui.dart';
 
+/// Elegir cómo pagó el cliente: efectivo (lo de siempre) o transferencia.
+/// En la caja, la entrega del cobrador cuadra solo contra el efectivo.
+class SelectorMetodoPago extends StatelessWidget {
+  final String valor;
+  final ValueChanged<String> onCambio;
+  const SelectorMetodoPago({super.key, required this.valor, required this.onCambio});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        segments: [
+          for (final m in metodosPago)
+            ButtonSegment(
+              value: m,
+              label: Text(nombreMetodoPago(m)!),
+              icon: Icon(
+                  m == 'efectivo' ? Icons.payments_outlined : Icons.account_balance_outlined),
+            ),
+        ],
+        selected: {valor},
+        showSelectedIcon: false,
+        onSelectionChanged: (s) => onCambio(s.first),
+        style: SegmentedButton.styleFrom(
+          selectedBackgroundColor: AppColors.greenDark,
+          selectedForegroundColor: AppColors.green,
+          foregroundColor: AppColors.grey,
+          side: BorderSide(color: AppColors.border),
+        ),
+      ),
+    );
+  }
+}
+
 /// Flujo de cobro de un préstamo: cuotas → cobrar → recibo, e historial de
 /// recibos. Se abre desde Inicio y desde Reportes. `onCambio` se llama
 /// después de registrar un cobro, para que la pantalla recargue.
@@ -38,7 +73,10 @@ class CobroPrestamo {
   /// Cronograma de cuotas. Al tocar una pendiente, pide confirmar el cobro
   /// (cuota + su mora, ya puesto).
   Future<void> abrirCuotas() async {
-    final estado = datos.estado(DateTime.now());
+    final hoy = DateTime.now();
+    final estado = datos.estado(hoy);
+    final delDia = cobroDelDia(estado, hoy);
+    final loDeHoy = delDia.atrasado + delDia.venceHoy;
     if (estado.cuotas.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Este préstamo no tiene cronograma (falta info del plazo).')));
@@ -99,6 +137,36 @@ class CobroPrestamo {
                     ),
                 ],
               ),
+            ),
+            // Cobrar de un toque lo atrasado + lo que vence hoy (con su mora).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: loDeHoy >= 0.5
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        key: const Key('cobrar_lo_de_hoy'),
+                        style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            textStyle:
+                                const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _confirmarCobro(estado, loDeHoy);
+                        },
+                        icon: const Icon(Icons.payments_rounded),
+                        label: Text('Cobrar lo de hoy · ${rd(loDeHoy)}'),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Icon(Icons.check_circle, color: AppColors.green, size: 20),
+                        const SizedBox(width: 8),
+                        Text(estado.saldado ? 'Saldado' : 'Al día',
+                            style: TextStyle(
+                                color: AppColors.green, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -209,58 +277,97 @@ class CobroPrestamo {
   Future<void> _confirmarCobro(EstadoPrestamo estado, double montoSugerido) async {
     String pesos(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
     final ctrl = TextEditingController(text: pesos(montoSugerido));
+    var metodo = 'efectivo';
 
-    final monto = await showModalBottomSheet<double>(
+    // Botones rápidos: la próxima cuota, todo lo atrasado y todo lo de hoy.
+    final delDia = cobroDelDia(estado, DateTime.now());
+    final rapidos = <(String, double)>[
+      if (proximaCuotaPorCobrar(estado) case final c when c >= 0.5) ('Cuota', c),
+      if (delDia.atrasado >= 0.5) ('Todo lo atrasado', delDia.atrasado),
+      if (delDia.venceHoy >= 0.5) ('Todo lo de hoy', delDia.atrasado + delDia.venceHoy),
+    ];
+
+    final elegido = await showModalBottomSheet<({double monto, String metodo})>(
       context: context,
       isScrollControlled: true,
       shape: _forma,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Cobrar a $_nombre',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text(
-                estado.moraPendiente > 0
-                    ? 'Debe ${rd(estado.balance)} (incluye ${rd(estado.moraPendiente)} de mora)'
-                    : 'Balance actual: ${rd(estado.balance)}',
-                style: TextStyle(color: AppColors.grey)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                prefixText: 'RD\$ ',
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setEstado) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Cobrar a $_nombre',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text(
+                  estado.moraPendiente > 0
+                      ? 'Debe ${rd(estado.balance)} (incluye ${rd(estado.moraPendiente)} de mora)'
+                      : 'Balance actual: ${rd(estado.balance)}',
+                  style: TextStyle(color: AppColors.grey)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (_) => setEstado(() {}),
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  prefixText: 'RD\$ ',
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () =>
-                  Navigator.of(ctx).pop(double.tryParse(ctrl.text.replaceAll(',', ''))),
-              child: const Text('Confirmar cobro'),
-            ),
-          ],
+              if (rapidos.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (etiqueta, valor) in rapidos)
+                      ChoiceChip(
+                        label: Text('$etiqueta · ${rd(valor)}'),
+                        selected: ctrl.text == pesos(valor),
+                        selectedColor: AppColors.greenDark,
+                        labelStyle: TextStyle(
+                            color: ctrl.text == pesos(valor) ? AppColors.green : AppColors.grey,
+                            fontWeight: FontWeight.w600),
+                        onSelected: (_) => setEstado(() => ctrl.text = pesos(valor)),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 14),
+              SelectorMetodoPago(
+                valor: metodo,
+                onCambio: (m) => setEstado(() => metodo = m),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  final monto = double.tryParse(ctrl.text.replaceAll(',', ''));
+                  Navigator.of(ctx).pop(monto == null ? null : (monto: monto, metodo: metodo));
+                },
+                child: const Text('Confirmar cobro'),
+              ),
+            ],
+          ),
         ),
       ),
     );
 
-    if (monto == null || monto <= 0 || !context.mounted) return;
+    final monto = elegido?.monto;
+    if (elegido == null || monto == null || monto <= 0 || !context.mounted) return;
     if (!await _confirmarMontoAlto(estado, monto) || !context.mounted) return;
     final mensajero = ScaffoldMessenger.of(context);
 
@@ -279,13 +386,14 @@ class CobroPrestamo {
         monto: monto,
         ubicacion: donde,
         id: id,
+        metodo: elegido.metodo,
       );
       onCambio();
       if (context.mounted) await _mostrarCobroRegistrado(pago);
     } catch (e, pila) {
       registrarError(e, pila, 'COBRAR');
       if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
-        await _guardarSinSenal(id, monto, donde);
+        await _guardarSinSenal(id, monto, donde, elegido.metodo);
         return;
       }
       mensajero.showSnackBar(
@@ -328,7 +436,7 @@ class CobroPrestamo {
   /// cuando vuelva (ver SinConexion). El recibo dice "pendiente de subir".
   /// [id]: el mismo con que se intentó subir.
   Future<void> _guardarSinSenal(
-      String id, double monto, ({double lat, double lng})? donde) async {
+      String id, double monto, ({double lat, double lng})? donde, String metodo) async {
     final ahora = DateTime.now();
     final reparto = repartirPago(estadoPrestamo(_prestamo, datos.pagos, ahora), monto);
     final cobro = CobroPendiente(
@@ -339,6 +447,7 @@ class CobroPrestamo {
       montoMora: reparto.mora,
       fecha: ahora,
       ubicacion: donde,
+      metodo: metodo,
     );
     try {
       await SinConexion.agregar(cobro);
@@ -421,11 +530,12 @@ class CobroPrestamo {
           ),
         );
 
+    var metodo = 'efectivo';
     final confirmado = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       shape: _forma,
-      builder: (ctx) => Padding(
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setEstado) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -453,6 +563,8 @@ class CobroPrestamo {
               fila('Debía según las cuotas', s.balance),
               fila('Se le descuenta', s.descuento, color: AppColors.green),
             ],
+            const SizedBox(height: 14),
+            SelectorMetodoPago(valor: metodo, onCambio: (m) => setEstado(() => metodo = m)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -463,7 +575,7 @@ class CobroPrestamo {
                 onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
           ],
         ),
-      ),
+      )),
     );
     if (confirmado != true || !context.mounted) return;
 
@@ -476,6 +588,7 @@ class CobroPrestamo {
         monto: s.monto,
         descuento: s.descuento,
         ubicacion: donde,
+        metodo: metodo,
       );
       onCambio();
       if (context.mounted) await _mostrarCobroRegistrado(pago);
@@ -535,7 +648,9 @@ class CobroPrestamo {
                   'el internet. El recibo dice "pendiente de subir".',
                   style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600))
             else
-              Text('Recibo ${numeroReciboTexto(pago.numeroRecibo)}',
+              Text(
+                  'Recibo ${numeroReciboTexto(pago.numeroRecibo)}'
+                  '${nombreMetodoPago(pago.metodo) == null ? '' : ' · ${nombreMetodoPago(pago.metodo)}'}',
                   style: TextStyle(color: AppColors.grey)),
             if (pago.montoMora > 0)
               Text('Cuota ${rd(pago.montoCuota)} + mora ${rd(pago.montoMora)}',
@@ -692,6 +807,7 @@ class CobroPrestamo {
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text((pago.sinSubir ? 'Pendiente de subir · ' : '') +
                         fechaLarga(pago.fecha) +
+                        (pago.metodo == 'transferencia' ? ' · transferencia' : '') +
                         (pago.montoMora > 0 ? ' · incluye mora ${rd(pago.montoMora)}' : '')),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
