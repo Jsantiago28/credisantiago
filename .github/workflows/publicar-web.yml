@@ -19,11 +19,10 @@ on:
 
 permissions:
   contents: read
-  deployments: write
 
 concurrency:
   group: publicar-web
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   PROYECTO: credisantiago
@@ -50,9 +49,14 @@ jobs:
   publicar:
     name: Compilar y publicar
     needs: comprobar
+    # Solo cambios que llegaron con push a este mismo repositorio (no de un
+    # fork con una rama llamada main), así nadie de afuera usa los secretos.
     if: >-
       needs.comprobar.outputs.listo == 'true' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -122,14 +126,20 @@ jobs:
       # Revisa que las direcciones importantes respondan lo que deben.
       - name: Revisar la web publicada
         run: |
-          sleep 20
+          fallo=0
           base="https://$PROYECTO.pages.dev"
           revisar() {
-            cuerpo=$(curl -sL "$base$1")
-            if echo "$cuerpo" | grep -q "$2"; then echo "OK  $1"; else echo "::warning::$1 no muestra '$2'"; fi
+            for intento in 1 2 3 4 5 6; do
+              if curl -sL "$base$1" | grep -q "$2"; then echo "OK  $1"; return 0; fi
+              sleep 10
+            done
+            echo "::error::$1 no muestra '$2'"; fallo=1
           }
           revisar "/" "no presta dinero"
           revisar "/app" "flutter_bootstrap.js"
           revisar "/s/prueba" "flutter_bootstrap.js"
           revisar "/i/prueba" "flutter_bootstrap.js"
           revisar "/terminos" "<title>"
+          revisar "/privacidad" "<title>"
+          revisar "/manifest.json" "start_url"
+          exit $fallo

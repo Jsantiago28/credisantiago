@@ -33,7 +33,6 @@ class _AdminScreenState extends State<AdminScreen> {
   final _apkVersion = TextEditingController();
   final _apkEnlace = TextEditingController();
   List<Map<String, dynamic>> _pagos = const [];
-  bool _requiereAprobacion = true;
 
   @override
   void initState() {
@@ -69,7 +68,6 @@ class _AdminScreenState extends State<AdminScreen> {
         if (_ajustes == null && ajustes != null) {
           _soporte.text = ajustes['whatsapp_soporte'] as String? ?? '';
           _instrucciones.text = ajustes['instrucciones_pago'] as String? ?? '';
-          _requiereAprobacion = ajustes['registro_requiere_aprobacion'] != false;
           final d = DescuentosPlan.desde(ajustes);
           _descuento3.text = '${d.descuento3}';
           _mesesGratis12.text = '${d.mesesGratis12}';
@@ -181,7 +179,6 @@ class _AdminScreenState extends State<AdminScreen> {
       await SupabaseService.instance.client.from('ajustes_app').update({
         'whatsapp_soporte': _soporte.text.trim(),
         'instrucciones_pago': _instrucciones.text.trim(),
-        'registro_requiere_aprobacion': _requiereAprobacion,
         // Solo si ya se corrió la migración de pagos de planes.
         if (_ajustes?.containsKey('descuento_3_meses') == true) ...{
           'descuento_3_meses': (int.tryParse(_descuento3.text) ?? 10).clamp(0, 90),
@@ -648,19 +645,6 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
           ],
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            activeThumbColor: AppColors.green,
-            title: const Text('Las cuentas nuevas necesitan mi aprobación'),
-            subtitle: Text(
-              _requiereAprobacion
-                  ? 'Quien se registre queda "en revisión" hasta que lo apruebes.'
-                  : 'Quien se registre entra directo con el plan Gratis.',
-              style: TextStyle(color: AppColors.grey, fontSize: 12),
-            ),
-            value: _requiereAprobacion,
-            onChanged: (v) => setState(() => _requiereAprobacion = v),
-          ),
           ElevatedButton(onPressed: _guardarAjustes, child: const Text('Guardar ajustes')),
         ],
       ),
