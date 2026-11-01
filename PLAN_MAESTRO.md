@@ -177,12 +177,12 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 
 **Segunda ronda (en este orden):**
 1. ⬜ **Velocidad:** Inicio y Reportes con una sola consulta (hoy ~600 y ~1,600 con 300 préstamos); Caja y gráficas sin el tope de 1,000 filas (resumen por día en la base de datos + índices); escucha en vivo sin recargar todo; solicitudes en vivo solo las nuevas; guardar la ruta sin señal con menos frecuencia.
-2. ⬜ **Tipos de interés de la calle:** "no cobrar domingos", interés fijo y solo réditos al prestar; **fecha del primer pago** (que `confirmarPrestamo` acepte la fecha); que `aprobarSolicitud` devuelva el cliente y el préstamo.
+2. ⬜ **Tipos de interés de la calle:** interés fijo y solo réditos al prestar ("no cobrar domingos" descartado el 02-11-2026: los prestamistas cobran todos los días); **fecha del primer pago** (que `confirmarPrestamo` acepte la fecha); que `aprobarSolicitud` devuelva el cliente y el préstamo.
 3. ⬜ **Cobrar en 1 toque:** botón "Cobrar lo de hoy RD$X" y botones rápidos; **efectivo o transferencia** (el cuadre del cobrador cuenta solo el efectivo).
 4. ⬜ **Ruta del cobrador:** "Cobrados 7 de 15 · RD$X", ya cobrados abajo, orden por cercanía, "No estaba" en un toque.
 5. ⬜ **Volver a prestar** a quienes terminaron de pagar; **recordar a los de mañana** por WhatsApp uno tras otro; recibo corto por WhatsApp.
 6. ⬜ **Lectura al sol:** letra mínima 13, verde más oscuro, botones de 48; textos con singular y plural (sin "(s)") y términos parejos (cuota / cobro / pago).
-7. ⬜ **De Citabox:** comisión por cobrador, reporte por WhatsApp, "Reportar un problema", 7 días de gracia al vencer el plan, cobros de la semana, verificación en dos pasos, historial de cambios general.
+7. ⬜ **De Citabox:** (comisión por cobrador: solo si alguien la pide; los cobradores cobran sueldo fijo) reporte por WhatsApp, "Reportar un problema", 7 días de gracia al vencer el plan, cobros de la semana, verificación en dos pasos, historial de cambios general.
 8. ⬜ **Operación:** migraciones en formato del CLI con baseline (y que se apliquen solas), pruebas SQL de seguridad en CI, copia diaria de la base de datos y copia de las fotos (Cloudflare R2), prueba de restauración, CSP en modo reporte, SEO (robots, canonical, imagen 1200x630), manifest; quitar 4 librerías sin uso y subir supabase_flutter.
 9. ⬜ **APK 1.0.8** cuando el dueño lo pida (lleva Cloudflare, registro sin cédula y todo lo anterior).
 
