@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../logic/validacion.dart';
+import '../logic/whatsapp.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/contacto.dart';
 import '../widgets/evidencias.dart';
 import '../widgets/foto_privada.dart';
+import '../widgets/primeros_pasos.dart' show marcarLinkCompartido, mensajeLinkSolicitudes;
 import '../widgets/ui.dart';
 import 'planes_screen.dart';
+import 'prestar_screen.dart';
 
 /// Solicitudes nuevas que llegan por el link del prestamista.
 class SolicitudesScreen extends StatefulWidget {
@@ -100,12 +105,137 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
     }
   }
 
+  /// Perfil del negocio (nombre para los mensajes y slug del link). Se pide
+  /// una sola vez, cuando hace falta.
+  Map<String, dynamic>? _perfil;
+
+  Future<Map<String, dynamic>?> _perfilNegocio() async {
+    try {
+      return _perfil ??= await SupabaseService.instance.perfilDelNegocio();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Abre WhatsApp con el cliente de la solicitud y el mensaje que arma
+  /// [mensaje] con el nombre del negocio.
+  Future<void> _whatsApp(Map<String, dynamic> solicitud,
+      String Function(String negocio) mensaje) async {
+    final perfil = await _perfilNegocio();
+    if (!mounted) return;
+    final negocio = (perfil?['nombre'] as String?)?.trim();
+    await abrirWhatsApp(context, solicitud['telefono'] as String?,
+        mensaje(negocio == null || negocio.isEmpty ? 'su prestamista' : negocio));
+  }
+
+  /// Comparte el link de solicitudes (el mismo mensaje que en Perfil).
+  Future<void> _compartirLink() async {
+    final mensajero = ScaffoldMessenger.of(context);
+    final slug = (await _perfilNegocio())?['slug'] as String?;
+    if (slug == null || slug.isEmpty) {
+      mensajero.showSnackBar(const SnackBar(
+          content: Text('No pudimos cargar tu link. Búscalo en Perfil.')));
+      return;
+    }
+    await Share.share(mensajeLinkSolicitudes(slug));
+    await marcarLinkCompartido();
+  }
+
+  /// El cliente y su préstamo "borrador" recién creados al aprobar, para
+  /// abrir Prestar de una vez. Null si no se encuentran.
+  Future<({Map<String, dynamic> cliente, Map<String, dynamic> prestamo})?> _buscarParaPrestar(
+      Map<String, dynamic> solicitud,
+      {Map<String, dynamic>? existente,
+      Set<Object?> idsAntes = const {}}) async {
+    try {
+      final servicio = SupabaseService.instance;
+      var id = existente?['id'] as String?;
+      if (id == null) {
+        final lista = await servicio.listarClientes(widget.prestamistaId);
+        if (mounted) setState(() => _clientes = lista); // próximas solicitudes lo detectan
+        final mismos = buscarRepetidos(lista, cedula: solicitud['cedula'])
+            .map((r) => r.registro)
+            .toList();
+        id = (mismos.where((c) => !idsAntes.contains(c['id'])).firstOrNull ??
+            mismos.firstOrNull)?['id'] as String?;
+      }
+      if (id == null) return null;
+      final cliente = await servicio.obtenerCliente(id);
+      final prestamo = await servicio.obtenerUltimoPrestamo(id);
+      if (cliente == null || prestamo == null || prestamo['estado'] != 'borrador') return null;
+      final monto = prestamo['monto'] as num?;
+      return (
+        cliente: cliente,
+        prestamo: {
+          ...prestamo,
+          if (monto == null || monto <= 0) 'monto': solicitud['monto_solicitado'],
+        },
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Después de aprobar: ofrecer avisarle al cliente por WhatsApp.
+  Future<void> _ofrecerAvisoAprobado(Map<String, dynamic> solicitud,
+      {required bool prestado, required bool sinPrestar}) async {
+    final nombre = (solicitud['nombre'] as String?) ?? '';
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(prestado ? '¡$nombre ya está en la calle!' : '$nombre aprobado',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                sinPrestar
+                    ? 'Préstale desde Clientes cuando quieras.'
+                    : prestado
+                        ? 'Avísale que su préstamo fue aprobado.'
+                        : 'El préstamo quedó por confirmar en su ficha de cliente.',
+                style: TextStyle(color: AppColors.grey),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: verdeWhatsApp, foregroundColor: Colors.white),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _whatsApp(
+                      solicitud,
+                      (negocio) => mensajeSolicitudAprobada(
+                            nombreCliente: nombre,
+                            negocio: negocio,
+                            monto: solicitud['monto_solicitado'] as num?,
+                          ));
+                },
+                icon: const Icon(Icons.chat_rounded),
+                label: const Text('Avisarle por WhatsApp que fue aprobado'),
+              ),
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(), child: const Text('Ahora no')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _aprobar(Map<String, dynamic> solicitud) async {
     final mensajero = ScaffoldMessenger.of(context);
     // Si ya es cliente (misma cédula), no se crea otro: se usa su ficha.
     final existente = buscarRepetidos(_clientes, cedula: solicitud['cedula'])
         .map((r) => r.registro)
         .firstOrNull;
+    final idsAntes = {for (final c in _clientes) c['id']};
     try {
       if (existente != null) {
         final usarFicha = await showDialog<bool>(
@@ -129,24 +259,64 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
         await SupabaseService.instance.aprobarParaClienteExistente(solicitud, existente);
       } else {
         await SupabaseService.instance.aprobarSolicitud(solicitud);
-        _cargarClientes(); // ya es cliente: próximas solicitudes lo detectan
       }
-      mensajero.showSnackBar(
-        SnackBar(content: Text('${solicitud['nombre']} aprobado. Préstale desde Clientes.')),
-      );
     } on LimitePlan catch (e) {
       if (mounted) await avisarLimitePlan(context, e);
+      return;
     } catch (e) {
       mensajero.showSnackBar(SnackBar(content: Text('No se pudo aprobar: $e')));
+      return;
     }
+    // Aprobado: directo a Prestar, con el monto que pidió ya puesto.
+    final datos = await _buscarParaPrestar(solicitud, existente: existente, idsAntes: idsAntes);
+    if (!mounted) return;
+    var prestado = false;
+    if (datos != null) {
+      prestado = await Navigator.of(context).push<bool>(MaterialPageRoute(
+            builder: (_) => PrestarScreen(cliente: datos.cliente, prestamo: datos.prestamo),
+          )) ==
+          true;
+      if (!mounted) return;
+    }
+    await _ofrecerAvisoAprobado(solicitud, prestado: prestado, sinPrestar: datos == null);
   }
 
   Future<void> _rechazar(Map<String, dynamic> solicitud) async {
-    await SupabaseService.instance.rechazarSolicitud(solicitud['id']);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${solicitud['nombre']} rechazado.')),
+    final nombre = (solicitud['nombre'] as String?) ?? '';
+    final seguro = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('¿Rechazar a $nombre?'),
+        content: const Text('La solicitud se quita de tus solicitudes nuevas.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sí, rechazar'),
+          ),
+        ],
+      ),
     );
+    if (seguro != true || !mounted) return;
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      await SupabaseService.instance.rechazarSolicitud(solicitud['id']);
+    } catch (e) {
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo rechazar: $e')));
+      return;
+    }
+    mensajero.showSnackBar(SnackBar(
+      content: Text('$nombre rechazado.'),
+      duration: const Duration(seconds: 8),
+      action: SnackBarAction(
+        label: 'Avisarle por WhatsApp',
+        onPressed: () => _whatsApp(solicitud,
+            (negocio) => mensajeSolicitudRechazada(nombreCliente: nombre, negocio: negocio)),
+      ),
+    ));
   }
 
   void _verFicha(Map<String, dynamic> s) {
@@ -214,13 +384,20 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
               Text('Aprobar o rechazar las nuevas solicitudes de préstamo',
                   style: TextStyle(color: AppColors.grey)),
               const SizedBox(height: 16),
-              if (nuevas.isEmpty)
+              if (nuevas.isEmpty) ...[
                 const Vacio(
                   icono: Icons.inbox_rounded,
                   texto: 'No tienes solicitudes nuevas por ahora.\n'
-                      'Comparte tu link desde Perfil para recibir más.',
-                )
-              else
+                      'Comparte tu link para que tus clientes te pidan préstamos.',
+                ),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _compartirLink,
+                    icon: const Icon(Icons.share_rounded),
+                    label: const Text('Compartir mi link'),
+                  ),
+                ),
+              ] else
                 ...nuevas.map((s) => _tarjetaSolicitud(s, _avisosRepetidos(s, nuevas))),
             ],
           );

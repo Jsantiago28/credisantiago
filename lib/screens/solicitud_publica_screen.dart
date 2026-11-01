@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart' show ImageSource;
 import '../widgets/elegir_foto.dart';
+import '../logic/borrador_solicitud.dart';
 import '../logic/validacion.dart';
 import '../logic/whatsapp.dart';
 import '../services/supabase_service.dart';
@@ -107,6 +108,129 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   void initState() {
     super.initState();
     _cargarPrestamista();
+    for (final c in _camposTexto.values) {
+      c.addListener(_guardarBorrador);
+    }
+    _restaurarBorrador();
+  }
+
+  // -------------------------------------------------------------------------
+  // BORRADOR: lo escrito se guarda en el navegador por si la página se
+  // recarga (pasa en Chrome de Android al abrir la cámara). Las fotos no.
+  // -------------------------------------------------------------------------
+
+  /// Se recuperó lo que había escrito (muestra el aviso).
+  bool _recuperado = false;
+
+  /// Mientras se ponen los datos recuperados no se vuelve a guardar.
+  bool _restaurando = false;
+
+  /// Cambia al recuperar o borrar el borrador, para que los campos con
+  /// valor inicial (los de banco y billetera) se vuelvan a dibujar.
+  int _versionBorrador = 0;
+
+  /// Los campos de texto del formulario, por nombre (así se guardan).
+  late final Map<String, TextEditingController> _camposTexto = {
+    'nombre': _nombreCtrl,
+    'cedula': _cedulaCtrl,
+    'telefono': _telefonoCtrl,
+    'direccion': _direccionCtrl,
+    'trabajo_lugar': _trabajoLugarCtrl,
+    'trabajo_direccion': _trabajoDireccionCtrl,
+    'jefe_nombre': _jefeNombreCtrl,
+    'jefe_telefono': _jefeTelefonoCtrl,
+    'ingreso_mensual': _ingresoMensualCtrl,
+    'otros_ingresos_descripcion': _otrosIngresosDescripcionCtrl,
+    'otros_ingresos_monto': _otrosIngresosMontoCtrl,
+    'ref1_nombre': _ref1NombreCtrl,
+    'ref1_parentesco': _ref1ParentescoCtrl,
+    'ref1_telefono': _ref1TelefonoCtrl,
+    'ref2_nombre': _ref2NombreCtrl,
+    'ref2_parentesco': _ref2ParentescoCtrl,
+    'ref2_telefono': _ref2TelefonoCtrl,
+    'monto': _montoCtrl,
+    'capacidad_pago': _capacidadPagoCtrl,
+    'numero_cuenta': _numeroCuentaCtrl,
+  };
+
+  void _guardarBorrador() {
+    if (_restaurando || _enviando || _enviado) return;
+    guardarBorradorSolicitud(
+      widget.slug,
+      BorradorSolicitud(
+        textos: {for (final e in _camposTexto.entries) e.key: e.value.text},
+        opciones: {
+          'tipo_vivienda': _tipoVivienda,
+          'lat': _lat,
+          'lng': _lng,
+          'tiene_otros_ingresos': _tieneOtrosIngresos,
+          'frecuencia_pago': _frecuenciaPago,
+          'metodo_cobro': _metodoCobro,
+          'banco': _banco,
+          'billetera': _billetera,
+        },
+        paso: _paso,
+        guardado: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Cambia una opción (no un texto) y guarda el borrador.
+  void _elegir(VoidCallback cambio) {
+    setState(cambio);
+    _guardarBorrador();
+  }
+
+  Future<void> _restaurarBorrador() async {
+    final b = await leerBorradorSolicitud(widget.slug);
+    // Si ya empezó a escribir mientras se leía, no se le pisa.
+    if (b == null || !mounted || _camposTexto.values.any((c) => c.text.isNotEmpty)) return;
+    T? opcion<T>(String clave) => b.opciones[clave] is T ? b.opciones[clave] as T : null;
+    _restaurando = true;
+    setState(() {
+      for (final e in _camposTexto.entries) {
+        e.value.text = b.textos[e.key] ?? '';
+      }
+      _tipoVivienda = opcion<String>('tipo_vivienda');
+      _lat = opcion<num>('lat')?.toDouble();
+      _lng = opcion<num>('lng')?.toDouble();
+      _tieneOtrosIngresos = opcion<bool>('tiene_otros_ingresos') ?? false;
+      _frecuenciaPago = opcion<String>('frecuencia_pago') ?? _frecuenciaPago;
+      _metodoCobro = opcion<String>('metodo_cobro') ?? _metodoCobro;
+      _banco = opcion<String>('banco');
+      _billetera = opcion<String>('billetera');
+      _paso = b.paso.clamp(0, _orden.length - 1);
+      _recuperado = true;
+      _versionBorrador++;
+    });
+    _restaurando = false;
+  }
+
+  /// "Borrar y empezar de nuevo": deja el formulario en blanco.
+  void _empezarDeNuevo() {
+    _restaurando = true;
+    setState(() {
+      for (final c in _camposTexto.values) {
+        c.clear();
+      }
+      _tipoVivienda = null;
+      _lat = null;
+      _lng = null;
+      _tieneOtrosIngresos = false;
+      _frecuenciaPago = 'semanal';
+      _metodoCobro = 'sin_definir';
+      _banco = null;
+      _billetera = null;
+      _evidencias = [];
+      _fotoCaraBytes = _fotoCedulaFrenteBytes = _fotoCedulaReversoBytes = null;
+      _autorizaDatos = false;
+      _mostrarErrores = false;
+      _paso = 0;
+      _recuperado = false;
+      _versionBorrador++;
+    });
+    _restaurando = false;
+    borrarBorradorSolicitud(widget.slug);
   }
 
   Future<void> _cargarPrestamista() async {
@@ -139,7 +263,8 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
       final permiso = await Geolocator.requestPermission();
       if (permiso == LocationPermission.denied) return;
       final pos = await Geolocator.getCurrentPosition();
-      setState(() {
+      if (!mounted) return;
+      _elegir(() {
         _lat = pos.latitude;
         _lng = pos.longitude;
       });
@@ -193,8 +318,15 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
       _mostrarError('Sube al menos una foto de evidencia de tus ingresos');
       return;
     }
+    // Las evidencias no se guardan en el borrador: si se recuperó lo
+    // escrito, puede que falten al llegar al final.
+    if (_paso == 4 && _exigeEvidencias && _evidencias.isEmpty) {
+      setState(() => _paso = _orden.indexOf(_trabajo));
+      _mostrarError('Sube al menos una foto de evidencia de tus ingresos');
+      return;
+    }
     if (_paso < 4) {
-      setState(() => _paso++);
+      _elegir(() => _paso++);
     } else {
       _enviarSolicitud();
     }
@@ -266,7 +398,8 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
         'acepto_privacidad_en': DateTime.now().toUtc().toIso8601String(),
       });
 
-      setState(() => _enviado = true);
+      await borrarBorradorSolicitud(widget.slug); // ya se envió: no queda nada guardado
+      if (mounted) setState(() => _enviado = true);
     } catch (e) {
       // ignore: avoid_print
       print('ERROR REAL SOLICITUD: $e');
@@ -355,8 +488,12 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
           _encabezado(),
           const SizedBox(height: 16),
           _buildStepper(pasos),
+          if (_recuperado) ...[
+            const SizedBox(height: 16),
+            _avisoRecuperado(),
+          ],
           const Divider(height: 40),
-          _buildPasoActual(),
+          KeyedSubtree(key: ValueKey(_versionBorrador), child: _buildPasoActual()),
           const SizedBox(height: 24),
           SizedBox(
             height: 58,
@@ -385,6 +522,40 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
     );
   }
 
+  /// Aviso de que se recuperó lo escrito, con la opción de empezar de nuevo.
+  Widget _avisoRecuperado() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F7EE),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFB7E4C7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.restore_rounded, color: _verde),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text('Recuperamos lo que habías escrito',
+                    style: TextStyle(fontWeight: FontWeight.w700, color: _azulOscuro)),
+              ),
+            ],
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _empezarDeNuevo,
+              child: const Text('Borrar y empezar de nuevo'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// "Solicitud a …" con flecha para volver al paso anterior.
   Widget _encabezado() {
     return Row(
@@ -395,7 +566,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
               ? IconButton(
                   tooltip: 'Paso anterior',
                   icon: const Icon(Icons.arrow_back, color: _azul, size: 32),
-                  onPressed: () => setState(() {
+                  onPressed: () => _elegir(() {
                     _paso--;
                     _mostrarErrores = false;
                   }),
@@ -690,6 +861,28 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
         _encabezadoPaso('Tus fotos',
             'Último paso: tres fotos claras para verificar tu identidad. Toca "Tomar foto" '
                 'para usar la cámara.'),
+        Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7E6),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, color: Color(0xFFB45309)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '¿No se abre la cámara? Toca "Galería" y elige una foto que ya tomaste. '
+                  'Lo que escribiste no se pierde.',
+                  style: TextStyle(fontSize: 14, color: Color(0xFF333A45)),
+                ),
+              ),
+            ],
+          ),
+        ),
         _tarjetaFoto(
           icono: Icons.face_rounded,
           titulo: 'Foto de tu cara',
@@ -796,7 +989,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
               ChoiceChip(
                 label: Text(texto),
                 selected: _tipoVivienda == valor,
-                onSelected: (_) => setState(() => _tipoVivienda = valor),
+                onSelected: (_) => _elegir(() => _tipoVivienda = valor),
               ),
               const SizedBox(width: 8),
             ],
@@ -831,7 +1024,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
           contentPadding: EdgeInsets.zero,
           title: const Text('¿Tienes otros ingresos?'),
           value: _tieneOtrosIngresos,
-          onChanged: (v) => setState(() => _tieneOtrosIngresos = v),
+          onChanged: (v) => _elegir(() => _tieneOtrosIngresos = v),
         ),
         if (_tieneOtrosIngresos) ...[
           _campo(_otrosIngresosDescripcionCtrl, '¿De dónde? (ej: negocio propio, alquiler)'),
@@ -886,7 +1079,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
         const SizedBox(height: 8),
         RadioGroup<String>(
           groupValue: _frecuenciaPago,
-          onChanged: (v) => setState(() => _frecuenciaPago = v!),
+          onChanged: (v) => _elegir(() => _frecuenciaPago = v!),
           child: const Row(
             children: [
               Expanded(
@@ -931,7 +1124,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
         const SizedBox(height: 12),
         RadioGroup<String>(
           groupValue: _metodoCobro,
-          onChanged: (v) => setState(() => _metodoCobro = v!),
+          onChanged: (v) => _elegir(() => _metodoCobro = v!),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -945,7 +1138,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
                   items: ['Banreservas', 'Popular', 'BHD', 'Scotia', 'Otro']
                       .map((b) => DropdownMenuItem(value: b, child: Text(b)))
                       .toList(),
-                  onChanged: (v) => setState(() => _banco = v),
+                  onChanged: (v) => _elegir(() => _banco = v),
                   decoration: const InputDecoration(labelText: 'Banco'),
                 ),
                 _campo(_numeroCuentaCtrl, 'Número de cuenta',
@@ -961,7 +1154,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
                   items: ['Qik', 'MIO']
                       .map((b) => DropdownMenuItem(value: b, child: Text(b)))
                       .toList(),
-                  onChanged: (v) => setState(() => _billetera = v),
+                  onChanged: (v) => _elegir(() => _billetera = v),
                   decoration: const InputDecoration(labelText: 'Billetera'),
                 ),
               const RadioListTile<String>(
