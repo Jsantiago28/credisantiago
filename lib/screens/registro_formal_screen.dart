@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../logic/validacion.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/elegir_foto.dart';
@@ -61,9 +62,8 @@ class _RegistroFormalScreenState extends State<RegistroFormalScreen> {
       await servicio.guardarCedulaPrestamista(id,
           cedula: _cedulaCtrl.text.trim(), frente: frente, reverso: reverso);
       if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL REGISTRO FORMAL: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'REGISTRO FORMAL');
       if (mounted) setState(() => _error = 'No se pudo guardar. Intenta de nuevo.\n($e)');
     } finally {
       if (mounted) setState(() => _guardando = false);

@@ -27,6 +27,7 @@ const columnasImportacion = [
   ('pagado', 'Ya pagó'),
   ('mora', 'Mora diaria %'),
   ('gracia', 'Días de gracia'),
+  ('tipo', 'Tipo de interés'),
 ];
 
 /// Otras formas de escribir cada título (sin acentos ni mayúsculas).
@@ -43,6 +44,7 @@ const _sinonimos = {
   'pagado': ['ya pago', 'pagado', 'abonado', 'ha pagado', 'ya pago rd'],
   'mora': ['mora diaria %', 'mora diaria', 'mora', 'mora %'],
   'gracia': ['dias de gracia', 'gracia'],
+  'tipo': ['tipo de interes', 'tipo interes', 'tipo', 'interes fijo o sobre saldo', 'metodo de interes'],
 };
 
 String _clave(String titulo) =>
@@ -75,6 +77,10 @@ class PrestamoImportado {
   final double moraDiaria;
   final int diasGracia;
 
+  /// Los préstamos de la calle casi siempre son de interés fijo (sobre el
+  /// monto): es lo que se pone si el archivo no dice otra cosa.
+  final TipoInteres tipo;
+
   const PrestamoImportado({
     required this.monto,
     required this.interesMensual,
@@ -84,28 +90,31 @@ class PrestamoImportado {
     this.yaPago = 0,
     this.moraDiaria = 5,
     this.diasGracia = 1,
+    this.tipo = TipoInteres.fijo,
   });
+
+  PlanPrestamo get _plan => calcularPlan(
+        monto: monto,
+        tasaInteresMensual: interesMensual,
+        diasPlazo: diasPlazo,
+        frecuencia: frecuencia,
+        tipo: tipo,
+      );
 
   /// Lo que se guarda en la tabla de préstamos (igual que al prestar en la
   /// app, pero con la fecha del archivo). Sin prestamista ni cliente.
   Map<String, dynamic> datos() {
-    final plan = calcularPlan(
-      monto: monto,
-      tasaInteresMensual: interesMensual,
-      diasPlazo: diasPlazo,
-      frecuencia: frecuencia,
-      tipo: TipoInteres.saldo,
-    );
+    final plan = _plan;
     final d = <String, dynamic>{
       'monto': monto,
-      'tasa_interes': interesMensual,
+      'tasa_interes': redondearTasa(interesMensual),
       'cuota': plan.cuota,
       'cantidad_cuotas': plan.cantidadCuotas,
       'monto_total': plan.montoTotal,
       'mora_diaria': moraDiaria,
       'dias_gracia': diasGracia,
       'frecuencia': frecuencia,
-      'tipo_interes': TipoInteres.saldo.valor,
+      'tipo_interes': tipo.valor,
       'fecha_desembolso': fechaSql(fecha),
     };
     final saldado = yaPago >= plan.montoTotal;
@@ -115,13 +124,25 @@ class PrestamoImportado {
     return d;
   }
 
-  double get montoTotal => calcularPlan(
-        monto: monto,
-        tasaInteresMensual: interesMensual,
-        diasPlazo: diasPlazo,
-        frecuencia: frecuencia,
-        tipo: TipoInteres.saldo,
-      ).montoTotal;
+  double get montoTotal => _plan.montoTotal;
+
+  /// El cobro "importado" que se guarda con el préstamo (sin préstamo ni
+  /// prestamista), o null si no hace falta. Lleva la fecha de [ahora] (el
+  /// día que se importa), no la del préstamo: así el atraso de antes no
+  /// genera mora de golpe (ver estadoPrestamo). Si no ha pagado nada pero ya
+  /// tiene cuotas vencidas, se guarda uno de 0 solo para marcar esa fecha.
+  Map<String, dynamic>? cobroImportado(DateTime ahora) {
+    final hoy = DateTime(ahora.year, ahora.month, ahora.day);
+    final hayVencidas =
+        generarCronograma(prestamo: datos(), totalPagado: 0).any((c) => (c['fecha'] as DateTime).isBefore(hoy));
+    if (yaPago <= 0 && !hayVencidas) return null;
+    return {
+      'monto': yaPago,
+      'monto_mora': 0,
+      'metodo': 'importado',
+      'fecha_pago': ahora.toUtc().toIso8601String(),
+    };
+  }
 }
 
 /// Una fila del archivo ya revisada.
@@ -204,6 +225,17 @@ String? _frecuencia(Object? v) {
   return '';
 }
 
+/// "Tipo de interés": vacío → fijo (como se presta en la calle); "fijo",
+/// "plano" o "sobre el monto" → fijo; "saldo" o "sobre saldo" → saldo. Null
+/// si dice otra cosa.
+TipoInteres? _tipoInteres(Object? v) {
+  final t = _clave(_texto(v) ?? '');
+  if (t.isEmpty) return TipoInteres.fijo;
+  if (t.contains('saldo') || t == 'frances') return TipoInteres.saldo;
+  if (t.contains('fijo') || t.contains('plano') || t.contains('monto')) return TipoInteres.fijo;
+  return null;
+}
+
 /// Revisa las filas del archivo (la primera son los títulos). [cedulasExistentes]:
 /// las de los clientes que ya están en la app (solo dígitos). [hoy]: para
 /// no aceptar préstamos con fecha futura.
@@ -262,6 +294,7 @@ String? _frecuencia(Object? v) {
       final pagado = _numero(celda(f, 'pagado')) ?? 0;
       final mora = _numero(celda(f, 'mora'));
       final gracia = _numero(celda(f, 'gracia'))?.round();
+      final tipo = _tipoInteres(celda(f, 'tipo'));
 
       if (interes == null || interes < 0) errores.add('Falta el interés mensual');
       if (frecuencia == null) {
@@ -278,6 +311,7 @@ String? _frecuencia(Object? v) {
       if (pagado < 0) errores.add('"Ya pagó" no puede ser negativo');
       if (mora != null && mora < 0) errores.add('La mora no puede ser negativa');
       if (gracia != null && gracia < 0) errores.add('Los días de gracia no pueden ser negativos');
+      if (tipo == null) errores.add('Tipo de interés no válido: usa fijo o saldo');
 
       if (errores.isEmpty) {
         prestamo = PrestamoImportado(
@@ -289,6 +323,7 @@ String? _frecuencia(Object? v) {
           yaPago: pagado,
           moraDiaria: mora ?? 5,
           diasGracia: gracia ?? 1,
+          tipo: tipo!,
         );
         if (pagado > prestamo.montoTotal) {
           errores.add('"Ya pagó" es más que el total del préstamo (${prestamo.montoTotal.round()})');
@@ -384,6 +419,7 @@ Uint8List plantillaExcel() {
     const IntCellValue(4000),
     const IntCellValue(5),
     const IntCellValue(1),
+    TextCellValue('fijo'),
   ]);
   hoja.appendRow([
     TextCellValue('María Gómez'), // sin préstamo en la calle

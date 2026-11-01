@@ -38,6 +38,11 @@ double tasaPorCuota(double tasaMensual, String frecuencia) =>
 
 double _centavos(double v) => (v * 100).roundToDouble() / 100;
 
+/// La tasa como la guarda la base de datos (prestamos.tasa_interes tiene 2
+/// decimales). El plan se calcula SIEMPRE con esta, para que lo que se ve
+/// al prestar sea lo mismo que sale después del préstamo guardado.
+double redondearTasa(double tasa) => _centavos(tasa);
+
 /// Una fila de la tabla de amortización.
 class FilaAmortizacion {
   final int numero;
@@ -188,7 +193,9 @@ String nombrePeriodos(String frecuencia) => switch (frecuencia) {
 /// (si ese mes es más corto, el último día del mes).
 DateTime fechaCuota(DateTime desembolso, String frecuencia, int numero) {
   if (frecuencia != 'mensual') {
-    return desembolso.add(Duration(days: numero * diasPorCuota(frecuencia)));
+    // Por día del calendario (no sumando horas: un cambio de hora no la mueve).
+    return DateTime(desembolso.year, desembolso.month,
+        desembolso.day + numero * diasPorCuota(frecuencia));
   }
   final mes = DateTime(desembolso.year, desembolso.month + numero, 1);
   final ultimoDia = DateTime(mes.year, mes.month + 1, 0).day;
@@ -212,6 +219,9 @@ DateTime fechaCuota(DateTime desembolso, String frecuencia, int numero) {
 ///
 /// [tipo] sobre saldo: cuota fija como en bancos y cooperativas (ver
 /// [amortizacionSobreSaldo]); el interés total sale menor que el fijo.
+///
+/// La tasa se redondea a 2 decimales (ver [redondearTasa]): es la que se
+/// guarda, y así la vista previa y el préstamo guardado dan lo mismo.
 PlanPrestamo calcularPlan({
   required double monto,
   required double tasaInteresMensual,
@@ -219,6 +229,7 @@ PlanPrestamo calcularPlan({
   required String frecuencia, // diario / semanal / quincenal / mensual
   TipoInteres tipo = TipoInteres.fijo,
 }) {
+  tasaInteresMensual = redondearTasa(tasaInteresMensual);
   if (monto <= 0) throw ArgumentError.value(monto, 'monto', 'debe ser mayor que 0');
   if (diasPlazo < 1) {
     throw ArgumentError.value(diasPlazo, 'diasPlazo', 'debe ser al menos 1 día');
@@ -417,23 +428,6 @@ double interesCobrado(Map<String, dynamic> prestamo, double totalPagado) {
   return (proyectada: proyectada, yaLlevas: yaLlevas, falta: falta);
 }
 
-/// Si un préstamo en la calle está atrasado: su próxima cuota pendiente
-/// (según el cronograma) vence hoy o antes.
-bool estaAtrasado(Map<String, dynamic> prestamo, double totalPagado, DateTime hoy) {
-  if (prestamo['estado'] != 'en_calle') return false;
-  final proximo = proximoPago(prestamo, totalPagado);
-  if (proximo == null) return false;
-  return !proximo.isAfter(DateTime(hoy.year, hoy.month, hoy.day));
-}
-
-/// Días de atraso respecto a la próxima cuota pendiente (0 si no hay).
-int diasAtraso(Map<String, dynamic> prestamo, double totalPagado, DateTime hoy) {
-  final proximo = proximoPago(prestamo, totalPagado);
-  if (proximo == null) return 0;
-  final dias = DateTime(hoy.year, hoy.month, hoy.day).difference(proximo).inDays;
-  return dias < 0 ? 0 : dias;
-}
-
 /// Fecha como la guarda Supabase en columnas `date` (AAAA-MM-DD).
 String fechaSql(DateTime fecha) => fecha.toIso8601String().substring(0, 10);
 
@@ -483,6 +477,11 @@ class PagoRegistrado {
   /// El cobrador que lo cobró (null si lo cobró el prestamista).
   final String? cobradorId;
 
+  /// Lo que ya había pagado un cliente importado de Excel (pagos.metodo =
+  /// 'importado'): no es dinero de la caja, y el atraso de antes de esa
+  /// fecha no genera mora (ver [estadoPrestamo]).
+  final bool importado;
+
   const PagoRegistrado({
     this.id,
     this.numeroRecibo,
@@ -495,12 +494,17 @@ class PagoRegistrado {
     this.motivoAnulacion,
     this.anuladoEn,
     this.cobradorId,
+    this.importado = false,
   });
 
   double get montoCuota => monto - montoMora;
 
   /// Lo que baja de las cuotas: lo cobrado a cuota más el descuento.
   double get aCuotas => montoCuota + descuento;
+
+  /// Importado sin nada pagado: solo marca desde cuándo cuenta la mora. No
+  /// es un recibo, no se muestra.
+  bool get esMarcaImportacion => importado && monto == 0;
 
   factory PagoRegistrado.desdeFila(Map<String, dynamic> fila) => PagoRegistrado(
         id: fila['id'] as String?,
@@ -513,6 +517,7 @@ class PagoRegistrado {
         motivoAnulacion: fila['motivo_anulacion'] as String?,
         anuladoEn: DateTime.tryParse(fila['anulado_en'] as String? ?? '')?.toLocal(),
         cobradorId: fila['cobrador_id'] as String?,
+        importado: fila['metodo'] == 'importado',
       );
 }
 
@@ -612,6 +617,16 @@ EstadoPrestamo estadoPrestamo(
   ];
   // Último día ya considerado para la mora de cada cuota (hasta ahí, gracia).
   final hasta = [for (final c in cuotas) _dia(c.fecha) + gracia];
+  // Préstamo importado de Excel: el atraso de ANTES de importarlo no genera
+  // mora (el prestamista no la llevaba así). Las cuotas que ya estaban
+  // vencidas cuentan como si vencieran el día de la importación.
+  final importados = [for (final p in pagos) if (p.importado && !p.anulado) _dia(p.fecha)];
+  if (importados.isNotEmpty) {
+    final corte = importados.reduce((a, b) => a > b ? a : b) + gracia;
+    for (var i = 0; i < hasta.length; i++) {
+      if (hasta[i] < corte) hasta[i] = corte;
+    }
+  }
 
   void generarMoraHasta(int dia) {
     if (tasa <= 0) return;
@@ -703,8 +718,13 @@ class SaldarHoy {
   final int dias;
   final double interesDias;
 
-  /// Capital que falta (sin intereses) y mora pendiente.
+  /// Capital que falta, sin nada de interés (según la tabla de cada cuota).
   final double capital;
+
+  /// Interés de las cuotas ya vencidas que todavía no pagó.
+  final double interesVencido;
+
+  /// Mora pendiente.
   final double mora;
 
   const SaldarHoy({
@@ -714,6 +734,7 @@ class SaldarHoy {
     required this.dias,
     required this.interesDias,
     required this.capital,
+    this.interesVencido = 0,
     required this.mora,
   });
 
@@ -736,13 +757,28 @@ SaldarHoy calcularSaldarHoy(
   final cuotas = estado.cuotas;
   final hoyDia = _dia(hoy);
   final balance = estado.balance;
-  final monto = (prestamo['monto'] as num?)?.toDouble() ?? 0;
 
   // Cuotas que ya vencieron (o vencen hoy): esas se pagan completas.
   final vencidas = cuotas.where((c) => _dia(c.fecha) <= hoyDia).length;
-  final interesVencido = cuotas.take(vencidas).fold(0.0, (s, c) => s + c.interes);
-  final capital =
-      (monto + interesVencido - estado.cobradoCuotas - estado.descuentos).clamp(0.0, double.infinity).toDouble();
+
+  // Lo que falta de cada cuota vencida se reparte entre capital e interés
+  // como la cuota (su fila de la tabla). De las que no han vencido se debe
+  // todo su capital, menos lo que ya adelantó (que baja el capital).
+  var capital = 0.0;
+  var interesVencido = 0.0;
+  for (var i = 0; i < cuotas.length; i++) {
+    final c = cuotas[i];
+    if (c.monto <= 0) continue;
+    final capitalCuota = c.monto - c.interes;
+    if (i < vencidas) {
+      final falta = c.pagada ? 0.0 : c.pendiente / c.monto;
+      capital += capitalCuota * falta;
+      interesVencido += c.interes * falta;
+    } else {
+      capital += capitalCuota - (c.monto - c.pendiente);
+    }
+  }
+  if (capital < 0) capital = 0;
 
   if (vencidas >= cuotas.length || balance < _centavo) {
     return SaldarHoy(
@@ -752,6 +788,7 @@ SaldarHoy calcularSaldarHoy(
         dias: 0,
         interesDias: 0,
         capital: capital,
+        interesVencido: interesVencido,
         mora: estado.moraPendiente);
   }
 
@@ -774,6 +811,7 @@ SaldarHoy calcularSaldarHoy(
     dias: dias,
     interesDias: interesDias,
     capital: capital,
+    interesVencido: interesVencido,
     mora: estado.moraPendiente,
   );
 }
@@ -898,7 +936,10 @@ DatosRecibo datosRecibo(
 /// Qué hay que cobrarle hoy a un préstamo:
 ///  - atrasado: cuotas que vencieron ANTES de hoy (lo que falta + su mora),
 ///  - venceHoy: la cuota que vence hoy,
-///  - diasAtraso: desde la cuota vencida más vieja que sigue sin cubrir.
+///  - diasAtraso: desde la cuota vencida más vieja que sigue SIN PAGAR. Una
+///    cuota ya pagada que solo debe mora no cuenta para los días (0 si solo
+///    debe mora).
+/// Es la regla de "atrasado" de toda la app (Inicio, Reportes, gráficas).
 ({double atrasado, double venceHoy, int diasAtraso}) cobroDelDia(
     EstadoPrestamo estado, DateTime hoy) {
   final hoyDia = _dia(hoy);
@@ -911,7 +952,7 @@ DatosRecibo datosRecibo(
     final dia = _dia(c.fecha);
     if (dia < hoyDia) {
       atrasado += porCobrar;
-      if (diasAtraso == 0) diasAtraso = hoyDia - dia;
+      if (diasAtraso == 0 && !c.pagada) diasAtraso = hoyDia - dia;
     } else if (dia == hoyDia) {
       venceHoy += porCobrar;
     }

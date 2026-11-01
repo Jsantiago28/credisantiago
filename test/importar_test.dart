@@ -9,7 +9,7 @@ final hoy = DateTime(2026, 9, 30, 10);
 const titulos = [
   'Nombre y apellido', 'Cédula', 'Teléfono', 'Dirección', 'Monto prestado',
   'Interés mensual %', 'Frecuencia', 'Plazo en días', 'Fecha del préstamo', 'Ya pagó',
-  'Mora diaria %', 'Días de gracia',
+  'Mora diaria %', 'Días de gracia', 'Tipo de interés',
 ];
 
 ({List<FilaImportada> filas, List<String> faltan}) revisar(List<List<Object?>> filas,
@@ -118,20 +118,82 @@ void main() {
     final datos = p.datos();
     expect(datos['estado'], 'en_calle');
     expect(datos['fecha_desembolso'], '2026-09-01');
+    // Sin decir el tipo: interés fijo (como se presta en la calle).
+    expect(datos['tipo_interes'], 'fijo');
     final plan = calcularPlan(
-        monto: 10000, tasaInteresMensual: 20, diasPlazo: 60, frecuencia: 'semanal',
-        tipo: TipoInteres.saldo);
+        monto: 10000, tasaInteresMensual: 20, diasPlazo: 60, frecuencia: 'semanal');
     expect(datos['monto_total'], plan.montoTotal);
     expect(datos['cantidad_cuotas'], plan.cantidadCuotas);
 
-    // Como lo guarda la app: un cobro "importado" el día del préstamo.
-    final pagos = [PagoRegistrado(fecha: DateTime(2026, 9, 1, 12), monto: p.yaPago)];
+    // Como lo guarda la app: un cobro "importado" con la fecha de hoy.
+    final cobro = p.cobroImportado(hoy)!;
+    expect(cobro['metodo'], 'importado');
+    expect(cobro['monto'], p.yaPago);
+    expect(DateTime.parse(cobro['fecha_pago'] as String).toLocal(), hoy);
+    final pagos = [PagoRegistrado.desdeFila({...cobro, 'monto_mora': 0})];
+    expect(pagos.single.importado, isTrue);
     final estado = estadoPrestamo(datos, pagos, hoy);
     expect(estado.cobradoCuotas, p.yaPago);
-    // Lo pagado cubre cuotas enteras sin mora.
-    expect(estado.cuotas.where((c) => c.pagada && c.moraPendiente == 0).length,
-        (p.yaPago / plan.cuota).floor());
-    expect(estado.balance, greaterThanOrEqualTo(plan.montoTotal - p.yaPago));
+    // Lo pagado cubre cuotas enteras, y lo atrasado de antes no tiene mora.
+    expect(estado.cuotas.where((c) => c.pagada).length, (p.yaPago / plan.cuota).floor());
+    expect(estado.moraPendiente, 0);
+    expect(estado.balance, plan.montoTotal - p.yaPago);
+  });
+
+  test('importado el 31/10: sin mora de golpe por el atraso de antes', () {
+    final p = ejemplo; // 10,000 al 20%, semanal, 60 días, desde el 1/9; pagó 4,000
+    final datos = p.datos();
+    final importado = DateTime(2026, 10, 31, 9);
+    // Antes: el cobro con la fecha del préstamo y la mora corría desde que
+    // venció cada cuota: miles de pesos de mora el mismo día de importarlo.
+    final antes = estadoPrestamo(datos, [PagoRegistrado(fecha: DateTime(2026, 9, 1, 12), monto: 4000)],
+        importado);
+    expect(antes.moraPendiente, greaterThan(5000));
+
+    final pagos = [
+      PagoRegistrado.desdeFila({...p.cobroImportado(importado)!, 'monto_mora': 0})
+    ];
+    expect(estadoPrestamo(datos, pagos, importado).moraPendiente, 0);
+    // Con 1 día de gracia, el 1/11 tampoco; el 2/11 corre el primer día.
+    expect(estadoPrestamo(datos, pagos, DateTime(2026, 11, 1)).moraPendiente, 0);
+    final dia2 = estadoPrestamo(datos, pagos, DateTime(2026, 11, 2));
+    final vencido = dia2.cuotas
+        .where((c) => c.fecha.isBefore(DateTime(2026, 10, 31)))
+        .fold<double>(0, (s, c) => s + c.pendiente);
+    expect(dia2.moraPendiente, closeTo(vencido * 0.05, 8)); // un día, redondeado por cuota
+  });
+
+  test('sin nada pagado pero con cuotas vencidas: una marca de 0 que no es recibo', () {
+    final p = PrestamoImportado(
+        monto: 5000, interesMensual: 20, frecuencia: 'semanal', diasPlazo: 30,
+        fecha: DateTime(2026, 9, 1));
+    final cobro = p.cobroImportado(hoy)!;
+    expect(cobro['monto'], 0);
+    final pago = PagoRegistrado.desdeFila({...cobro, 'monto_mora': 0});
+    expect(pago.esMarcaImportacion, isTrue);
+    expect(estadoPrestamo(p.datos(), [pago], hoy).moraPendiente, 0);
+    // Préstamo de ayer, nada vencido: no hace falta guardar nada.
+    final nuevo = PrestamoImportado(
+        monto: 5000, interesMensual: 20, frecuencia: 'semanal', diasPlazo: 30,
+        fecha: DateTime(2026, 9, 29));
+    expect(nuevo.cobroImportado(hoy), isNull);
+  });
+
+  test('tipo de interés: vacío es fijo; "saldo" es sobre saldo; otra cosa es error', () {
+    PrestamoImportado? conTipo(Object? tipo) => revisar([
+          ['Juan Pérez', '00112345678', '8095551234', null, 10000, 10, 'mensual', 90,
+              '1/9/2026', 0, null, null, tipo],
+        ]).filas.single.prestamo;
+    expect(conTipo(null)!.tipo, TipoInteres.fijo);
+    expect(conTipo('Fijo')!.tipo, TipoInteres.fijo);
+    expect(conTipo('sobre saldo')!.tipo, TipoInteres.saldo);
+    expect(conTipo('saldo')!.datos()['tipo_interes'], 'saldo');
+    expect(conTipo('saldo')!.datos()['cuota'], 4021);
+    final mal = revisar([
+      ['Juan Pérez', '00112345678', '8095551234', null, 10000, 10, 'mensual', 90, '1/9/2026', 0,
+          null, null, 'raro'],
+    ]).filas.single;
+    expect(mal.errores, ['Tipo de interés no válido: usa fijo o saldo']);
   });
 
   test('si ya pagó todo, entra como saldado', () {
@@ -184,7 +246,7 @@ void main() {
     expect(find.text('1 ya existe(n)'), findsOneWidget);
     expect(find.text('1 con errores'), findsOneWidget);
     expect(find.text('Importar 2 cliente(s)'), findsOneWidget);
-    expect(find.textContaining('Préstamo RD\$10,000 semanal del 1 sep 2026'), findsOneWidget);
+    expect(find.textContaining('Préstamo RD\$10,000 semanal, interés fijo, del 1 sep 2026'), findsOneWidget);
     expect(find.text('Ya tienes un cliente con esa cédula: no se importa'), findsOneWidget);
   });
 }

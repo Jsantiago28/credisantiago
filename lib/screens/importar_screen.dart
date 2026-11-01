@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../archivos/archivos.dart';
 import '../logic/importar.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
@@ -39,7 +40,7 @@ class _ImportarScreenState extends State<ImportarScreen> {
     try {
       descargarArchivo('plantilla_clientes.xlsx', plantillaExcel());
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = mensajeError(e));
     }
   }
 
@@ -69,9 +70,8 @@ class _ImportarScreenState extends State<ImportarScreen> {
           if (r.filas.isEmpty) _error = 'El archivo no tiene clientes debajo de los títulos.';
         }
       });
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL LEER EXCEL: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'LEER EXCEL');
       if (mounted) {
         setState(() {
           _leyendo = false;
@@ -92,13 +92,12 @@ class _ImportarScreenState extends State<ImportarScreen> {
       } on LimitePlan catch (e) {
         // Se acabó el cupo del plan: los que faltan tampoco van a entrar.
         for (final resto in listas.skip(importados + _fallidos.length)) {
-          _fallidos.add((resto, '$e'));
+          _fallidos.add((resto, e.mensaje));
         }
         break;
-      } catch (e) {
-        // ignore: avoid_print
-        print('ERROR REAL IMPORTAR FILA ${f.fila}: $e');
-        _fallidos.add((f, '$e'));
+      } catch (e, pila) {
+        registrarError(e, pila, 'IMPORTAR FILA ${f.fila}');
+        _fallidos.add((f, mensajeError(e)));
       }
       if (mounted) setState(() => _hechas = importados + _fallidos.length);
     }
@@ -164,6 +163,10 @@ class _ImportarScreenState extends State<ImportarScreen> {
           Text(
             'Nombre, cédula y teléfono son obligatorios. Si el cliente tiene un préstamo en la '
             'calle, llena también monto, interés, frecuencia, plazo, fecha y lo que ya pagó. '
+            '"Tipo de interés": fijo (sobre el monto, como se presta en la calle) o saldo '
+            '(sobre lo que debe, cuota fija); si lo dejas vacío, es fijo. '
+            'Lo que ya pagó cuenta desde hoy: las cuotas atrasadas de antes empiezan a '
+            'cobrar mora desde hoy, no desde que vencieron. '
             'Borra las filas de ejemplo.',
             style: TextStyle(color: AppColors.grey, fontSize: 12),
           ),
@@ -286,7 +289,8 @@ class FilaRevisada extends StatelessWidget {
 
   static String _detallePrestamo(PrestamoImportado p) {
     final debe = p.montoTotal - p.yaPago;
-    return 'Préstamo ${rd(p.monto)} ${p.frecuencia} del ${fechaLarga(p.fecha)} · '
+    return 'Préstamo ${rd(p.monto)} ${p.frecuencia}, interés ${p.tipo.valor}, '
+        'del ${fechaLarga(p.fecha)} · '
         '${debe <= 0 ? 'ya saldado' : 'debe ${rd(debe)}'}';
   }
 }

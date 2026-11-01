@@ -59,7 +59,9 @@ List<PrestamoHistorial> historialPagos(
       monto: (prestamo['monto'] as num?)?.toDouble() ?? 0,
       montoTotal: montoTotalGuardado(prestamo),
       estado: estado,
-      pagos: [...pagos]..sort((a, b) => a.fecha.compareTo(b.fecha)),
+      // La marca de 0 de un préstamo importado no es un cobro: no se muestra.
+      pagos: [for (final p in pagos) if (!p.esMarcaImportacion) p]
+        ..sort((a, b) => a.fecha.compareTo(b.fecha)),
       balance: estado == 'en_calle' ? e.balance : 0,
       moraPendiente: estado == 'en_calle' ? e.moraPendiente : 0,
     ));

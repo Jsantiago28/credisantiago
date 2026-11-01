@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../logic/calculo_prestamo.dart';
+import 'errores.dart';
 import 'supabase_service.dart';
 
 /// Cobrar sin internet (solo en la app de Android).
@@ -43,7 +44,13 @@ class SinConexion {
   /// Si la ruta que se ve es la guardada: desde cuándo (null = en vivo).
   static final rutaGuardadaDe = ValueNotifier<DateTime?>(null);
 
-  static String? get _uid => SupabaseService.instance.usuarioActual?.id;
+  /// Para pruebas: el usuario (sin Supabase) y cómo se sube cada cobro.
+  @visibleForTesting
+  static String? usuarioParaPruebas;
+  @visibleForTesting
+  static Future<void> Function(CobroPendiente cobro)? subirParaPruebas;
+
+  static String? get _uid => usuarioParaPruebas ?? SupabaseService.instance.usuarioActual?.id;
   static String _clave(String que) => 'sc_${que}_$_uid';
 
   /// El error es por falta de internet (y no otro problema).
@@ -74,17 +81,23 @@ class SinConexion {
     }
   }
 
-  static Future<void> _escribir(String que, Object? valor) async {
-    if (!disponible || _uid == null) return;
+  /// Guarda (o borra, si [valor] es null). Con [estricto] (la cola de
+  /// cobros, que es dinero) un fallo se lanza, para que la app no diga
+  /// "guardado" si no se guardó; lo demás (ruta, identidad) se puede perder.
+  static Future<void> _escribir(String que, Object? valor, {bool estricto = false}) async {
+    if (!disponible || _uid == null) {
+      if (estricto) throw StateError('No se puede guardar en este teléfono');
+      return;
+    }
     try {
       if (valor == null) {
         await _almacen.delete(key: _clave(que));
       } else {
         await _almacen.write(key: _clave(que), value: jsonEncode(valor));
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GUARDAR SIN CONEXION: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'GUARDAR SIN CONEXION');
+      if (estricto) rethrow;
     }
   }
 
@@ -136,8 +149,26 @@ class SinConexion {
   // Cola de cobros sin subir
   // ---------------------------------------------------------------------------
 
-  static Future<List<CobroPendiente>> cola() async {
-    final v = await _leer('cola');
+  /// La última operación con la cola: cada una espera a la anterior. Así
+  /// un cobro que se guarda mientras se están subiendo otros no se pierde
+  /// (antes, al guardar lo que quedaba por subir, se pisaba).
+  static Future<void> _turno = Future.value();
+
+  static Future<T> _enOrden<T>(Future<T> Function() accion) {
+    final resultado = _turno.then((_) => accion());
+    _turno = resultado.then((_) {}, onError: (_) {});
+    return resultado;
+  }
+
+  static Future<List<CobroPendiente>> cola() => _enOrden(_leerCola);
+
+  /// Sin [_enOrden]: solo para usar dentro de una operación con la cola.
+  static Future<List<CobroPendiente>> _leerCola() async {
+    if (!disponible || _uid == null) return [];
+    // Si no se puede leer, falla: devolver la cola vacía y guardar encima
+    // borraría los cobros que había.
+    final texto = await _almacen.read(key: _clave('cola'));
+    final v = texto == null ? null : jsonDecode(texto);
     final lista = v is List
         ? [for (final f in v) CobroPendiente.desdeFila(Map<String, dynamic>.from(f))]
         : <CobroPendiente>[];
@@ -146,14 +177,23 @@ class SinConexion {
   }
 
   static Future<void> _guardarCola(List<CobroPendiente> lista) async {
-    await _escribir('cola', [for (final c in lista) c.aFila()]);
+    await _escribir('cola', [for (final c in lista) c.aFila()], estricto: true);
     pendientes.value = lista.length;
   }
 
-  static Future<void> agregar(CobroPendiente cobro) async {
-    final lista = await cola();
-    await _guardarCola([...lista, cobro]);
-  }
+  /// Guarda un cobro hecho sin señal. Si el teléfono no lo pudo guardar,
+  /// lanza el error (el cobro NO quedó guardado).
+  static Future<void> agregar(CobroPendiente cobro) => _enOrden(() async {
+        final lista = await _leerCola();
+        await _guardarCola([...lista.where((c) => c.id != cobro.id), cobro]);
+      });
+
+  /// Quita de la cola un cobro ya subido (por su id, leyendo la cola de
+  /// nuevo: pudo entrar otro mientras se subía).
+  static Future<void> _quitar(String id) => _enOrden(() async {
+        final lista = await _leerCola();
+        await _guardarCola([for (final c in lista) if (c.id != id) c]);
+      });
 
   static Future<void>? _subiendo;
 
@@ -164,38 +204,53 @@ class SinConexion {
     return _subiendo ??= _subirTodo().whenComplete(() => _subiendo = null);
   }
 
+  static Future<void> _subirUno(CobroPendiente c) =>
+      subirParaPruebas?.call(c) ??
+      SupabaseService.instance.registrarPago(
+        prestamoId: c.prestamoId,
+        prestamistaId: c.prestamistaId,
+        monto: c.monto,
+        ubicacion: c.ubicacion,
+        id: c.id,
+        fechaSinConexion: c.fecha,
+      );
+
   static Future<void> _subirTodo() async {
-    final lista = await cola();
-    final quedan = [...lista];
+    final List<CobroPendiente> lista;
+    try {
+      lista = await cola();
+    } catch (e, pila) {
+      registrarError(e, pila, 'LEER COBROS SIN SUBIR');
+      return;
+    }
     for (final c in lista) {
+      var subido = false;
       try {
-        await SupabaseService.instance.registrarPago(
-          prestamoId: c.prestamoId,
-          prestamistaId: c.prestamistaId,
-          monto: c.monto,
-          ubicacion: c.ubicacion,
-          id: c.id,
-          fechaSinConexion: c.fecha,
-        );
-        quedan.remove(c);
-      } on PostgrestException catch (e) {
+        await _subirUno(c);
+        subido = true;
+      } on PostgrestException catch (e, pila) {
         if (e.code == '23505') {
-          quedan.remove(c); // ya estaba subido
+          subido = true; // ya estaba subido (mismo id)
         } else {
-          // ignore: avoid_print
-          print('ERROR REAL SUBIR COBRO: $e');
+          registrarError(e, pila, 'SUBIR COBRO');
         }
-      } catch (e) {
+      } catch (e, pila) {
         if (esFaltaDeConexion(e)) {
           sinSenal.value = true;
           break;
         }
-        // ignore: avoid_print
-        print('ERROR REAL SUBIR COBRO: $e');
+        registrarError(e, pila, 'SUBIR COBRO');
       }
-      await _guardarCola(quedan);
+      if (subido) {
+        try {
+          await _quitar(c.id);
+        } catch (e, pila) {
+          // Queda en la cola: al volver a subirlo, la base de datos ya lo
+          // tiene (mismo id) y se quita entonces.
+          registrarError(e, pila, 'QUITAR COBRO SUBIDO');
+        }
+      }
     }
-    pendientes.value = quedan.length;
   }
 
   /// Le suma a cada préstamo los cobros que todavía no suben, para que lo
@@ -311,6 +366,7 @@ Map<String, dynamic> rutaAFila(PrestamoConDatos d) => {
             'descuento': p.descuento,
             'anulado': p.anulado,
             'cobrador_id': p.cobradorId,
+            if (p.importado) 'metodo': 'importado',
           },
       ],
     };

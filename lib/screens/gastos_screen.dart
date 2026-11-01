@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/gastos.dart';
 import '../logic/graficas.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/formato_campos.dart' show soloNumeros;
@@ -55,15 +56,23 @@ class _GastosScreenState extends State<GastosScreen> {
     final mes = _mes;
     final finDeMes = DateTime(mes.year, mes.month + 1, 0);
     setState(() => _gastos = null);
-    final gastos = await servicio.obtenerGastos(widget.prestamistaId, desde: mes, hasta: finDeMes);
+    var gastos = const <Gasto>[];
+    try {
+      gastos = await servicio.obtenerGastos(widget.prestamistaId, desde: mes, hasta: finDeMes);
+    } catch (e, pila) {
+      registrarError(e, pila, 'GASTOS');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No se pudieron cargar los gastos. ${mensajeError(e)}')));
+      }
+    }
     ({double interes, double mora}) ganado = (interes: 0, mora: 0);
     try {
       final cobros = await servicio.obtenerCobrosGraficas(widget.prestamistaId, mes);
       final g = gananciaPorMes(cobros, _prestamosPorId, mes, meses: 1).single;
       ganado = (interes: g.interes, mora: g.mora);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GANANCIA EN GASTOS: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'GANANCIA EN GASTOS');
     }
     if (!mounted || mes != _mes) return;
     setState(() {
@@ -106,7 +115,7 @@ class _GastosScreenState extends State<GastosScreen> {
       mensajero.showSnackBar(const SnackBar(content: Text('Gasto borrado')));
       _cargar();
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo borrar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo borrar. ${mensajeError(e)}')));
     }
   }
 
@@ -335,13 +344,12 @@ class _FormularioGastoState extends State<FormularioGasto> {
       );
       mensajero.showSnackBar(SnackBar(content: Text('Gasto de ${rd(monto)} anotado')));
       navegador.pop(true);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL ANOTAR GASTO: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'ANOTAR GASTO');
       if (mounted) {
         setState(() {
           _guardando = false;
-          _error = 'No se pudo guardar. ¿Corriste la migración de gastos? ($e)';
+          _error = 'No se pudo guardar. ${mensajeError(e)}';
         });
       }
     }

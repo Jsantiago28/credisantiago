@@ -4,7 +4,9 @@ import '../archivos/archivos.dart';
 import '../logic/caja.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/gastos.dart';
+import '../logic/gestiones.dart' show Gestion;
 import '../logic/graficas.dart' show gananciaPorMes;
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cobro_prestamo.dart';
@@ -42,22 +44,44 @@ class _ReportesScreenState extends State<ReportesScreen> {
     _cargar();
   }
 
+  /// Si no se pudo cargar: qué decirle (con botón de Reintentar).
+  String? _error;
+
   Future<void> _cargar() async {
     final servicio = SupabaseService.instance;
-    final r = await servicio.obtenerReportePrestamos(widget.prestamistaId);
-    await _cargarCaja();
-    final real = await _cargarGananciaReal(r);
-    if (mounted) {
-      setState(() {
-        _prestamos = r;
-        _real = real;
-        _cargando = false;
-      });
+    try {
+      final r = await servicio.obtenerReportePrestamos(widget.prestamistaId);
+      await _cargarCaja();
+      final real = await _cargarGananciaReal(r);
+      if (mounted) {
+        setState(() {
+          _prestamos = r;
+          _real = real;
+          _cargando = false;
+          _error = null;
+        });
+      }
+    } catch (e, pila) {
+      registrarError(e, pila, 'REPORTES');
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+          _error = mensajeError(e);
+        });
+      }
     }
   }
 
-  /// Últimos 7 días de caja. Si falla (o falta la migración de cierres),
-  /// el resto de Reportes se ve igual.
+  Future<void> _reintentar() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
+    await _cargar();
+  }
+
+  /// Últimos 7 días de caja y sus cierres. Si falla, el resto de Reportes
+  /// se ve igual.
   Future<void> _cargarCaja() async {
     final servicio = SupabaseService.instance;
     final hoy = DateTime.now();
@@ -68,14 +92,9 @@ class _ReportesScreenState extends State<ReportesScreen> {
       final hoySinHora = DateTime(hoy.year, hoy.month, hoy.day);
       if (dias.isEmpty || dias.first.dia != hoySinHora) dias.insert(0, DiaCaja(hoySinHora, const []));
       _caja = dias;
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL CAJA EN REPORTES: $e');
-    }
-    try {
       _cierres = await servicio.obtenerCierres(widget.prestamistaId);
-    } catch (_) {
-      _cierres = const {};
+    } catch (e, pila) {
+      registrarError(e, pila, 'CAJA EN REPORTES');
     }
   }
 
@@ -92,9 +111,8 @@ class _ReportesScreenState extends State<ReportesScreen> {
           .single;
       final gastos = await servicio.obtenerGastos(widget.prestamistaId, desde: mes);
       return gananciaReal(interes: g.interes, mora: g.mora, gastos: totalGastos(gastos));
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GANANCIA REAL: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'GANANCIA REAL');
       return null;
     }
   }
@@ -184,19 +202,33 @@ class _ReportesScreenState extends State<ReportesScreen> {
     );
   }
 
-  bool _estaAtrasado(Map<String, dynamic> p) =>
-      estaAtrasado(p, (p['total_pagado'] as num).toDouble(), DateTime.now());
+  /// Lo que debe hoy, con la misma regla de Inicio (ver cobroDelDia):
+  /// atrasado = cuotas que vencieron antes de hoy o mora pendiente.
+  ({double atrasado, double venceHoy, int diasAtraso})? _hoy(Map<String, dynamic> p) {
+    final e = p['estado_calculado'];
+    if (p['estado'] != 'en_calle' || e is! EstadoPrestamo) return null;
+    return cobroDelDia(e, DateTime.now());
+  }
 
-  int _diasAtraso(Map<String, dynamic> p) =>
-      diasAtraso(p, (p['total_pagado'] as num).toDouble(), DateTime.now());
+  /// En "No han pagado hoy": atrasado o con la cuota de hoy sin pagar.
+  bool _sinPagarHoy(Map<String, dynamic> p) {
+    final d = _hoy(p);
+    return d != null && (d.atrasado > 0 || d.venceHoy > 0);
+  }
+
+  int _diasAtraso(Map<String, dynamic> p) => _hoy(p)?.diasAtraso ?? 0;
 
   List<Map<String, dynamic>> get _alDia => (_prestamos ?? [])
-      .where((p) => p['estado'] == 'en_calle' && !_estaAtrasado(p))
+      .where((p) => p['estado'] == 'en_calle' && !_sinPagarHoy(p))
       .toList();
 
   List<Map<String, dynamic>> get _atrasados =>
-      (_prestamos ?? []).where(_estaAtrasado).toList()
-        ..sort((a, b) => _diasAtraso(b).compareTo(_diasAtraso(a)));
+      (_prestamos ?? []).where(_sinPagarHoy).toList()
+        ..sort((a, b) {
+          final porDias = _diasAtraso(b).compareTo(_diasAtraso(a));
+          if (porDias != 0) return porDias;
+          return (_hoy(b)!.atrasado).compareTo(_hoy(a)!.atrasado);
+        });
 
   /// Préstamos ya saldados, el más reciente primero.
   List<Map<String, dynamic>> get _saldados =>
@@ -249,8 +281,17 @@ class _ReportesScreenState extends State<ReportesScreen> {
 
   /// Abre el cobro del cliente (cuotas, mora, recibos) desde el reporte.
   Future<void> _abrirCobro(Map<String, dynamic> p) async {
-    final pagos = await SupabaseService.instance.obtenerPagos(p['id']);
-    final gestiones = await SupabaseService.instance.obtenerGestiones(p['id']);
+    final mensajero = ScaffoldMessenger.of(context);
+    final List<PagoRegistrado> pagos;
+    final List<Gestion> gestiones;
+    try {
+      pagos = await SupabaseService.instance.obtenerPagos(p['id']);
+      gestiones = await SupabaseService.instance.obtenerGestiones(p['id']);
+    } catch (e, pila) {
+      registrarError(e, pila, 'ABRIR COBRO EN REPORTES');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo abrir. ${mensajeError(e)}')));
+      return;
+    }
     if (!mounted) return;
     final datos = PrestamoConDatos(
       prestamo: p,
@@ -340,6 +381,24 @@ class _ReportesScreenState extends State<ReportesScreen> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null && _prestamos == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Reportes')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Vacio(icono: Icons.cloud_off, texto: 'No pudimos cargar los reportes.\n$_error'),
+              ElevatedButton.icon(
+                onPressed: _reintentar,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     final prestamos = _prestamos ?? [];
@@ -631,6 +690,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
 
   Widget _filaAtrasado(Map<String, dynamic> p) {
     final dias = _diasAtraso(p);
+    final atrasado = (_hoy(p)?.atrasado ?? 0) > 0;
     final mora = (p['mora_pendiente'] as num).toDouble();
     return Panel(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -650,14 +710,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 Text(
                   '${rd(p['balance'] as num)} • '
-                  '${dias == 0 ? 'vence hoy' : '$dias día(s) atrasado'}'
+                  '${dias > 0 ? '$dias día(s) atrasado' : atrasado ? 'debe mora' : 'vence hoy'}'
                   '${mora > 0 ? ' • mora ${rd(mora)}' : ''}',
                   style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               ],
             ),
           ),
-          EtiquetaEstado(dias == 0 ? EstadoCobro.venceHoy : EstadoCobro.atrasado),
+          EtiquetaEstado(atrasado ? EstadoCobro.atrasado : EstadoCobro.venceHoy),
           Icon(Icons.chevron_right, color: AppColors.grey),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../logic/archivo_clientes.dart';
 import '../logic/busqueda.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/ui.dart';
@@ -50,10 +51,9 @@ class _ClientesScreenState extends State<ClientesScreen> {
           _error = null;
         });
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL CLIENTES: $e');
-      if (mounted) setState(() => _error = '$e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'CLIENTES');
+      if (mounted) setState(() => _error = mensajeError(e));
     }
   }
 
@@ -233,9 +233,8 @@ class _ClienteCardState extends State<_ClienteCard> {
           _cargando = false;
         });
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL CLIENTE CARD: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'CLIENTE CARD');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -347,7 +346,7 @@ class _ClientesEliminadosScreenState extends State<ClientesEliminadosScreen> {
       setState(() => _clientes.remove(c));
       mensajero.showSnackBar(SnackBar(content: Text('${c['nombre'] ?? 'Cliente'} volvió a tu lista')));
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo restaurar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo restaurar. ${mensajeError(e)}')));
     }
   }
 

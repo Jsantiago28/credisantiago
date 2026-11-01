@@ -4,6 +4,7 @@ import '../logic/calculo_prestamo.dart';
 import '../recibos/compartir_recibo.dart';
 import '../recibos/imprimir_ticket.dart';
 import '../recibos/recibo_pdf.dart';
+import '../services/errores.dart';
 import '../services/sin_conexion.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -26,6 +27,9 @@ class CobroPrestamo {
   Map<String, dynamic> get _prestamo => datos.prestamo;
   String get _nombre => datos.nombre;
   String? get _fotoCara => datos.cliente?['foto_cara_url'] as String?;
+
+  /// Los cobros que tienen recibo (sin la marca de 0 de un préstamo importado).
+  List<PagoRegistrado> get _recibos => [for (final p in datos.pagos) if (!p.esMarcaImportacion) p];
 
   static RoundedRectangleBorder get _forma => const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -84,14 +88,14 @@ class CobroPrestamo {
                       ],
                     ),
                   ),
-                  if (datos.pagos.isNotEmpty)
+                  if (_recibos.isNotEmpty)
                     TextButton.icon(
                       onPressed: () {
                         Navigator.of(ctx).pop();
                         abrirRecibos();
                       },
                       icon: const Icon(Icons.receipt_long, size: 18),
-                      label: Text('Recibos (${datos.pagos.length})'),
+                      label: Text('Recibos (${_recibos.length})'),
                     ),
                 ],
               ),
@@ -257,8 +261,13 @@ class CobroPrestamo {
     );
 
     if (monto == null || monto <= 0 || !context.mounted) return;
+    if (!await _confirmarMontoAlto(estado, monto) || !context.mounted) return;
     final mensajero = ScaffoldMessenger.of(context);
 
+    // El id se pone aquí, ANTES de mandarlo: si el cobro llegó pero la
+    // respuesta se perdió, el mismo id va a la cola sin señal y la base de
+    // datos no lo guarda dos veces.
+    final id = SinConexion.nuevoId();
     // Dónde se cobró (si el teléfono lo da), para que el prestamista vea
     // en la caja dónde cobró cada cobrador. El GPS no necesita internet.
     final donde = await ubicacionSinAvisar();
@@ -269,18 +278,46 @@ class CobroPrestamo {
         prestamistaId: _prestamo['prestamista_id'] as String,
         monto: monto,
         ubicacion: donde,
+        id: id,
       );
       onCambio();
       if (context.mounted) await _mostrarCobroRegistrado(pago);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL COBRAR: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'COBRAR');
       if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
-        await _guardarSinSenal(monto, donde);
+        await _guardarSinSenal(id, monto, donde);
         return;
       }
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo registrar el cobro: $e')));
+      mensajero.showSnackBar(
+          SnackBar(content: Text('No se pudo registrar el cobro. ${mensajeError(e)}')));
     }
+  }
+
+  /// Cobrar más de lo que debe, o más de 3 cuotas, casi siempre es un cero
+  /// de más: se pregunta antes. true si sigue.
+  Future<bool> _confirmarMontoAlto(EstadoPrestamo estado, double monto) async {
+    final cuota = (_prestamo['cuota'] as num?)?.toDouble() ?? 0;
+    final String aviso;
+    if (monto > estado.balance + 1) {
+      aviso = 'Es más de lo que debe (${rd(estado.balance)}). ¿Seguro?';
+    } else if (cuota > 0 && monto > cuota * 3) {
+      aviso = 'Son más de 3 cuotas (cada una es ${rd(cuota)}). ¿Seguro?';
+    } else {
+      return true;
+    }
+    final seguir = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('¿Cobrar ${rd(monto)}?'),
+        content: Text(aviso),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Corregir')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Sí, cobrar')),
+        ],
+      ),
+    );
+    return seguir == true;
   }
 
   /// Los cobros del préstamo con el que se acaba de guardar sin señal (para
@@ -289,11 +326,13 @@ class CobroPrestamo {
 
   /// Sin señal: el cobro se guarda cifrado en el teléfono y se sube solo
   /// cuando vuelva (ver SinConexion). El recibo dice "pendiente de subir".
-  Future<void> _guardarSinSenal(double monto, ({double lat, double lng})? donde) async {
+  /// [id]: el mismo con que se intentó subir.
+  Future<void> _guardarSinSenal(
+      String id, double monto, ({double lat, double lng})? donde) async {
     final ahora = DateTime.now();
     final reparto = repartirPago(estadoPrestamo(_prestamo, datos.pagos, ahora), monto);
     final cobro = CobroPendiente(
-      id: SinConexion.nuevoId(),
+      id: id,
       prestamoId: _prestamo['id'] as String,
       prestamistaId: _prestamo['prestamista_id'] as String,
       monto: monto,
@@ -301,7 +340,26 @@ class CobroPrestamo {
       fecha: ahora,
       ubicacion: donde,
     );
-    await SinConexion.agregar(cobro);
+    try {
+      await SinConexion.agregar(cobro);
+    } catch (e, pila) {
+      registrarError(e, pila, 'GUARDAR COBRO SIN SEÑAL');
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('No se pudo guardar el cobro en el teléfono'),
+            content: Text('No hay señal y el teléfono no lo pudo guardar. El cobro de '
+                '${rd(monto)} NO quedó anotado: inténtalo otra vez o anótalo en papel.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Entendido')),
+            ],
+          ),
+        );
+      }
+      return;
+    }
     SinConexion.sinSenal.value = true;
     _pagosLocales = [...datos.pagos, cobro.comoPago];
     onCambio();
@@ -312,6 +370,12 @@ class CobroPrestamo {
   /// solo hasta hoy más 1 día, y mora) y cuánto interés se le perdona.
   Future<void> _saldar() async {
     final s = calcularSaldarHoy(_prestamo, datos.pagos, DateTime.now());
+    if (s.monto < 1) {
+      // Pagó de más por adelantado: no hay nada que cobrar (y no se guarda un cobro de 0).
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(const SaldoCubierto().mensaje)));
+      return;
+    }
     Widget fila(String texto, double valor, {bool negrita = false, Color? color}) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
           child: Row(
@@ -351,6 +415,7 @@ class CobroPrestamo {
                 style: TextStyle(color: AppColors.grey, fontSize: 13)),
             const SizedBox(height: 12),
             fila('Capital que falta', s.capital),
+            if (s.interesVencido >= 0.5) fila('Interés vencido sin pagar', s.interesVencido),
             if (s.conDescuento)
               fila('Interés de ${s.dias} día${s.dias == 1 ? '' : 's'} (incluye 1 de cierre)',
                   s.interesDias),
@@ -387,13 +452,16 @@ class CobroPrestamo {
       );
       onCambio();
       if (context.mounted) await _mostrarCobroRegistrado(pago);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL SALDAR: $e');
+    } on AvisoParaUsuario catch (e) {
+      // El saldo cambió mientras miraba, o ya está cubierto: se dice tal cual.
+      onCambio();
+      mensajero.showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } catch (e, pila) {
+      registrarError(e, pila, 'SALDAR');
       mensajero.showSnackBar(SnackBar(
           content: Text(SinConexion.esFaltaDeConexion(e)
               ? 'Para saldar con descuento hace falta internet.'
-              : 'No se pudo saldar: $e')));
+              : 'No se pudo saldar. ${mensajeError(e)}')));
     }
   }
 
@@ -406,10 +474,9 @@ class CobroPrestamo {
           pago: pago,
           pagosLocales: _pagosLocales ?? datos.pagos,
           cliente: datos.cliente);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL RECIBO: $e');
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo generar el recibo: $e')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'RECIBO');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo generar el recibo. ${mensajeError(e)}')));
     }
   }
 
@@ -542,17 +609,16 @@ class CobroPrestamo {
           content: Text('Recibo ${numeroReciboTexto(pago.numeroRecibo)} anulado. '
               'El balance de $_nombre se recalculó.')));
       return true;
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL ANULAR: $e');
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo anular: $e')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'ANULAR');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo anular. ${mensajeError(e)}')));
       return false;
     }
   }
 
   /// Historial de pagos del préstamo, para reenviar cualquier recibo.
   Future<void> abrirRecibos() {
-    final pagos = [...datos.pagos]..sort((a, b) => b.fecha.compareTo(a.fecha));
+    final pagos = [..._recibos]..sort((a, b) => b.fecha.compareTo(a.fecha));
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,

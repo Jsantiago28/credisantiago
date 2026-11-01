@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../logic/dominio.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 
 /// Abre una de las páginas legales del sitio (/terminos, /privacidad,
@@ -63,9 +64,8 @@ class BotonBorrarCuenta extends StatelessWidget {
     try {
       await SupabaseService.instance.borrarMiCuenta();
       mensajero.showSnackBar(const SnackBar(content: Text('Tu cuenta fue borrada.')));
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL BORRAR CUENTA: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'BORRAR CUENTA');
       mensajero.showSnackBar(SnackBar(
           content: Text('No se pudo borrar la cuenta. Escríbenos por WhatsApp para hacerlo. ($e)')));
     }

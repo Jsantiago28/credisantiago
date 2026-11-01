@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../logic/validacion.dart';
 import '../theme/app_theme.dart';
@@ -72,18 +73,16 @@ class _RegistroScreenState extends State<RegistroScreen> {
       try {
         await SupabaseService.instance
             .guardarMiWhatsApp(user.id, formatearTelefono(_whatsappCtrl.text));
-      } catch (e) {
-        // ignore: avoid_print
-        print('ERROR REAL WHATSAPP REGISTRO: $e');
+      } catch (e, pila) {
+        registrarError(e, pila, 'WHATSAPP REGISTRO');
       }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => LinkGeneradoScreen(slug: slug)),
       );
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL REGISTRO: $e');
-      setState(() => _error = 'No pudimos crear tu perfil. Intenta de nuevo.\n($e)');
+    } catch (e, pila) {
+      registrarError(e, pila, 'REGISTRO');
+      setState(() => _error = 'No pudimos crear tu perfil. ${mensajeError(e)}');
     } finally {
       setState(() => _cargando = false);
     }

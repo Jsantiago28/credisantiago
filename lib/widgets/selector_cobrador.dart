@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../logic/cobradores.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'ui.dart';
@@ -31,8 +32,13 @@ class _SelectorCobradorState extends State<SelectorCobrador> {
   }
 
   Future<void> _cargar() async {
-    final cobradores = await SupabaseService.instance
-        .listarCobradores(widget.cliente['prestamista_id'] as String);
+    var cobradores = const <Cobrador>[];
+    try {
+      cobradores = await SupabaseService.instance
+          .listarCobradores(widget.cliente['prestamista_id'] as String);
+    } catch (e, pila) {
+      registrarError(e, pila, 'COBRADORES');
+    }
     if (mounted) setState(() => _cobradores = cobradores);
   }
 
@@ -49,7 +55,7 @@ class _SelectorCobradorState extends State<SelectorCobrador> {
       widget.cliente['cobrador_id'] = cobradorId;
     } catch (e) {
       if (mounted) setState(() => _actual = antes);
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo cambiar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo cambiar. ${mensajeError(e)}')));
     } finally {
       if (mounted) setState(() => _guardando = false);
     }

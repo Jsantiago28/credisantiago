@@ -6,6 +6,7 @@ import '../logic/historial.dart';
 import '../logic/historial_pagos.dart';
 import '../logic/ruta.dart';
 import '../recibos/contrato_pdf.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cobro_prestamo.dart';
@@ -70,13 +71,12 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
         _cargando = false;
         _error = null;
       });
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL FICHA CLIENTE: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'FICHA CLIENTE');
       if (mounted) {
         setState(() {
           _cargando = false;
-          _error = '$e';
+          _error = mensajeError(e);
         });
       }
     }
@@ -107,7 +107,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('No se pudo crear el préstamo: $e')));
+            .showSnackBar(SnackBar(content: Text('No se pudo crear el préstamo. ${mensajeError(e)}')));
       }
     }
   }
@@ -470,7 +470,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
     try {
       await compartirContrato(prestamo);
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo hacer el contrato: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo hacer el contrato. ${mensajeError(e)}')));
     }
   }
 
@@ -531,7 +531,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
       mensajero.showSnackBar(SnackBar(content: Text('${c['nombre'] ?? 'Cliente'} eliminado de tu lista')));
       navegador.pop();
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo eliminar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo eliminar. ${mensajeError(e)}')));
     }
   }
 
@@ -542,7 +542,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
       mensajero.showSnackBar(const SnackBar(content: Text('Cliente restaurado: ya está en tu lista')));
       _cargar();
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo restaurar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo restaurar. ${mensajeError(e)}')));
     }
   }
 
@@ -572,7 +572,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
       mensajero.showSnackBar(const SnackBar(content: Text('Préstamo cancelado')));
       _cargar();
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo cancelar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo cancelar. ${mensajeError(e)}')));
     }
   }
 
@@ -628,7 +628,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
       mensajero.showSnackBar(const SnackBar(content: Text('Ubicación guardada')));
       _cargar();
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar. ${mensajeError(e)}')));
     }
   }
 

@@ -5,13 +5,37 @@ import 'package:prestamistas_rd/logic/calculo_prestamo.dart';
 /// 1.8333% mensual, 60 cuotas mensuales fijas de RD$56,894.49.
 void main() {
   group('Interés sobre saldo, igual que la cooperativa', () {
-    final plan = calcularPlan(
-      monto: 2060000,
-      tasaInteresMensual: 1.8333,
-      diasPlazo: 60 * 30,
-      frecuencia: 'mensual',
+    // La cooperativa usa 1.8333%; la app guarda la tasa con 2 decimales (ver
+    // redondearTasa), así que la tabla se arma aquí con las funciones de la
+    // amortización, sin redondear la tasa.
+    final cuota = cuotaSobreSaldo(
+        monto: 2060000, tasaMensual: 1.8333, frecuencia: 'mensual', cantidadCuotas: 60);
+    final filas = amortizacionSobreSaldo(
+        monto: 2060000, tasaMensual: 1.8333, frecuencia: 'mensual', cantidadCuotas: 60, cuota: cuota);
+    final total = cuota * 59 + filas.last.cuota;
+    final plan = PlanPrestamo(
+      diasCobrados: 1800,
+      interesTotal: total - 2060000,
+      montoTotal: total,
+      cantidadCuotas: 60,
+      cuota: cuota,
+      ultimaCuota: filas.last.cuota,
       tipo: TipoInteres.saldo,
+      filas: filas,
     );
+
+    test('al prestar, la tasa se redondea a 2 decimales (como se guarda)', () {
+      final conCuatro = calcularPlan(
+          monto: 2060000, tasaInteresMensual: 1.8333, diasPlazo: 1800, frecuencia: 'mensual',
+          tipo: TipoInteres.saldo);
+      final conDos = calcularPlan(
+          monto: 2060000, tasaInteresMensual: 1.83, diasPlazo: 1800, frecuencia: 'mensual',
+          tipo: TipoInteres.saldo);
+      expect(conCuatro.cuota, conDos.cuota);
+      expect(conCuatro.montoTotal, conDos.montoTotal);
+      expect(redondearTasa(1.8333), 1.83);
+      expect(redondearTasa(12.345), 12.35);
+    });
 
     test('60 cuotas fijas de 56,894 (ellos 56,894.49: la app usa pesos enteros)', () {
       expect(plan.cantidadCuotas, 60);

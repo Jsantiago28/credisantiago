@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:printing/printing.dart';
 
 import '../logic/calculo_prestamo.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import 'recibo_pdf.dart';
 
@@ -96,9 +97,14 @@ Future<String?> _cobradoPor(PagoRegistrado pago, Map<String, dynamic> prestamo) 
   final sesion = servicio.sesionCobrador;
   if (sesion != null) return pago.cobradorId == sesion.cobradorId ? sesion.cobradorNombre : null;
   if (pago.cobradorId == null) return null;
-  final cobradores = await servicio.listarCobradores(prestamo['prestamista_id'] as String);
-  for (final c in cobradores) {
-    if (c.id == pago.cobradorId) return c.nombre;
+  try {
+    final cobradores = await servicio.listarCobradores(prestamo['prestamista_id'] as String);
+    for (final c in cobradores) {
+      if (c.id == pago.cobradorId) return c.nombre;
+    }
+  } catch (e, pila) {
+    // El recibo sale igual, sin el nombre del cobrador.
+    registrarError(e, pila, 'COBRADOR DEL RECIBO');
   }
   return null;
 }

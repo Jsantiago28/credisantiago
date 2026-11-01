@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../logic/gestiones.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'ui.dart';
@@ -112,14 +113,13 @@ Future<bool> anotarGestion(BuildContext context, PrestamoConDatos datos) async {
               promesaMonto: double.tryParse(monto.text.replaceAll(',', '')),
             );
             if (ctx.mounted) Navigator.of(ctx).pop(true);
-          } catch (e) {
-            // ignore: avoid_print
-            print('ERROR REAL GESTION: $e');
+          } catch (e, pila) {
+            registrarError(e, pila, 'GESTION');
             setEstado(() => guardando = false);
             mensajero.showSnackBar(SnackBar(
                 content: Text(e.toString().contains('gestiones')
                     ? 'Falta correr la migración de gestiones en Supabase.'
-                    : 'No se pudo guardar la gestión: $e')));
+                    : 'No se pudo guardar la gestión. ${mensajeError(e)}')));
           }
         }
 
@@ -235,7 +235,17 @@ Future<bool> anotarGestion(BuildContext context, PrestamoConDatos datos) async {
 /// estado de cada promesa. Se lee de nuevo para que salga lo último.
 Future<void> verGestiones(BuildContext context, PrestamoConDatos datos,
     {VoidCallback? onCambio}) async {
-  var lista = await SupabaseService.instance.obtenerGestiones(datos.prestamo['id']);
+  List<Gestion> lista;
+  try {
+    lista = await SupabaseService.instance.obtenerGestiones(datos.prestamo['id']);
+  } catch (e, pila) {
+    registrarError(e, pila, 'VER GESTIONES');
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudieron cargar las gestiones. ${mensajeError(e)}')));
+    }
+    return;
+  }
   if (!context.mounted) return;
   final activo = datos.prestamo['estado'] == 'en_calle';
 

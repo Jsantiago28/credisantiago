@@ -91,6 +91,9 @@ Future<_QuienEntra> _quienEntra() async {
 class _RouterState extends State<_Router> {
   late final Stream<AuthState> _authStream;
 
+  /// Sube con "Reintentar" para volver a buscar quién entró.
+  var _intento = 0;
+
   @override
   void initState() {
     super.initState();
@@ -118,12 +121,20 @@ class _RouterState extends State<_Router> {
 
         return FutureBuilder<_QuienEntra>(
           // key fuerza a recargar el perfil cada vez que cambia la sesión
-          key: ValueKey(session.user.id),
+          key: ValueKey('${session.user.id}-$_intento'),
           future: _quienEntra(),
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            // No se pudo saber quién es (sin señal, o falló la base de
+            // datos): NO se manda a registrar un negocio, se reintenta.
+            if (snapshot.hasError) {
+              return ErrorAlEntrar(
+                onReintentar: () => setState(() => _intento++),
+                onSalir: () => SupabaseService.instance.cerrarSesion(),
               );
             }
             final quien = snapshot.data;
@@ -141,6 +152,46 @@ class _RouterState extends State<_Router> {
           },
         );
       },
+    );
+  }
+}
+
+/// No se pudo cargar quién entró: en vez de mandarlo a registrarse (un
+/// cobrador podría crear un negocio sin querer), se le deja reintentar.
+class ErrorAlEntrar extends StatelessWidget {
+  final VoidCallback onReintentar;
+  final VoidCallback onSalir;
+  const ErrorAlEntrar({super.key, required this.onReintentar, required this.onSalir});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off, size: 48),
+                const SizedBox(height: 12),
+                const Text('No pudimos cargar tu cuenta',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                const Text('Revisa tu internet e intenta de nuevo.', textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: onReintentar,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                ),
+                TextButton(onPressed: onSalir, child: const Text('Salir de la cuenta')),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
