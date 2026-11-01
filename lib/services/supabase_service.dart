@@ -1471,11 +1471,13 @@ class SupabaseService {
     String? acuerdo,
     DateTime? promesaFecha,
     double? promesaMonto,
+    String? id,
   }) async {
     final esPromesa = resultado == 'promesa';
     final fila = await client
         .from('gestiones')
         .insert({
+          if (id != null) 'id': id,
           'prestamista_id': prestamo['prestamista_id'],
           'prestamo_id': prestamo['id'],
           'cliente_id': prestamo['cliente_id'],

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/gestiones.dart';
 import '../services/errores.dart';
+import '../services/sin_conexion.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'ui.dart';
@@ -246,6 +247,18 @@ Future<bool> anotarNoEstaba(BuildContext context, PrestamoConDatos datos) async 
         SnackBar(content: Text('Anotado: ${datos.nombre} no estaba.')));
     return true;
   } catch (e, pila) {
+    // Sin señal (en Android): se guarda en el teléfono y sube después.
+    if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
+      try {
+        await SinConexion.agregarVisita(datos.prestamo);
+        mensajero.showSnackBar(SnackBar(
+            content: Text('Anotado: ${datos.nombre} no estaba. '
+                'Se sube cuando vuelva la señal.')));
+        return true;
+      } catch (e2, pila2) {
+        registrarError(e2, pila2, 'GUARDAR VISITA SIN SEÑAL');
+      }
+    }
     registrarError(e, pila, 'GESTION NO ESTABA');
     mensajero.showSnackBar(
         SnackBar(content: Text('No se pudo anotar la visita. ${mensajeError(e)}')));

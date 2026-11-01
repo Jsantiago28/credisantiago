@@ -205,7 +205,7 @@ List<Widget> contenidoGastos({
           Text('GANANCIA REAL DE ${nombreMes(mes).toUpperCase()}',
               style: TextStyle(
                   color: g.real >= 0 ? AppColors.green : AppColors.red,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700)),
           FittedBox(
             fit: BoxFit.scaleDown,

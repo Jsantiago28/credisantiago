@@ -22,8 +22,9 @@ import 'supabase_service.dart';
 /// migracion_2026_10_19_sin_conexion.sql): si algo no cuadra, el prestamista
 /// lo ve marcado para revisar en la Caja.
 ///
-/// Sin señal solo se puede ver la ruta y cobrar: prestar, anular, saldar o
-/// anotar gestiones esperan a que haya internet.
+/// Sin señal solo se puede ver la ruta, cobrar y anotar "No estaba" (va en
+/// otra cola, [agregarVisita]): prestar, anular, saldar o las demás
+/// gestiones esperan a que haya internet.
 class SinConexion {
   /// Cuánto sirve la ruta guardada. Pasado eso se borra y hay que conectarse.
   static const validez = Duration(days: 3);
@@ -52,6 +53,7 @@ class SinConexion {
   static String? usuarioParaPruebas;
   @visibleForTesting
   static Future<void> Function(CobroPendiente cobro)? subirParaPruebas;
+  static Future<void> Function(Map<String, dynamic> visita)? subirVisitaParaPruebas;
 
   static String? get _uid => usuarioParaPruebas ?? SupabaseService.instance.usuarioActual?.id;
   static String _clave(String que) => 'sc_${que}_$_uid';
@@ -243,7 +245,90 @@ class SinConexion {
         metodo: c.metodo,
       );
 
+  // ---------------------------------------------------------------------------
+  // Visitas "No estaba" sin subir
+  // ---------------------------------------------------------------------------
+  //
+  // Aparte de los cobros: no es dinero, así que si el teléfono no la puede
+  // guardar solo se avisa. Cada una lleva su id: si ya subió, no se repite.
+
+  /// Las visitas "No estaba" que esperan señal.
+  static Future<List<Map<String, dynamic>>> visitas() => _enOrden(_leerVisitas);
+
+  static Future<List<Map<String, dynamic>>> _leerVisitas() async {
+    final v = await _leer('visitas');
+    return v is List ? [for (final f in v) Map<String, dynamic>.from(f)] : [];
+  }
+
+  /// Guarda que el cliente de [prestamo] no estaba, para subirlo con señal.
+  /// Lanza el error si el teléfono no la pudo guardar.
+  static Future<void> agregarVisita(Map<String, dynamic> prestamo, {DateTime? ahora}) =>
+      _enOrden(() async {
+        final lista = await _leerVisitas();
+        await _escribir(
+            'visitas',
+            [
+              ...lista,
+              {
+                'id': nuevoId(),
+                'prestamo_id': prestamo['id'],
+                'prestamista_id': prestamo['prestamista_id'],
+                'cliente_id': prestamo['cliente_id'],
+                'fecha': (ahora ?? DateTime.now()).toIso8601String(),
+              },
+            ],
+            estricto: true);
+      });
+
+  static Future<void> _quitarVisita(String id) => _enOrden(() async {
+        final lista = await _leerVisitas();
+        await _escribir('visitas', [for (final v in lista) if (v['id'] != id) v]);
+      });
+
+  static Future<void> _subirVisita(Map<String, dynamic> v) =>
+      subirVisitaParaPruebas?.call(v) ??
+      SupabaseService.instance.registrarGestion(
+        prestamo: {
+          'id': v['prestamo_id'],
+          'prestamista_id': v['prestamista_id'],
+          'cliente_id': v['cliente_id'],
+        },
+        tipo: 'visita',
+        resultado: 'no_estaba',
+        id: v['id'] as String,
+      );
+
+  static Future<void> _subirVisitas() async {
+    for (final v in await visitas()) {
+      var subida = false;
+      try {
+        await _subirVisita(v);
+        subida = true;
+      } on PostgrestException catch (e, pila) {
+        if (e.code == '23505') {
+          subida = true; // ya estaba (mismo id)
+        } else if (e.code == '23503') {
+          subida = true; // el préstamo ya no existe: no hay a quién anotarla
+        } else {
+          registrarError(e, pila, 'SUBIR VISITA');
+        }
+      } catch (e, pila) {
+        if (esFaltaDeConexion(e)) {
+          sinSenal.value = true;
+          return;
+        }
+        registrarError(e, pila, 'SUBIR VISITA');
+      }
+      if (subida) await _quitarVisita(v['id'] as String);
+    }
+  }
+
   static Future<void> _subirTodo() async {
+    await _subirCobros();
+    if (!sinSenal.value) await _subirVisitas();
+  }
+
+  static Future<void> _subirCobros() async {
     final List<CobroPendiente> lista;
     try {
       lista = await cola();

@@ -136,7 +136,7 @@ class _TablaAmortizacionState extends State<TablaAmortizacion> {
     final filas = widget.plan.filas;
     final visibles = _todas || filas.length <= _primeras ? filas : filas.take(_primeras).toList();
     final chico = TextStyle(fontSize: 12, color: AppColors.texto);
-    final titulo = TextStyle(fontSize: 11, color: AppColors.grey, fontWeight: FontWeight.w700);
+    final titulo = TextStyle(fontSize: 12, color: AppColors.grey, fontWeight: FontWeight.w700);
 
     DataCell celda(String texto, {bool fuerte = false}) => DataCell(Text(texto,
         style: fuerte ? chico.copyWith(fontWeight: FontWeight.w800) : chico));

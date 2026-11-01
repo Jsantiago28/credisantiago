@@ -537,7 +537,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
               children: [
                 Text('RECIBIDO EL ${fechaLarga(_d.dia).toUpperCase()}',
                     style: TextStyle(
-                        color: AppColors.green, fontSize: 11, fontWeight: FontWeight.w700)),
+                        color: AppColors.green, fontSize: 12, fontWeight: FontWeight.w700)),
                 Text(rd(_d.total),
                     style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
                 Text(plural(_d.cantidad, 'cobro', 'cobros'), style: TextStyle(color: AppColors.grey)),

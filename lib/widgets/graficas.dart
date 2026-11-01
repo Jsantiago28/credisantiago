@@ -216,28 +216,28 @@ class _GraficaBarrasState extends State<GraficaBarras> {
               leftTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 36,
+                  reservedSize: 44,
                   interval: eje.paso,
                   getTitlesWidget: (v, meta) => v > eje.tope + 0.001
                       ? const SizedBox.shrink()
                       : SideTitleWidget(
                           meta: meta,
                           child: Text(rdCorto(v),
-                              style: TextStyle(color: AppColors.grey, fontSize: 10)),
+                              style: TextStyle(color: AppColors.grey, fontSize: 12)),
                         ),
                 ),
               ),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(
                   showTitles: true,
-                  reservedSize: 22,
+                  reservedSize: 26,
                   getTitlesWidget: (v, meta) {
                     final texto = widget.etiquetaEje(v.toInt());
                     if (texto == null) return const SizedBox.shrink();
                     return SideTitleWidget(
                       meta: meta,
                       child: Text(texto,
-                          style: TextStyle(color: AppColors.grey, fontSize: 10)),
+                          style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     );
                   },
                 ),

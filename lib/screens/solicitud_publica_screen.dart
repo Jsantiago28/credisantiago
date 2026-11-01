@@ -419,7 +419,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
   static const _azul = Color(0xFF1565C0);
   static const _azulOscuro = Color(0xFF0B1F4B);
   static const _azulClaro = Color(0xFFF1F5FF);
-  static const _verde = Color(0xFF16A34A);
+  static const _verde = Color(0xFF15803D); // el verde que se lee al sol
   static const _gris = Color(0xFF9AA3B2);
 
   String get _negocio {

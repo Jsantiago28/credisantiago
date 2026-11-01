@@ -83,12 +83,12 @@ class _PanelErroresState extends State<PanelErrores> {
                   e['plataforma'],
                   if ((e['version'] as String? ?? '').isNotEmpty) 'v${e['version']}',
                 ].join(' · '),
-                style: TextStyle(color: AppColors.grey, fontSize: 11),
+                style: TextStyle(color: AppColors.grey, fontSize: 12),
               ),
               children: [
                 SelectableText(
                   '${e['mensaje']}\n\n${e['detalle'] ?? ''}',
-                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                  style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
                 ),
               ],
             ),

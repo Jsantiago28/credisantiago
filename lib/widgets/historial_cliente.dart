@@ -115,7 +115,7 @@ class _Edicion extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(texto, style: TextStyle(color: AppColors.grey, fontSize: 11)),
+                Text(texto, style: TextStyle(color: AppColors.grey, fontSize: 12)),
               ],
             ),
           ),

@@ -275,7 +275,7 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
                 const SizedBox(height: 4),
                 Text(texto,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.grey, fontSize: 11)),
+                    style: TextStyle(color: AppColors.grey, fontSize: 12)),
                 TextButton(
                   onPressed: _guardando
                       ? null

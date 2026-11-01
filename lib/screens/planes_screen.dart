@@ -237,7 +237,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                               color: _meses == m ? AppColors.green : AppColors.texto)),
                       Text(descuentos.etiqueta(m) ?? 'Precio normal',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.grey, fontSize: 11)),
+                          style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     ],
                   ),
                 ),
@@ -290,7 +290,7 @@ class _PlanesScreenState extends State<PlanesScreen> {
                   _meses == 1
                       ? 'al mes'
                       : 'por ${nombrePeriodoPlan(_meses)} · ${rd((precio / _meses).roundToDouble())}/mes',
-                  style: TextStyle(color: AppColors.grey, fontSize: 11),
+                  style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
               if (mensual > 0)
                 TextButton.icon(
