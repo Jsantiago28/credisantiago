@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../logic/calculo_prestamo.dart';
+import '../logic/ultimos_valores_prestamo.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/plazo.dart';
@@ -43,11 +44,30 @@ class _PrestarScreenState extends State<PrestarScreen> {
     _montoCtrl = TextEditingController(
       text: montoInicial != null && montoInicial > 0 ? montoInicial.toStringAsFixed(0) : '',
     );
-    final tasa = widget.tasaInicial ?? 20;
-    _interesCtrl = TextEditingController(
-        text: tasa == tasa.roundToDouble() ? tasa.toStringAsFixed(0) : '$tasa');
+    _interesCtrl = TextEditingController(text: numeroCorto(widget.tasaInicial ?? 20));
     _diasCtrl = TextEditingController(text: '${widget.diasInicial ?? 30}');
     _frecuencia = widget.frecuenciaInicial ?? 'diario';
+    _usarUltimosValores();
+  }
+
+  /// Ya cambió algo a mano: los valores guardados no se lo pisan.
+  bool _tocado = false;
+
+  /// Pone los valores del último préstamo que confirmó el prestamista. Los
+  /// que mandó quien abrió la pantalla (ej. la calculadora) mandan.
+  Future<void> _usarUltimosValores() async {
+    final v = await leerUltimosValoresPrestamo();
+    if (v == null || !mounted || _tocado) return;
+    setState(() {
+      if (widget.tasaInicial == null) _interesCtrl.text = numeroCorto(v.tasa);
+      if (widget.diasInicial == null) {
+        _diasCtrl.text = '${v.plazo}';
+        _enMeses = v.enMeses;
+      }
+      if (widget.frecuenciaInicial == null) _frecuencia = v.frecuencia;
+      _moraCtrl.text = numeroCorto(v.mora);
+      _graciaCtrl.text = '${v.gracia}';
+    });
   }
 
   double get _monto => double.tryParse(_montoCtrl.text.replaceAll(',', '')) ?? 0;
@@ -108,6 +128,15 @@ class _PrestarScreenState extends State<PrestarScreen> {
         moraDiaria: _mora,
         diasGracia: _gracia,
       );
+      // La próxima vez la pantalla abre con estos mismos valores.
+      await guardarUltimosValoresPrestamo(UltimosValoresPrestamo(
+        tasa: _interes,
+        plazo: int.tryParse(_diasCtrl.text) ?? _dias,
+        enMeses: _enMeses,
+        frecuencia: _frecuencia,
+        mora: _mora,
+        gracia: _gracia,
+      ));
       if (mounted) {
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -139,7 +168,10 @@ class _PrestarScreenState extends State<PrestarScreen> {
             const SizedBox(height: 8),
             SelectorFrecuencia(
               valor: _frecuencia,
-              onCambio: (f) => setState(() => _frecuencia = f),
+              onCambio: (f) => setState(() {
+                _tocado = true;
+                _frecuencia = f;
+              }),
             ),
             const SizedBox(height: 16),
             Row(
@@ -154,6 +186,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
                   child: SelectorUnidadPlazo(
                     enMeses: _enMeses,
                     onCambio: (meses) => setState(() {
+                      _tocado = true;
                       _diasCtrl.text = convertirPlazo(_diasCtrl.text, aMeses: meses);
                       _enMeses = meses;
                     }),
@@ -241,7 +274,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
       child: TextField(
         controller: c,
         keyboardType: TextInputType.number,
-        onChanged: (_) => setState(() {}),
+        onChanged: (_) => setState(() => _tocado = true),
         style: const TextStyle(fontSize: 18),
         decoration: InputDecoration(
           labelText: label,

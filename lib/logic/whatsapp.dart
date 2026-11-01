@@ -63,3 +63,29 @@ String mensajeCobro({
   }
   return '$saludo Su préstamo está saldado. ¡Gracias por cumplir!';
 }
+
+/// "Hola José" (o solo "Hola" si no hay nombre).
+String _hola(String nombreCliente) {
+  final nombre = nombreCliente.trim().split(RegExp(r'\s+')).first;
+  return nombre.isEmpty ? 'Hola' : 'Hola $nombre';
+}
+
+/// Mensaje para avisarle al cliente que su solicitud fue aprobada. Si se
+/// sabe el monto, lo menciona.
+String mensajeSolicitudAprobada({
+  required String nombreCliente,
+  required String negocio,
+  num? monto,
+}) {
+  final cuanto = monto != null && monto > 0 ? ' de ${_rd(monto.toDouble())}' : '';
+  return '${_hola(nombreCliente)}, le saluda $negocio. ¡Buenas noticias! Su solicitud de '
+      'préstamo$cuanto fue aprobada. Le escribo para ponernos de acuerdo con la entrega '
+      'del dinero.';
+}
+
+/// Mensaje amable para avisarle al cliente que esta vez no se le pudo
+/// aprobar la solicitud.
+String mensajeSolicitudRechazada({required String nombreCliente, required String negocio}) =>
+    '${_hola(nombreCliente)}, le saluda $negocio. Gracias por enviarnos su solicitud. '
+    'Por ahora no podemos aprobarle el préstamo, pero más adelante puede volver a '
+    'intentarlo. ¡Que tenga un buen día!';
