@@ -1,4 +1,4 @@
-# Copia de la base de datos cada semana (Supabase gratis no hace copias).
+# Copia de la base de datos cada día (Supabase gratis no hace copias).
 #
 # Queda en GitHub → Actions → la corrida → "Artifacts", cifrada con la
 # contraseña BACKUP_PASSWORD (tiene cédulas y teléfonos de clientes).
@@ -15,11 +15,11 @@
 # prueban los dos.
 #
 # Para abrir una copia:  gpg --decrypt copia.tar.gz.gpg > copia.tar.gz
-name: Copia de seguridad semanal
+name: Copia de seguridad diaria
 
 on:
   schedule:
-    - cron: '0 9 * * 0'   # domingos, 5:00 a. m. de RD
+    - cron: '0 9 * * *'   # todos los días, 5:00 a. m. de RD
   workflow_dispatch:
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.122.0
 
       - name: Sacar la copia
         env:
@@ -73,4 +73,4 @@ jobs:
         with:
           name: ${{ env.ARCHIVO }}
           path: ${{ env.ARCHIVO }}
-          retention-days: 60
+          retention-days: 30

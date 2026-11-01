@@ -67,6 +67,23 @@ class Errores {
     };
   }
 
+  /// Marca de los reportes que escribe el usuario ("Reportar un problema"),
+  /// para que el admin los distinga de los errores automáticos.
+  static const pantallaReporte = 'Reporte del usuario';
+
+  /// El usuario cuenta un problema con sus palabras: le llega al admin en
+  /// "Errores de la app". [quien]: nombre y correo de quien lo manda.
+  /// Este sí falla si no se pudo enviar (para avisarle al usuario).
+  static Future<void> reportarProblema(String texto, {required String quien}) async {
+    await SupabaseService.instance.client.from('errores_app').insert({
+      'mensaje': recortar(texto.trim(), 2000),
+      'detalle': recortar('De: $quien', 8000),
+      'pantalla': pantallaReporte,
+      'version': recortar(_version, 50),
+      'plataforma': kIsWeb ? 'web' : defaultTargetPlatform.name,
+    });
+  }
+
   /// Manda un error (sin esperar y sin fallar nunca).
   static void reportar(Object error, StackTrace? pila, {String? donde}) {
     final mensaje = recortar('$error', 2000);

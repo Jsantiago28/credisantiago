@@ -91,8 +91,10 @@ void main() {
       expect(limite({'plan': 'basico', 'plan_vence': '2026-10-30', 'aprobado': true}), 1);
       expect(limite({'plan': 'pro', 'plan_vence': '2026-10-30', 'aprobado': true}), 3);
       expect(limite({'plan': 'premium', 'plan_vence': '2026-10-30', 'aprobado': true}), isNull);
-      // Vencido = Gratis; sin aprobar = 0.
-      expect(limite({'plan': 'pro', 'plan_vence': '2026-09-29', 'aprobado': true}), 0);
+      // Vencido hace poco: 7 días de gracia con su plan. Pasados, Gratis.
+      expect(limite({'plan': 'pro', 'plan_vence': '2026-09-29', 'aprobado': true}), 3);
+      expect(limite({'plan': 'pro', 'plan_vence': '2026-09-22', 'aprobado': true}), 0);
+      // Sin aprobar = 0.
       expect(limite({'plan': 'premium', 'plan_vence': '2026-12-01', 'aprobado': false}), 0);
       // Sin la migración (la tabla de planes no tiene la columna): 0.
       expect(

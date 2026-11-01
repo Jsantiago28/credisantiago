@@ -101,6 +101,12 @@ class _TarjetaMiPlanState extends State<TarjetaMiPlan> {
                     if (e.vencido)
                       Text('Tu plan pagado venció: estás en Gratis',
                           style: TextStyle(color: AppColors.amber, fontSize: 12))
+                    else if (e.diasDeGraciaQuedan(DateTime.now()) case final gracia?)
+                      Text(
+                          'Tu plan venció. Renueva en $gracia día${gracia == 1 ? '' : 's'} '
+                          'para no perder nada.',
+                          style: TextStyle(
+                              color: AppColors.amber, fontSize: 13, fontWeight: FontWeight.w700))
                     else if (dias != null)
                       Text(
                         dias <= 5 ? 'Vence en $dias día(s)' : 'Vence el ${fechaLarga(e.vence!)}',

@@ -1,0 +1,11 @@
+# Solo la presentación y las páginas legales van en los buscadores.
+User-agent: *
+Allow: /$
+Allow: /terminos
+Allow: /privacidad
+Allow: /borrar-cuenta
+Disallow: /app
+Disallow: /s/
+Disallow: /i/
+
+Sitemap: https://credisantiago.pages.dev/sitemap.xml

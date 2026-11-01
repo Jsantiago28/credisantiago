@@ -2,11 +2,20 @@
 /// cuánto le queda. Misma regla que la base de datos (limite_clientes).
 library;
 
-/// El plan que vale hoy: si ya venció, cuenta como Gratis.
+/// Días que el plan pagado sigue valiendo después de vencer, para que el
+/// prestamista renueve sin perder nada. Misma regla en la base de datos
+/// (limite_clientes y limite_cobradores).
+const diasDeGracia = 7;
+
+/// El plan que vale hoy: si venció hace más de [diasDeGracia] días, cuenta
+/// como Gratis.
 String planEfectivo(Map<String, dynamic> perfil, DateTime hoy) {
   final plan = (perfil['plan'] as String?) ?? 'gratis';
   final vence = DateTime.tryParse(perfil['plan_vence'] as String? ?? '');
-  if (vence != null && vence.isBefore(DateTime(hoy.year, hoy.month, hoy.day))) return 'gratis';
+  final hoyDia = DateTime(hoy.year, hoy.month, hoy.day);
+  if (vence != null && vence.add(const Duration(days: diasDeGracia)).isBefore(hoyDia)) {
+    return 'gratis';
+  }
   return plan;
 }
 
@@ -33,6 +42,14 @@ class EstadoPlan {
   });
 
   bool get puedeAgregar => limite == null || usados < limite!;
+
+  /// Ya venció pero sigue en los días de gracia: cuántos le quedan (null si
+  /// no está en gracia).
+  int? diasDeGraciaQuedan(DateTime hoy) {
+    final dias = diasParaVencer(hoy);
+    if (vencido || dias == null || dias >= 0) return null;
+    return diasDeGracia + dias + 1;
+  }
   int? get quedan => limite == null ? null : (limite! - usados).clamp(0, limite!);
 
   /// Días que faltan para que venza (null si no vence).

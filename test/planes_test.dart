@@ -31,9 +31,17 @@ void main() {
     expect(e.diasParaVencer(hoy), 30);
   });
 
-  test('el día que vence todavía vale; al día siguiente vuelve a Gratis', () {
+  test('al vencer quedan 7 días de gracia; después vuelve a Gratis', () {
+    // hoy es 23-09-2026.
     expect(planEfectivo({'plan': 'pro', 'plan_vence': '2026-09-23'}, hoy), 'pro');
-    final e = estado({'plan': 'pro', 'plan_vence': '2026-09-22', 'aprobado': true}, 40);
+    final enGracia = estado({'plan': 'pro', 'plan_vence': '2026-09-22', 'aprobado': true}, 40);
+    expect(enGracia.planId, 'pro');
+    expect(enGracia.vencido, isFalse);
+    expect(enGracia.diasDeGraciaQuedan(hoy), 7);
+    final ultimoDia = estado({'plan': 'pro', 'plan_vence': '2026-09-16', 'aprobado': true}, 40);
+    expect(ultimoDia.planId, 'pro');
+    expect(ultimoDia.diasDeGraciaQuedan(hoy), 1);
+    final e = estado({'plan': 'pro', 'plan_vence': '2026-09-15', 'aprobado': true}, 40);
     expect(e.planId, 'gratis');
     expect(e.vencido, isTrue);
     expect(e.limite, 10);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'ui.dart';
@@ -58,17 +59,21 @@ class _PanelErroresState extends State<PanelErrores> {
               Icon(Icons.bug_report_rounded, color: AppColors.red),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('Errores de la app (${_errores.length})',
+                child: Text('Errores y reportes (${_errores.length})',
                     style: const TextStyle(fontWeight: FontWeight.w800)),
               ),
               TextButton(onPressed: _borrarTodos, child: const Text('Ya los revisé')),
             ],
           ),
-          Text('Fallas que le pasaron a alguien usando la app. Mándale una captura al programador.',
+          Text('Fallas de la app y problemas que reportaron los usuarios (con el ícono de soporte).',
               style: TextStyle(color: AppColors.grey, fontSize: 12)),
           for (final e in _errores.take(10))
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
+              // Lo que escribió un usuario ("Reportar un problema"), no un error automático.
+              leading: e['pantalla'] == Errores.pantallaReporte
+                  ? Icon(Icons.support_agent_rounded, color: AppColors.green)
+                  : null,
               title: Text(e['mensaje'] as String? ?? '',
                   maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
               subtitle: Text(
