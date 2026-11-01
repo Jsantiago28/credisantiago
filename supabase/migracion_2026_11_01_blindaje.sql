@@ -24,7 +24,9 @@
 
 -- 1. Cobros ---------------------------------------------------------------------
 alter table pagos drop constraint if exists pagos_monto_chk;
-alter table pagos add constraint pagos_monto_chk check (monto > 0);
+-- Excepción: al importar de Excel, un cobro de 0 marca desde cuándo cuenta la
+-- mora (no es dinero). El cobrador no puede crear 'importado' (vigilar_cobro).
+alter table pagos add constraint pagos_monto_chk check (monto > 0 or (monto = 0 and metodo = 'importado'));
 alter table pagos drop constraint if exists pagos_mora_chk;
 alter table pagos add constraint pagos_mora_chk check (monto_mora >= 0 and monto_mora <= monto);
 

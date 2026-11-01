@@ -973,6 +973,12 @@ class SupabaseService {
 
   /// Cancela un préstamo creado por error. Solo si no tiene cobros válidos
   /// (si los tiene, primero hay que anularlos).
+  /// El prestamista cierra un préstamo que ya quedó cubierto al saldarlo
+  /// antes de tiempo (pagó por adelantado más de lo que costaba saldar hoy).
+  Future<void> marcarSaldado(String prestamoId) async {
+    await client.from('prestamos').update({'estado': 'pagado'}).eq('id', prestamoId);
+  }
+
   Future<void> cancelarPrestamo(Map<String, dynamic> prestamo) async {
     final pagos =
         calc.pagosValidos(await obtenerPagos(prestamo['id'])).where((p) => !p.esMarcaImportacion);

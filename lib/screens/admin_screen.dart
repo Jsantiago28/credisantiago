@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart' show fechaSql;
 import '../logic/planes.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contacto.dart';
@@ -77,8 +78,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _ajustes = ajustes;
       });
     } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL ADMIN: $e');
+      registrarError(e, null, 'ADMIN');
       if (mounted) setState(() => _error = '$e');
     }
   }
@@ -398,8 +398,7 @@ class _AdminScreenState extends State<AdminScreen> {
           content: Text('Pago registrado. ${p['nombre']} tiene el plan hasta el ${fechaLarga(hasta)}.')));
       _cargar();
     } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL PAGO PLAN: $e');
+      registrarError(e, null, 'PAGO PLAN');
       mensajero.showSnackBar(SnackBar(
           content: Text(e.toString().contains('admin_registrar_pago')
               ? 'Falta correr la migración de pagos de planes en Supabase.'

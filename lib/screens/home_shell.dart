@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/recordatorio.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../services/version_nueva.dart';
 import '../theme/app_theme.dart';
@@ -79,8 +80,7 @@ class _HomeShellState extends State<HomeShell> {
         });
       },
       onError: (e) {
-        // ignore: avoid_print
-        print('ERROR REAL SOLICITUDES EN VIVO: $e');
+        registrarError(e, null, 'SOLICITUDES EN VIVO');
         if (mounted) setState(() => _errorSolicitudes = '$e');
       },
     );

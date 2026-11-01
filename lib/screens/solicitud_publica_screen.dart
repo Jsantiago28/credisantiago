@@ -7,6 +7,7 @@ import '../widgets/elegir_foto.dart';
 import '../logic/borrador_solicitud.dart';
 import '../logic/validacion.dart';
 import '../logic/whatsapp.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/evidencias.dart';
@@ -242,8 +243,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
       final logo = await servicio.bajarFoto(p?['logo'] as String?);
       if (mounted && logo != null) setState(() => _logo = logo);
     } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL CARGAR PRESTAMISTA: $e'); // al enviar se avisa que el link no sirve
+      registrarError(e, null, 'CARGAR PRESTAMISTA'); // al enviar se avisa que el link no sirve
     }
   }
 
@@ -401,8 +401,7 @@ class _SolicitudPublicaScreenState extends State<SolicitudPublicaScreen> {
       await borrarBorradorSolicitud(widget.slug); // ya se envió: no queda nada guardado
       if (mounted) setState(() => _enviado = true);
     } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL SOLICITUD: $e');
+      registrarError(e, null, 'SOLICITUD');
       // Freno contra solicitudes repetidas (migracion_2026_10_18_seguridad.sql).
       final repetida = '$e'.contains('DEMASIADAS_SOLICITUDES');
       _mostrarError(repetida

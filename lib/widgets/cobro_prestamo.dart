@@ -366,14 +366,41 @@ class CobroPrestamo {
     if (context.mounted) await _mostrarCobroRegistrado(cobro.comoPago);
   }
 
+  /// Lo que ya pagó alcanza para saldarlo hoy: pregunta y lo marca saldado.
+  Future<void> _cerrarYaCubierto() async {
+    final cerrar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Ya está cubierto'),
+        content: Text('${const SaldoCubierto().mensaje} ¿Lo marco como saldado?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('No')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Sí, saldarlo')),
+        ],
+      ),
+    );
+    if (cerrar != true || !context.mounted) return;
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      await SupabaseService.instance.marcarSaldado(_prestamo['id'] as String);
+      onCambio();
+      mensajero.showSnackBar(SnackBar(content: Text('Préstamo de $_nombre saldado')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'MARCAR SALDADO');
+      mensajero.showSnackBar(SnackBar(content: Text(mensajeError(e))));
+    }
+  }
+
   /// Saldar todo hoy, antes de tiempo: muestra cuánto paga (capital, interés
   /// solo hasta hoy más 1 día, y mora) y cuánto interés se le perdona.
   Future<void> _saldar() async {
     final s = calcularSaldarHoy(_prestamo, datos.pagos, DateTime.now());
     if (s.monto < 1) {
-      // Pagó de más por adelantado: no hay nada que cobrar (y no se guarda un cobro de 0).
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(const SaldoCubierto().mensaje)));
+      // Pagó por adelantado más de lo que cuesta saldarlo hoy: no hay nada
+      // que cobrar (no se guarda un cobro de 0); solo se cierra el préstamo.
+      await _cerrarYaCubierto();
       return;
     }
     Widget fila(String texto, double valor, {bool negrita = false, Color? color}) => Padding(
