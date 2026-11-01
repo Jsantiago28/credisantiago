@@ -1,0 +1,135 @@
+# Publica la web en Cloudflare Pages (https://credisantiago.pages.dev) cuando
+# las pruebas (CI) terminan en verde en main. También se puede correr a mano:
+# Actions → "Publicar web" → Run workflow.
+#
+# Necesita dos secretos (GitHub → Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   token con permiso "Cloudflare Pages: Edit"
+#   CLOUDFLARE_ACCOUNT_ID  el Account ID de Cloudflare (32 letras y números)
+# Si faltan, no publica y termina en verde (no rompe nada).
+#
+# El APK NO se hace aquí: su llave de firma vive solo en la PC del dueño.
+name: Publicar web
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: publicar-web
+  cancel-in-progress: true
+
+env:
+  PROYECTO: credisantiago
+
+jobs:
+  comprobar:
+    name: Comprobar secretos
+    runs-on: ubuntu-latest
+    outputs:
+      listo: ${{ steps.revisar.outputs.listo }}
+    steps:
+      - id: revisar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "listo=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Publicación omitida::Faltan CLOUDFLARE_API_TOKEN o CLOUDFLARE_ACCOUNT_ID."
+          else
+            echo "listo=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  publicar:
+    name: Compilar y publicar
+    needs: comprobar
+    if: >-
+      needs.comprobar.outputs.listo == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+
+      # Quita espacios y saltos de línea que se cuelan al pegar los secretos.
+      - name: Limpiar secretos
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          token=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')
+          cuenta=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')
+          echo "::add-mask::$token"
+          echo "CF_TOKEN=$token" >> "$GITHUB_ENV"
+          echo "CF_ACCOUNT=$cuenta" >> "$GITHUB_ENV"
+
+      - name: Compilar la web
+        run: |
+          flutter pub get
+          flutter build web --release
+
+      # La primera vez crea el proyecto. Si el nombre estuviera tomado,
+      # Cloudflare daría otra dirección: se detiene antes de publicar.
+      - name: Crear el proyecto en Cloudflare si no existe
+        run: |
+          api="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/pages/projects"
+          codigo=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $CF_TOKEN" "$api/$PROYECTO")
+          if [ "$codigo" = "404" ]; then
+            curl -sf -X POST "$api" -H "Authorization: Bearer $CF_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data "{\"name\":\"$PROYECTO\",\"production_branch\":\"main\"}" > /dev/null
+            echo "Proyecto $PROYECTO creado."
+          elif [ "$codigo" != "200" ]; then
+            echo "::error::Cloudflare respondió $codigo. Revisa CLOUDFLARE_API_TOKEN y CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+          sub=$(curl -s -H "Authorization: Bearer $CF_TOKEN" "$api/$PROYECTO" | jq -r '.result.subdomain')
+          if [ "$sub" != "$PROYECTO.pages.dev" ]; then
+            echo "::error::El proyecto quedó en '$sub', no en $PROYECTO.pages.dev. Los links de la app no servirían."
+            exit 1
+          fi
+
+      # Cloudflare a veces da un error pasajero: hasta 3 intentos.
+      - name: Publicar en Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT }}
+        run: |
+          for intento in 1 2 3; do
+            if npx --yes wrangler@3 pages deploy build/web \
+                 --project-name="$PROYECTO" --branch=main --commit-dirty=true; then
+              exit 0
+            fi
+            echo "Intento $intento falló; reintento en 15 s."
+            sleep 15
+          done
+          exit 1
+
+      # Revisa que las direcciones importantes respondan lo que deben.
+      - name: Revisar la web publicada
+        run: |
+          sleep 20
+          base="https://$PROYECTO.pages.dev"
+          revisar() {
+            cuerpo=$(curl -sL "$base$1")
+            if echo "$cuerpo" | grep -q "$2"; then echo "OK  $1"; else echo "::warning::$1 no muestra '$2'"; fi
+          }
+          revisar "/" "no presta dinero"
+          revisar "/app" "flutter_bootstrap.js"
+          revisar "/s/prueba" "flutter_bootstrap.js"
+          revisar "/i/prueba" "flutter_bootstrap.js"
+          revisar "/terminos" "<title>"

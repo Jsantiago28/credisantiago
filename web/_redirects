@@ -1,9 +1,7 @@
-/                /presentacion.html   200!
-/terminos        /terminos.html       200
-/privacidad      /privacidad.html     200
-/borrar-cuenta   /borrar-cuenta.html  200
-/s/*             /solicitud.html      200
-/i/*             /invitar.html        200
-/app             /index.html          200
-/app/*           /index.html          200
-/*               /index.html          200
+# Reglas de direcciones para Cloudflare Pages.
+# Cloudflare quita el ".html" solo (/terminos sirve terminos.html), por eso
+# los destinos van sin ".html". Lo que no tenga regla ni archivo abre la app
+# (index.html), porque no hay 404.html.
+/        /presentacion  200
+/s/*     /solicitud     200
+/i/*     /invitar       200
