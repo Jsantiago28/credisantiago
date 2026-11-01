@@ -1,7 +1,7 @@
 # CREDISANTIAGO (antes Prestamistas RD) — Plan Maestro v4 (23-09-2026)
 
 **Stack:** Flutter (Web; Android pendiente) + Supabase (proyecto `twhwjttwpliudqkkgzsq`)
-**Publicada en:** https://credisantiago.netlify.app — link de clientes: `/s/{slug}`
+**Publicada en:** https://credisantiago.pages.dev (Cloudflare Pages, desde el 31-10-2026; la dirección vieja credisantiago.netlify.app manda a la nueva) — link de clientes: `/s/{slug}`
 **Admin de la app:** applej904@gmail.com
 **Pruebas automáticas:** 264, todas pasan (`flutter test`)
 
