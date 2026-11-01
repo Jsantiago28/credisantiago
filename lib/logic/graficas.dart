@@ -11,6 +11,13 @@ class CobroGrafica {
   /// Interés perdonado al saldar antes de tiempo (no es dinero).
   final double descuento;
 
+  /// Para ordenar dos cobros de la misma hora.
+  final int? numeroRecibo;
+
+  /// Lo que ya había pagado un cliente importado de Excel: cuenta para lo
+  /// que debe, pero no es dinero que entró (ni cobro, ni ganancia).
+  final bool importado;
+
   const CobroGrafica({
     required this.prestamoId,
     required this.fecha,
@@ -18,9 +25,14 @@ class CobroGrafica {
     this.montoMora = 0,
     this.anulado = false,
     this.descuento = 0,
+    this.numeroRecibo,
+    this.importado = false,
   });
 
   double get montoCuota => monto - montoMora;
+
+  /// Dinero que entró (sin anulados ni importados).
+  bool get entro => !anulado && !importado;
 
   factory CobroGrafica.desdeFila(Map<String, dynamic> fila) => CobroGrafica(
         prestamoId: fila['prestamo_id'] as String,
@@ -29,6 +41,8 @@ class CobroGrafica {
         montoMora: (fila['monto_mora'] as num?)?.toDouble() ?? 0,
         anulado: fila['anulado'] == true,
         descuento: (fila['descuento'] as num?)?.toDouble() ?? 0,
+        numeroRecibo: (fila['numero_recibo'] as num?)?.toInt(),
+        importado: fila['metodo'] == 'importado',
       );
 }
 
@@ -40,7 +54,8 @@ List<DateTime> ultimosMeses(DateTime hoy, int meses) =>
     [for (var i = meses - 1; i >= 0; i--) DateTime(hoy.year, hoy.month - i)];
 
 /// Lo cobrado cada uno de los últimos [dias] días (el más viejo primero),
-/// separado en cuotas y mora. Los días sin cobros salen en cero. Sin anulados.
+/// separado en cuotas y mora. Los días sin cobros salen en cero. Sin anulados
+/// ni importados.
 List<({DateTime dia, double cuotas, double mora})> cobradoPorDia(
     List<CobroGrafica> cobros, DateTime hoy,
     {int dias = 30}) {
@@ -50,7 +65,7 @@ List<({DateTime dia, double cuotas, double mora})> cobradoPorDia(
   ];
   final cuotas = {for (final d in lista) d: 0.0};
   final mora = {for (final d in lista) d: 0.0};
-  for (final c in cobros.where((c) => !c.anulado)) {
+  for (final c in cobros.where((c) => c.entro)) {
     final d = _dia(c.fecha);
     if (!cuotas.containsKey(d)) continue;
     cuotas[d] = cuotas[d]! + c.montoCuota;
@@ -59,25 +74,54 @@ List<({DateTime dia, double cuotas, double mora})> cobradoPorDia(
   return [for (final d in lista) (dia: d, cuotas: cuotas[d]!, mora: mora[d]!)];
 }
 
-/// Qué parte de cada peso cobrado a cuotas es interés: (total - prestado) /
-/// total. Es la misma proporción que usa "Ya llevas".
-double parteInteres(Map<String, dynamic> prestamo) {
-  final total = montoTotalGuardado(prestamo);
-  if (total <= 0) return 0;
-  final monto = (prestamo['monto'] as num?)?.toDouble() ?? 0;
-  return ((total - monto) / total).clamp(0.0, 1.0);
-}
-
-/// La parte de interés de un cobro. Si saldó antes de tiempo, al cobro le
-/// toca la proporción normal menos el interés que se perdonó (así la suma de
-/// todos los cobros da justo el interés que de verdad se ganó).
-double interesDelCobro(CobroGrafica c, double parte) {
-  final interes = c.montoCuota * parte - c.descuento * (1 - parte);
-  return interes < 0 ? 0 : interes;
+/// La ganancia (interés) de cada cobro: lo que subió el interés cobrado del
+/// préstamo (ver [interesCobrado]) con ese cobro. Los cobros de cada
+/// préstamo se recorren en orden (fecha y número de recibo, sin anulados):
+/// en un préstamo sobre saldo las primeras cuotas son casi todo interés y
+/// las últimas casi todo capital, así que el orden importa.
+///
+/// Si saldó antes de tiempo, el descuento baja las cuotas pero es interés
+/// que no se cobró: se le resta a ese cobro. Así la suma de todos los cobros
+/// da justo el interés que de verdad se ganó.
+///
+/// [cobros] debe traer TODOS los cobros de cada préstamo (también los de
+/// antes y los importados), aunque solo se vayan a mostrar los recientes.
+Map<CobroGrafica, double> interesPorCobro(
+  List<CobroGrafica> cobros,
+  Map<String, Map<String, dynamic>> prestamos,
+) {
+  final resultado = Map<CobroGrafica, double>.identity();
+  final porPrestamo = <String, List<CobroGrafica>>{};
+  for (final c in cobros.where((c) => !c.anulado)) {
+    porPrestamo.putIfAbsent(c.prestamoId, () => []).add(c);
+  }
+  for (final e in porPrestamo.entries) {
+    final p = prestamos[e.key];
+    final lista = e.value
+      ..sort((a, b) {
+        final porFecha = a.fecha.compareTo(b.fecha);
+        return porFecha != 0 ? porFecha : (a.numeroRecibo ?? 0).compareTo(b.numeroRecibo ?? 0);
+      });
+    var acumulado = 0.0;
+    var interesAntes = 0.0;
+    for (final c in lista) {
+      if (p == null) {
+        resultado[c] = 0;
+        continue;
+      }
+      acumulado += c.montoCuota + c.descuento;
+      final interesDespues = interesCobrado(p, acumulado);
+      final interes = interesDespues - interesAntes - c.descuento;
+      interesAntes = interesDespues;
+      resultado[c] = interes < 0 ? 0 : interes;
+    }
+  }
+  return resultado;
 }
 
 /// Ganancia que entró cada mes (el más viejo primero): el interés de lo
-/// cobrado a cuotas y la mora cobrada. Sin anulados.
+/// cobrado a cuotas (ver [interesPorCobro]) y la mora cobrada. Sin anulados
+/// ni importados.
 List<({DateTime mes, double interes, double mora})> gananciaPorMes(
   List<CobroGrafica> cobros,
   Map<String, Map<String, dynamic>> prestamos,
@@ -87,11 +131,11 @@ List<({DateTime mes, double interes, double mora})> gananciaPorMes(
   final lista = ultimosMeses(hoy, meses);
   final interes = {for (final m in lista) m: 0.0};
   final mora = {for (final m in lista) m: 0.0};
-  for (final c in cobros.where((c) => !c.anulado)) {
+  final porCobro = interesPorCobro(cobros, prestamos);
+  for (final c in cobros.where((c) => c.entro)) {
     final m = _mes(c.fecha);
     if (!interes.containsKey(m)) continue;
-    final p = prestamos[c.prestamoId];
-    interes[m] = interes[m]! + (p == null ? 0 : interesDelCobro(c, parteInteres(p)));
+    interes[m] = interes[m]! + (porCobro[c] ?? 0);
     mora[m] = mora[m]! + c.montoMora;
   }
   return [for (final m in lista) (mes: m, interes: interes[m]!, mora: mora[m]!)];
@@ -116,7 +160,7 @@ List<({DateTime mes, double prestado, double cobrado})> prestadoVsCobrado(
     if (!prestado.containsKey(m)) continue;
     prestado[m] = prestado[m]! + ((p['monto'] as num?)?.toDouble() ?? 0);
   }
-  for (final c in cobros.where((c) => !c.anulado)) {
+  for (final c in cobros.where((c) => c.entro)) {
     final m = _mes(c.fecha);
     if (!cobrado.containsKey(m)) continue;
     cobrado[m] = cobrado[m]! + c.monto;

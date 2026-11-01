@@ -22,7 +22,7 @@ void main() {
     addTearDown(tester.view.reset);
     final plan = calcularPlan(
         monto: 2060000,
-        tasaInteresMensual: 1.8333,
+        tasaInteresMensual: 1.83,
         diasPlazo: 1800,
         frecuencia: 'mensual',
         tipo: TipoInteres.saldo);
@@ -34,7 +34,7 @@ void main() {
       ),
     ));
     expect(tester.takeException(), isNull);
-    expect(find.text('RD\$37,765.98'), findsOneWidget); // interés de la cuota 1
+    expect(find.textContaining('37,698'), findsOneWidget); // interés de la cuota 1 (2,060,000 × 1.83%)
     expect(find.text('Ver las 60 cuotas'), findsOneWidget);
     await tester.tap(find.text('Ver las 60 cuotas'));
     await tester.pump();

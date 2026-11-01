@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../logic/validacion.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/elegir_foto.dart';
@@ -153,11 +154,10 @@ class _EditarClienteScreenState extends State<EditarClienteScreen> {
       mensajero.showSnackBar(const SnackBar(content: Text('Datos del cliente actualizados')));
       Navigator.of(context).pop(true);
     } on ClienteRepetido catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('$e')));
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL EDITAR CLIENTE: $e');
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text(mensajeError(e))));
+    } catch (e, pila) {
+      registrarError(e, pila, 'EDITAR CLIENTE');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar. ${mensajeError(e)}')));
     } finally {
       if (mounted) setState(() => _guardando = false);
     }

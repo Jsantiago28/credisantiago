@@ -320,25 +320,51 @@ void main() {
       expect(gananciaDelMes([fila(agosto, 3000)], hoy).proyectada, 0);
     });
 
+    // Reportes usa la misma regla que Inicio (cobroDelDia), con el estado
+    // calculado de los cobros.
+    ({double atrasado, double venceHoy, int diasAtraso}) hoyDe(
+            Map<String, dynamic> p, List<PagoRegistrado> pagos, DateTime dia) =>
+        cobroDelDia(estadoPrestamo(p, pagos, dia), dia);
+    List<PagoRegistrado> pago(double monto, {DateTime? fecha}) =>
+        [PagoRegistrado(fecha: fecha ?? DateTime(2026, 9, 2), monto: monto)];
+
     test('cliente al día no sale atrasado aunque la columna proximo_pago esté vieja', () {
       final f = {...fila(g, 21 * 400), 'proximo_pago': '2026-09-02'};
       expect(proximoPago(f, 21 * 400), DateTime(2026, 9, 23));
-      expect(estaAtrasado(f, 21 * 400, hoy), isFalse);
+      final d = hoyDe(f, pago(21 * 400), hoy);
+      expect(d.atrasado, 0);
+      expect(d.venceHoy, 0);
     });
 
     test('pagó 10 cuotas → la #11 venció el 12/9: 10 días de atraso', () {
       expect(proximoPago(g, 10 * 400), DateTime(2026, 9, 12));
-      expect(estaAtrasado(g, 10 * 400, hoy), isTrue);
-      expect(diasAtraso(g, 10 * 400, hoy), 10);
+      final d = hoyDe(g, pago(10 * 400), hoy);
+      expect(d.atrasado, greaterThan(0));
+      expect(d.diasAtraso, 10);
     });
 
-    test('la cuota vence hoy → sale en "No han pagado hoy" con 0 días', () {
-      expect(estaAtrasado(g, 20 * 400, hoy), isTrue);
-      expect(diasAtraso(g, 20 * 400, hoy), 0);
+    test('la cuota vence hoy → sale en "No han pagado hoy" con 0 días, sin atraso', () {
+      final d = hoyDe(g, pago(20 * 400), hoy);
+      expect(d.atrasado, 0);
+      expect(d.venceHoy, 400);
+      expect(d.diasAtraso, 0);
     });
 
     test('préstamo saldado no está atrasado', () {
-      expect(estaAtrasado(g, 12000, DateTime(2026, 12, 1)), isFalse);
+      final d = hoyDe(g, pago(12000), DateTime(2026, 12, 1));
+      expect(d.atrasado + d.venceHoy, 0);
+    });
+
+    test('los días de atraso cuentan desde la cuota SIN PAGAR, no desde una que solo debe mora', () {
+      final conMora = {...g, 'mora_diaria': 5, 'dias_gracia': 1};
+      // El 10/9 pagó las cuotas #1 y #2 (sin su mora); la #3 venció el 4/9.
+      final d = hoyDe(conMora, pago(800, fecha: DateTime(2026, 9, 10)), hoy);
+      expect(d.diasAtraso, 18);
+
+      // Pagó todas las cuotas tarde y solo le queda la mora: atrasado, 0 días.
+      final soloMora = hoyDe(conMora, pago(21 * 400, fecha: DateTime(2026, 9, 21)), hoy);
+      expect(soloMora.atrasado, greaterThan(0));
+      expect(soloMora.diasAtraso, 0);
     });
 
     test('al confirmar, proximo_pago = cuota #1 (mañana diario, en 7 días semanal)', () {

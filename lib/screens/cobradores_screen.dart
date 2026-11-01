@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../logic/cobradores.dart';
 import '../logic/dominio.dart';
 import '../logic/validacion.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contacto.dart';
@@ -40,7 +41,12 @@ class _CobradoresScreenState extends State<CobradoresScreen> {
 
   Future<void> _cargar() async {
     final servicio = SupabaseService.instance;
-    final cobradores = await servicio.listarCobradores(_id);
+    var cobradores = const <Cobrador>[];
+    try {
+      cobradores = await servicio.listarCobradores(_id);
+    } catch (e, pila) {
+      registrarError(e, pila, 'COBRADORES');
+    }
     int? limite = 0;
     try {
       limite = limiteCobradores(
@@ -130,7 +136,7 @@ class _CobradoresScreenState extends State<CobradoresScreen> {
     } on LimiteCobradores catch (e) {
       _ofrecerPlan('$e');
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo. ${mensajeError(e)}')));
     }
   }
 
@@ -320,13 +326,12 @@ class _FormularioCobradorState extends State<FormularioCobrador> {
       final c = await SupabaseService.instance.agregarCobrador(widget.prestamistaId,
           nombre: _nombre.text, email: _email.text, telefono: _telefono.text);
       navegador.pop(c);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL AGREGAR COBRADOR: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'AGREGAR COBRADOR');
       if (mounted) {
         setState(() {
           _guardando = false;
-          _error = e is StateError ? e.message : '$e';
+          _error = mensajeError(e);
         });
       }
     }
@@ -443,7 +448,12 @@ class _RepartirClientesScreenState extends State<RepartirClientesScreen> {
   Future<void> _cargar() async {
     final servicio = SupabaseService.instance;
     final clientes = await servicio.clientesParaRepartir(widget.prestamistaId);
-    final cobradores = await servicio.listarCobradores(widget.prestamistaId);
+    var cobradores = const <Cobrador>[];
+    try {
+      cobradores = await servicio.listarCobradores(widget.prestamistaId);
+    } catch (e, pila) {
+      registrarError(e, pila, 'COBRADORES');
+    }
     if (!mounted) return;
     setState(() {
       _clientes = clientes;
@@ -474,10 +484,9 @@ class _RepartirClientesScreenState extends State<RepartirClientesScreen> {
       mensajero.showSnackBar(SnackBar(
           content: Text('${widget.cobrador.nombre}: ${_marcados.length} cliente(s) en su ruta')));
       navegador.pop(true);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL REPARTIR: $e (${clientes.length} clientes)');
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'REPARTIR (${clientes.length} clientes)');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar. ${mensajeError(e)}')));
       if (mounted) setState(() => _guardando = false);
     }
   }

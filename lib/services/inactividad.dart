@@ -60,26 +60,41 @@ class Inactividad {
     // Sin señal no se cierra: para volver a entrar hace falta internet y el
     // cobrador se quedaría sin poder cobrar. Se cierra cuando vuelva.
     if (await _sinSenal()) return;
+    // Antes de salir, que suban los cobros hechos sin señal (si falla, no
+    // se pierden: quedan en el teléfono y suben al volver a entrar).
+    try {
+      await SinConexion.subir();
+    } catch (_) {}
     cerradaPorInactividad = true;
     await SupabaseService.instance.cerrarSesion();
   }
 }
 
+/// La última vez que se miró si hay internet, y qué salió: sin señal no se
+/// vuelve a preguntar cada medio minuto (gasta batería y datos).
+DateTime? _miradoEn;
+bool _ultimoSinSenal = false;
+const _cadaCuanto = Duration(minutes: 2);
+
 /// No hay internet ahora mismo (solo cuenta en la app de Android, donde se
 /// puede cobrar sin señal).
 Future<bool> _sinSenal() async {
   if (!SinConexion.disponible) return false;
-  if (SinConexion.sinSenal.value) return true;
+  final ahora = DateTime.now();
+  if (_miradoEn != null && ahora.difference(_miradoEn!) < _cadaCuanto) return _ultimoSinSenal;
+  _miradoEn = ahora;
   try {
     await SupabaseService.instance.client
         .from('ajustes_app')
         .select('id')
         .limit(1)
         .timeout(const Duration(seconds: 5));
-    return false;
+    _ultimoSinSenal = false;
   } catch (e) {
-    return SinConexion.esFaltaDeConexion(e);
+    _ultimoSinSenal = SinConexion.esFaltaDeConexion(e);
   }
+  SinConexion.sinSenal.value = _ultimoSinSenal;
+  return _ultimoSinSenal;
 }
 
 /// Envuelve la app: cada toque cuenta como uso, cada medio minuto (y al

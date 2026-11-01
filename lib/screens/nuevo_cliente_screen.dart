@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../logic/busqueda.dart';
 import '../logic/validacion.dart';
 import '../widgets/formato_campos.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/elegir_foto.dart';
@@ -129,7 +130,7 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
         ),
       ));
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo abrir el préstamo: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo abrir el préstamo. ${mensajeError(e)}')));
     }
   }
 
@@ -236,16 +237,15 @@ class _NuevoClienteScreenState extends State<NuevoClienteScreen> {
       ));
     } on ClienteRepetido catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensajeError(e))));
       }
     } on LimitePlan catch (e) {
       if (mounted) await avisarLimitePlan(context, e);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL NUEVO CLIENTE: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'NUEVO CLIENTE');
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('No se pudo crear el cliente: $e')));
+            .showSnackBar(SnackBar(content: Text('No se pudo crear el cliente. ${mensajeError(e)}')));
       }
     } finally {
       if (mounted) setState(() => _guardando = false);

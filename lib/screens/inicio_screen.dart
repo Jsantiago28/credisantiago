@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../logic/gestiones.dart';
+import '../services/errores.dart';
 import '../services/sin_conexion.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -122,7 +123,8 @@ class _InicioScreenState extends State<InicioScreen> {
     } finally {
       final seguir = SinConexion.sinSenal.value || SinConexion.pendientes.value > 0;
       _reintento?.cancel();
-      _reintento = seguir ? Timer(const Duration(minutes: 1), _cargar) : null;
+      // Si ya se salió de la pantalla, no queda un reloj recargando.
+      _reintento = seguir && mounted ? Timer(const Duration(minutes: 1), _cargar) : null;
     }
   }
 
@@ -140,10 +142,10 @@ class _InicioScreenState extends State<InicioScreen> {
           _error = null;
         });
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL INICIO: $e');
-      if (mounted) setState(() => _error = '$e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'INICIO');
+      // El aviso de "sin ruta guardada" ya viene en palabras; lo demás no.
+      if (mounted) setState(() => _error = e is String ? e : mensajeError(e));
     }
   }
 
@@ -484,7 +486,7 @@ class _InicioScreenState extends State<InicioScreen> {
   Widget _filaCobro(_Fila f) {
     final proximo = f.estado.proximoPago;
     final cuando = f.hoy.atrasado > 0
-        ? '${f.hoy.diasAtraso} día(s) atrasado'
+        ? (f.hoy.diasAtraso > 0 ? '${f.hoy.diasAtraso} día(s) atrasado' : 'Debe mora')
         : f.hoy.venceHoy > 0
             ? 'Pago hoy'
             : proximo != null

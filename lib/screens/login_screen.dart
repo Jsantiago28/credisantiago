@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
+import '../services/errores.dart';
 import '../services/inactividad.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -85,12 +86,11 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await accion();
     } on AuthException catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL AUTH: ${e.code} ${e.message}');
+      // Clave equivocada, código vencido...: es cosa del usuario, no se reporta.
+      debugPrint('AUTH: ${e.code} ${e.message}');
       if (mounted) setState(() => _error = _mensaje(e));
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'ENTRAR');
       if (mounted) setState(() => _error = 'Algo falló. Revisa tu internet e intenta de nuevo.');
     } finally {
       if (mounted) setState(() => _cargando = false);

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_datos;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'errores.dart';
+
 /// Recordatorio diario en el teléfono ("Revisa los cobros de hoy"). Lo hace
 /// el mismo teléfono, sin internet ni servidores: solo en la app de Android
 /// (en la web no hay).
@@ -41,9 +43,8 @@ class Recordatorio {
         await _iniciar();
         await _avisos.cancel(id: _id);
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL RECORDATORIO: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'RECORDATORIO');
     }
   }
 

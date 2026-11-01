@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../logic/graficas.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../widgets/graficas.dart';
 import '../widgets/ui.dart';
@@ -40,10 +41,9 @@ class _GraficasScreenState extends State<GraficasScreen> {
     try {
       final cobros = await SupabaseService.instance.obtenerCobrosGraficas(widget.prestamistaId, desde);
       if (mounted) setState(() => _cobros = cobros);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GRAFICAS: $e');
-      if (mounted) setState(() => _error = '$e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'GRAFICAS');
+      if (mounted) setState(() => _error = mensajeError(e));
     }
   }
 

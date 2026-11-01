@@ -36,9 +36,66 @@ void main() {
       'p1': {'monto': 10000, 'monto_total': 12000},
     };
 
-    test('parte de interés de un préstamo', () {
-      expect(parteInteres(prestamos['p1']!), closeTo(1 / 6, 1e-9));
-      expect(parteInteres({'monto': 0}), 0);
+    // 10,000 al 10% mensual, 3 cuotas mensuales sobre saldo desde el 1/1:
+    // cuota 4,021; interés 1,000 + 697.90 + 365.10 = 2,063.
+    Map<String, dynamic> sobreSaldo() {
+      final plan = calcularPlan(
+          monto: 10000, tasaInteresMensual: 10, diasPlazo: 90, frecuencia: 'mensual',
+          tipo: TipoInteres.saldo);
+      return {
+        'monto': 10000,
+        'tasa_interes': 10,
+        'frecuencia': 'mensual',
+        'cantidad_cuotas': plan.cantidadCuotas,
+        'cuota': plan.cuota,
+        'monto_total': plan.montoTotal,
+        'tipo_interes': 'saldo',
+        'fecha_desembolso': '2026-01-01',
+      };
+    }
+
+    test('sobre saldo: la cuota 1 es 1,000 de interés, no la proporción plana', () {
+      final p = {'s': sobreSaldo()};
+      expect(p['s']!['cuota'], 4021);
+      final marzo = DateTime(2026, 3, 20);
+      final g = gananciaPorMes([
+        // Desordenados a propósito: se recorren por fecha.
+        cobro(DateTime(2026, 3, 1), 4021, p: 's'),
+        cobro(DateTime(2026, 1, 31), 4021, p: 's'),
+        cobro(DateTime(2026, 2, 28), 4021, p: 's'),
+      ], p, marzo, meses: 3);
+      expect(g[0].interes, closeTo(1000, 0.01));
+      expect(g[1].interes, closeTo(697.90, 0.01));
+      expect(g[2].interes, closeTo(365.10, 0.01));
+      expect(g.fold<double>(0, (s, m) => s + m.interes), closeTo(2063, 0.01));
+    });
+
+    test('sobre saldo: cuenta lo pagado ANTES de la ventana y lo importado, sin mostrarlo', () {
+      final p = {'s': sobreSaldo()};
+      final g = gananciaPorMes([
+        // Lo que ya había pagado al importarlo: no es ganancia de ese mes,
+        // pero la cuota de febrero ya no es la primera.
+        CobroGrafica(prestamoId: 's', fecha: DateTime(2026, 1, 31), monto: 4021, importado: true),
+        cobro(DateTime(2026, 2, 28), 4021, p: 's'),
+      ], p, DateTime(2026, 2, 28), meses: 2);
+      expect(g[0].interes, 0);
+      expect(g[1].interes, closeTo(697.90, 0.01));
+      // Tampoco cuenta como dinero cobrado.
+      expect(cobradoPorDia([
+        CobroGrafica(prestamoId: 's', fecha: DateTime(2026, 2, 28), monto: 4021, importado: true),
+      ], DateTime(2026, 2, 28)).last.cuotas, 0);
+    });
+
+    test('mismo día: el orden lo da el número de recibo; los anulados no cuentan', () {
+      final p = {'s': sobreSaldo()};
+      final dia = DateTime(2026, 2, 1, 10);
+      final segundo = CobroGrafica(prestamoId: 's', fecha: dia, monto: 4021, numeroRecibo: 8);
+      final primero = CobroGrafica(prestamoId: 's', fecha: dia, monto: 4021, numeroRecibo: 7);
+      final anulado = CobroGrafica(prestamoId: 's', fecha: DateTime(2026, 1, 5), monto: 4021, anulado: true);
+      final i = interesPorCobro([segundo, anulado, primero], p);
+      expect(i[primero], closeTo(1000, 0.01));
+      expect(i[segundo], closeTo(697.90, 0.01));
+      expect(i[anulado], isNull);
     });
 
     test('6 meses; interés proporcional de las cuotas + la mora aparte', () {

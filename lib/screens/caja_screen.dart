@@ -6,6 +6,7 @@ import '../logic/cobradores.dart';
 import '../logic/gastos.dart';
 import '../logic/ruta.dart' show enlaceLugar;
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/formato_campos.dart' show soloNumeros;
@@ -99,12 +100,7 @@ class _CajaScreenState extends State<CajaScreen> {
       final hoy = DateTime.now();
       final cobros = await servicio.obtenerCobrosCaja(widget.prestamistaId,
           desde: DateTime(hoy.year - 1, hoy.month, hoy.day));
-      Map<String, Map<String, dynamic>> cierres = const {};
-      try {
-        cierres = await servicio.obtenerCierres(widget.prestamistaId);
-      } catch (_) {
-        // Sin la tabla de cierres (migración pendiente) la caja se ve igual.
-      }
+      final cierres = await servicio.obtenerCierres(widget.prestamistaId);
       final dias = cajaPorDia(cobros);
       // Días que solo tienen cierre (cobros de hace más de un año).
       final conCobros = dias.map((d) => claveDia(d.dia)).toSet();
@@ -119,10 +115,9 @@ class _CajaScreenState extends State<CajaScreen> {
           _error = null;
         });
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL CAJA: $e');
-      if (mounted) setState(() => _error = '$e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'CAJA');
+      if (mounted) setState(() => _error = mensajeError(e));
     }
   }
 
@@ -212,7 +207,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
       await SupabaseService.instance.marcarRevisado(pagoId);
       if (mounted) setState(() => _revisados.add(pagoId));
     } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo: $e')));
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo. ${mensajeError(e)}')));
     }
   }
 
@@ -227,10 +222,18 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
 
   Future<void> _cargarCobradores() async {
     final servicio = SupabaseService.instance;
-    final cobradores = await servicio.listarCobradores(widget.prestamistaId);
-    final entregas = cobradores.isEmpty
-        ? const <String, Entrega>{}
-        : await servicio.obtenerEntregas(widget.prestamistaId, _d.dia);
+    // Si falla, la caja del día se ve igual (sin la parte de cobradores).
+    final List<Cobrador> cobradores;
+    final Map<String, Entrega> entregas;
+    try {
+      cobradores = await servicio.listarCobradores(widget.prestamistaId);
+      entregas = cobradores.isEmpty
+          ? const <String, Entrega>{}
+          : await servicio.obtenerEntregas(widget.prestamistaId, _d.dia);
+    } catch (e, pila) {
+      registrarError(e, pila, 'COBRADORES EN CAJA');
+      return;
+    }
     if (mounted) {
       setState(() {
         _cobradores = cobradores;
@@ -395,8 +398,14 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
   }
 
   Future<void> _cargarGastos() async {
-    final gastos = await SupabaseService.instance
-        .obtenerGastos(widget.prestamistaId, desde: _d.dia, hasta: _d.dia);
+    var gastos = const <Gasto>[];
+    try {
+      gastos = await SupabaseService.instance
+          .obtenerGastos(widget.prestamistaId, desde: _d.dia, hasta: _d.dia);
+    } catch (e, pila) {
+      // La caja se ve igual, sin los gastos.
+      registrarError(e, pila, 'GASTOS EN CAJA');
+    }
     if (mounted) setState(() => _gastos = gastos);
   }
 
@@ -478,11 +487,10 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
     try {
       await accion();
       mensajero.showSnackBar(SnackBar(content: Text(listo)));
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL CIERRE: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'CIERRE');
       mensajero.showSnackBar(SnackBar(
-          content: Text('No se pudo. ¿Corriste la migración de cierres de caja? ($e)')));
+          content: Text('No se pudo. ${mensajeError(e)}')));
     } finally {
       if (mounted) setState(() => _trabajando = false);
     }

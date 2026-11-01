@@ -80,7 +80,7 @@ void main() {
     // Gráficas: el interés del cobro es lo ganado de verdad (los días de interés).
     final cobro = CobroGrafica(
         prestamoId: 'p', fecha: hoy, monto: s.monto, descuento: s.descuento);
-    expect(interesDelCobro(cobro, parteInteres(p)), closeTo(s.interesDias, 0.01));
+    expect(interesPorCobro([cobro], {'p': p})[cobro], closeTo(s.interesDias, 0.01));
 
     // Reportes: "Ya llevas" y la proyectada quedan en lo ganado de verdad.
     final g = gananciaDelMes([
@@ -88,5 +88,43 @@ void main() {
     ], hoy);
     expect(g.proyectada, closeTo(s.interesDias, 0.01));
     expect(g.yaLlevas, closeTo(s.interesDias, 0.01));
+  });
+
+  test('cuota vencida sin pagar: el capital no lleva el interés vencido (va aparte)', () {
+    final s = calcularSaldarHoy(prestamo(), const [], DateTime(2026, 2, 15));
+    expect(s.capital, closeTo(10000, 0.01));
+    expect(s.interesVencido, closeTo(1000, 0.01));
+    expect(s.dias, 15);
+    // Total igual que antes: lo que debe menos el interés futuro, más los días.
+    expect(s.monto, (s.balance - 697.90 - 365.10 + s.interesDias).roundToDouble());
+    expect(s.capital + s.interesVencido + s.interesDias + s.mora, closeTo(s.monto, 1));
+  });
+
+  test('las partes (capital, interés vencido, días, mora) suman el total a pagar', () {
+    final p = {...prestamo(), 'mora_diaria': 5};
+    final cuota = (p['cuota'] as num).toDouble();
+    for (final pagos in [
+      <PagoRegistrado>[],
+      [PagoRegistrado(fecha: DateTime(2026, 2, 1), monto: cuota)],
+      // Adelantó media cuota: baja el capital.
+      [PagoRegistrado(fecha: DateTime(2026, 2, 1), monto: cuota * 1.5)],
+      [PagoRegistrado(fecha: DateTime(2026, 2, 20), monto: 1000)],
+    ]) {
+      for (final dia in [DateTime(2026, 1, 20), DateTime(2026, 2, 25), DateTime(2026, 3, 10)]) {
+        final s = calcularSaldarHoy(p, pagos, dia);
+        expect(s.capital + s.interesVencido + s.interesDias + s.mora, closeTo(s.monto, 1),
+            reason: 'pagos ${pagos.map((x) => x.monto)} el $dia');
+      }
+    }
+  });
+
+  test('adelantó media cuota: ese adelanto es todo capital', () {
+    final p = prestamo();
+    final cuota = (p['cuota'] as num).toDouble();
+    final s = calcularSaldarHoy(
+        p, [PagoRegistrado(fecha: DateTime(2026, 2, 1), monto: cuota * 1.5)], DateTime(2026, 2, 10));
+    // Cuota 1: 1,000 de interés; lo demás (y la media cuota adelantada) baja el capital.
+    expect(s.capital, closeTo(10000 - (cuota - 1000) - cuota * 0.5, 0.01));
+    expect(s.interesVencido, 0);
   });
 }

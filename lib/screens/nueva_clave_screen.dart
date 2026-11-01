@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import 'login_screen.dart' show minimoClave;
@@ -48,9 +49,8 @@ class _NuevaClaveScreenState extends State<NuevaClaveScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Listo. Desde ahora entras con tu correo y esta contraseña.')));
       widget.alTerminar();
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL NUEVA CLAVE: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'NUEVA CLAVE');
       if (mounted) {
         setState(() {
           _guardando = false;

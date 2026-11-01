@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'errores.dart';
 import 'supabase_service.dart';
 
 /// Aviso de "hay una versión nueva" en la app de Android (mientras no esté
@@ -55,9 +56,8 @@ class VersionNueva {
           ],
         ),
       );
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL VERSION NUEVA: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'VERSION NUEVA');
     }
   }
 }

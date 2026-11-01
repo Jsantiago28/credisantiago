@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../logic/ruta.dart';
+import '../services/errores.dart';
 
 /// Dónde está el teléfono ahora, o null (con un aviso) si no se puede:
 /// sin permiso, GPS apagado o el navegador no lo permite.
@@ -25,10 +26,9 @@ Future<Punto?> miUbicacion(BuildContext context) async {
       timeLimit: const Duration(seconds: 20),
     );
     return (lat: pos.latitude, lng: pos.longitude);
-  } catch (e) {
-    // ignore: avoid_print
-    print('ERROR REAL UBICACION: $e');
-    avisar('No se pudo obtener la ubicación: $e');
+  } catch (e, pila) {
+    registrarError(e, pila, 'UBICACION');
+    avisar('No se pudo obtener la ubicación. Intenta otra vez.');
     return null;
   }
 }

@@ -42,8 +42,10 @@ String mensajeCobro({
     final mora = estado.moraPendiente > 0
         ? ' (incluye ${_rd(estado.moraPendiente)} de mora)'
         : '';
-    return '$saludo Tiene ${_rd(total)} pendiente$mora, con ${dia.diasAtraso} '
-        'día${dia.diasAtraso == 1 ? '' : 's'} de atraso. '
+    final dias = dia.diasAtraso == 0
+        ? '' // ya pagó las cuotas, solo debe la mora
+        : ', con ${dia.diasAtraso} día${dia.diasAtraso == 1 ? '' : 's'} de atraso';
+    return '$saludo Tiene ${_rd(total)} pendiente$mora$dias. '
         'Por favor póngase al día para que no siga subiendo la mora. ¡Gracias!';
   }
   if (dia.venceHoy > 0) {

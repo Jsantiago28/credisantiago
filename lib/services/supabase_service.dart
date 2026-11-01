@@ -16,6 +16,7 @@ import '../logic/gastos.dart' as gastos;
 import '../logic/historial.dart' as historial;
 import '../logic/importar.dart' as importar;
 import '../logic/validacion.dart' show soloDigitos;
+import 'errores.dart';
 import 'sin_conexion.dart';
 
 /// Configura estas dos constantes con los datos de tu proyecto Supabase
@@ -383,9 +384,8 @@ class SupabaseService {
     if (ruta == null) return null;
     try {
       return await client.storage.from(fotos.bucketFotos).download(ruta);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL BAJAR FOTO: $e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'BAJAR FOTO');
       return null;
     }
   }
@@ -492,10 +492,10 @@ class SupabaseService {
   /// Cuántos clientes tiene el prestamista en su lista (los archivados no
   /// cuentan para el plan).
   Future<int> contarClientes(String prestamistaId) async {
-    final filas = await _conArchivo(() => client
+    final filas = await client
         .from('clientes')
-        .select(_hayArchivoClientes ? 'id, archivado_en' : 'id')
-        .eq('prestamista_id', prestamistaId));
+        .select('id, archivado_en')
+        .eq('prestamista_id', prestamistaId);
     return filas.where((c) => !estaArchivado(c)).length;
   }
 
@@ -653,25 +653,12 @@ class SupabaseService {
   /// Lista corta de clientes (para buscar mientras se escribe). Trae
   /// también los archivados (con `archivado_en`), para avisar de repetidos.
   Future<List<Map<String, dynamic>>> listarClientes(String prestamistaId) {
-    return _conArchivo(() => client
+    return client
         .from('clientes')
-        .select('id, prestamista_id, nombre, cedula, telefono, direccion, foto_cara_url'
-            '')
+        .select('id, prestamista_id, nombre, cedula, telefono, direccion, foto_cara_url, '
+            'archivado_en')
         .eq('prestamista_id', prestamistaId)
-        .order('nombre'));
-  }
-
-  /// false si la base de datos todavía no tiene clientes.archivado_en.
-  bool _hayArchivoClientes = true;
-
-  Future<T> _conArchivo<T>(Future<T> Function() consulta) async {
-    try {
-      return await consulta();
-    } on PostgrestException catch (e) {
-      if (!_hayArchivoClientes || !e.message.contains('archivado_en')) rethrow;
-      _hayArchivoClientes = false;
-      return consulta();
-    }
+        .order('nombre');
   }
 
   /// Quita al cliente de la lista sin borrarlo: queda archivado con sus
@@ -692,7 +679,6 @@ class SupabaseService {
       }).eq('id', clienteId);
     } on PostgrestException catch (e) {
       if (e.message.contains('TIENE_PRESTAMO')) throw const ClienteConPrestamo();
-      if (e.message.contains('archivado_en')) throw const FaltaMigracionArchivo();
       rethrow;
     }
     final borradores = [
@@ -805,7 +791,8 @@ class SupabaseService {
     );
     final datos = {
       'monto': monto,
-      'tasa_interes': tasaInteresMensual,
+      // Redondeada como la usó calcularPlan (la columna tiene 2 decimales).
+      'tasa_interes': calc.redondearTasa(tasaInteresMensual),
       'cuota': plan.cuota,
       'cantidad_cuotas': plan.cantidadCuotas,
       'monto_total': plan.montoTotal,
@@ -843,52 +830,33 @@ class SupabaseService {
     return total;
   }
 
-  static const _columnasPagoSinCobrador =
-      'id, numero_recibo, monto, monto_mora, fecha_pago, anulado, anulado_en, motivo_anulacion';
-
-  /// Con el cobrador que lo hizo; sin él mientras falte la migración de
-  /// cobradores (para que la app siga funcionando).
-  bool _hayCobradorEnPagos = true;
-
-  /// false mientras falte la migración de saldar antes (pagos.descuento).
-  bool _hayDescuentoEnPagos = true;
-
-  /// false mientras falte la migración de cobrar sin señal (pagos.revisar).
-  bool _hayRevisarEnPagos = true;
-  String get _columnasPago => [
-        _columnasPagoSinCobrador,
-        if (_hayCobradorEnPagos) 'cobrador_id',
-        if (_hayDescuentoEnPagos) 'descuento',
-      ].join(', ');
-
-  Future<T> _conColumnasPago<T>(Future<T> Function() consulta) async {
-    while (true) {
-      try {
-        return await consulta();
-      } on PostgrestException catch (e) {
-        if (_hayCobradorEnPagos && e.message.contains('cobrador_id')) {
-          _hayCobradorEnPagos = false;
-        } else if (_hayDescuentoEnPagos && e.message.contains('descuento')) {
-          _hayDescuentoEnPagos = false;
-        } else if (_hayRevisarEnPagos &&
-            (e.message.contains('revisar') || e.message.contains('sin_conexion'))) {
-          _hayRevisarEnPagos = false;
-        } else {
-          rethrow;
-        }
-      }
-    }
-  }
+  /// Lo que se lee de cada cobro de un préstamo. `metodo` dice si es lo que
+  /// ya había pagado un cliente importado de Excel.
+  static const _columnasPago = 'id, numero_recibo, monto, monto_mora, fecha_pago, anulado, '
+      'anulado_en, motivo_anulacion, cobrador_id, descuento, metodo';
 
   /// Los pagos de un préstamo (también los anulados, marcados), con su
   /// fecha, cuánto fue a mora y su número de recibo.
   Future<List<calc.PagoRegistrado>> obtenerPagos(String prestamoId) async {
-    final filas = await _conColumnasPago(() => client
+    final filas = await client
         .from('pagos')
         .select(_columnasPago)
         .eq('prestamo_id', prestamoId)
-        .order('fecha_pago'));
+        .order('fecha_pago');
     return filas.map(calc.PagoRegistrado.desdeFila).toList();
+  }
+
+  /// Supabase entrega como mucho 1,000 filas por consulta: esto las pide por
+  /// páginas hasta traerlas todas. [consulta] debe venir ordenada.
+  Future<List<Map<String, dynamic>>> _todasLasFilas(
+      PostgrestTransformBuilder<PostgrestList> Function() consulta) async {
+    const pagina = 1000;
+    final filas = <Map<String, dynamic>>[];
+    while (true) {
+      final parte = await consulta().range(filas.length, filas.length + pagina - 1);
+      filas.addAll(parte);
+      if (parte.length < pagina) return filas;
+    }
   }
 
   /// Cuotas, mora y balance de un préstamo al día de hoy (ver
@@ -909,11 +877,15 @@ class SupabaseService {
     ({double lat, double lng})? ubicacion,
 
     /// Interés que se perdona al saldar antes de tiempo (ver
-    /// calc.calcularSaldarHoy). Solo el prestamista.
+    /// calc.calcularSaldarHoy). Solo el prestamista. Se vuelve a calcular
+    /// aquí: si el saldo cambió, falla con [SaldoCambio].
     double descuento = 0,
 
-    /// Cobro hecho sin señal que se sube ahora (ver SinConexion): su id
-    /// (para no guardarlo dos veces) y la hora del teléfono al cobrarlo. La
+    /// El id del cobro, puesto en el teléfono ANTES de mandarlo: si se
+    /// guardó pero no llegó la respuesta, al reintentarlo (o subirlo desde
+    /// la cola sin señal) la base de datos lo reconoce y no lo guarda dos
+    /// veces. Con [fechaSinConexion]: cobro hecho sin señal que se sube
+    /// ahora (ver SinConexion), con la hora del teléfono al cobrarlo. La
     /// base de datos lo revisa y lo marca si algo no cuadra.
     String? id,
     DateTime? fechaSinConexion,
@@ -924,16 +896,24 @@ class SupabaseService {
         .eq('id', prestamoId)
         .single();
     final pagos = await obtenerPagos(prestamoId);
-    // obtenerPagos ya revisó si existe la columna del descuento.
-    if (descuento > 0 && !_hayDescuentoEnPagos) throw const FaltaMigracionSaldar();
     final ahora = DateTime.now();
+    if (descuento > 0) {
+      // Saldar: se vuelve a calcular con los cobros de ahora mismo. Si
+      // alguien cobró mientras tanto (o cambió el día), el monto ya no es
+      // el que se le mostró al prestamista.
+      final s = calc.calcularSaldarHoy(prestamo, pagos, ahora);
+      if (s.monto < 1) throw const SaldoCubierto();
+      if ((s.monto - monto).abs() > 1) throw SaldoCambio(s.monto);
+      // Lo que se perdona es lo que falta para quedar saldado con este monto.
+      descuento = (s.balance - monto).clamp(0.0, double.infinity).toDouble();
+    }
     // Sin señal: se reparte con lo que había cobrado hasta la hora del cobro.
     final cuando = fechaSinConexion ?? ahora;
     final antes = [for (final p in pagos) if (!p.fecha.isAfter(cuando)) p];
     final reparto = calc.repartirPago(calc.estadoPrestamo(prestamo, antes, cuando), monto);
 
     // numero_recibo lo asigna la base de datos (trigger), por eso se lee de vuelta.
-    Future<Map<String, dynamic>> guardar(bool conUbicacion) => _conColumnasPago(() => client
+    final fila = await client
         .from('pagos')
         .insert({
           'prestamo_id': prestamoId,
@@ -948,21 +928,13 @@ class SupabaseService {
             'fecha_pago': fechaSinConexion.toUtc().toIso8601String(),
             'reloj_telefono': DateTime.now().toUtc().toIso8601String(),
           },
-          if (conUbicacion && ubicacion != null) ...{
+          if (ubicacion != null) ...{
             'lat': ubicacion.lat,
             'lng': ubicacion.lng,
           },
         })
         .select(_columnasPago)
-        .single());
-    Map<String, dynamic> fila;
-    try {
-      fila = await guardar(true);
-    } on PostgrestException catch (e) {
-      // Sin la migración del GPS todavía: el cobro se guarda sin ubicación.
-      if (ubicacion == null || !e.message.contains('lat')) rethrow;
-      fila = await guardar(false);
-    }
+        .single();
     final pago = calc.PagoRegistrado.desdeFila(fila);
 
     final despues = calc.estadoPrestamo(prestamo, [...pagos, pago], ahora);
@@ -1002,7 +974,8 @@ class SupabaseService {
   /// Cancela un préstamo creado por error. Solo si no tiene cobros válidos
   /// (si los tiene, primero hay que anularlos).
   Future<void> cancelarPrestamo(Map<String, dynamic> prestamo) async {
-    final pagos = calc.pagosValidos(await obtenerPagos(prestamo['id']));
+    final pagos =
+        calc.pagosValidos(await obtenerPagos(prestamo['id'])).where((p) => !p.esMarcaImportacion);
     if (pagos.isNotEmpty) {
       throw StateError('Tiene ${pagos.length} cobro(s). Anúlalos primero.');
     }
@@ -1032,20 +1005,14 @@ class SupabaseService {
   }
 
   /// Historial de cambios del cliente (lo anota la base de datos al
-  /// guardar). Vacío si falta correr la migración del historial.
+  /// guardar).
   Future<List<historial.CambioCliente>> obtenerHistorialCliente(String clienteId) async {
-    try {
-      final filas = await client
-          .from('clientes_historial')
-          .select('campo, antes, despues, created_at')
-          .eq('cliente_id', clienteId)
-          .order('created_at', ascending: false);
-      return filas.map(historial.CambioCliente.desdeFila).toList();
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL HISTORIAL: $e');
-      return const [];
-    }
+    final filas = await client
+        .from('clientes_historial')
+        .select('campo, antes, despues, created_at')
+        .eq('cliente_id', clienteId)
+        .order('created_at', ascending: false);
+    return filas.map(historial.CambioCliente.desdeFila).toList();
   }
 
   // ---------------------------------------------------------
@@ -1059,33 +1026,17 @@ class SupabaseService {
   /// Cobros del prestamista desde `desde` (también los anulados), con el
   /// nombre del cliente, para la caja por día.
   Future<List<caja.CobroCaja>> obtenerCobrosCaja(String prestamistaId, {DateTime? desde}) async {
-    Future<List<Map<String, dynamic>>> buscar() => _conColumnasPago(() {
-          var consulta = client
-              .from('pagos')
-              .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
-                  '${_hayCobradorEnPagos ? 'cobrador_id, ' : ''}'
-                  '${_hayRevisarEnPagos ? 'sin_conexion, revisar, ' : ''}'
-                  '${_hayGpsEnPagos ? 'lat, lng, ' : ''}prestamos(clientes(nombre))')
-              .eq('prestamista_id', prestamistaId);
-          if (desde != null) {
-            consulta = consulta.gte('fecha_pago', desde.toUtc().toIso8601String());
-          }
-          return consulta.order('fecha_pago', ascending: false);
-        });
-    List<Map<String, dynamic>> filas;
-    try {
-      filas = await buscar();
-    } on PostgrestException catch (e) {
-      // Sin la migración del GPS todavía: la caja se ve sin ubicaciones.
-      if (!_hayGpsEnPagos || !e.message.contains('lat')) rethrow;
-      _hayGpsEnPagos = false;
-      filas = await buscar();
+    var consulta = client
+        .from('pagos')
+        .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
+            'cobrador_id, sin_conexion, revisar, lat, lng, prestamos(clientes(nombre))')
+        .eq('prestamista_id', prestamistaId);
+    if (desde != null) {
+      consulta = consulta.gte('fecha_pago', desde.toUtc().toIso8601String());
     }
+    final filas = await consulta.order('fecha_pago', ascending: false);
     return filas.where(_noImportado).map(caja.CobroCaja.desdeFila).toList();
   }
-
-  /// false si la base de datos todavía no tiene pagos.lat / pagos.lng.
-  bool _hayGpsEnPagos = true;
 
   /// El prestamista revisó un cobro marcado (hecho sin señal): se quita la
   /// marca. El cobrador no puede (no tiene permiso de cambiar cobros).
@@ -1093,21 +1044,14 @@ class SupabaseService {
     await client.from('pagos').update({'revisar': null}).eq('id', pagoId);
   }
 
-  /// Entregas de los cobradores de un día, por cobrador. Vacío si falta la
-  /// migración de entregas.
+  /// Entregas de los cobradores de un día, por cobrador.
   Future<Map<String, caja.Entrega>> obtenerEntregas(String prestamistaId, DateTime dia) async {
-    try {
-      final filas = await client
-          .from('entregas_cobrador')
-          .select()
-          .eq('prestamista_id', prestamistaId)
-          .eq('fecha', caja.claveDia(dia));
-      return {for (final e in filas.map(caja.Entrega.desdeFila)) e.cobradorId: e};
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL ENTREGAS: $e');
-      return const {};
-    }
+    final filas = await client
+        .from('entregas_cobrador')
+        .select()
+        .eq('prestamista_id', prestamistaId)
+        .eq('fecha', caja.claveDia(dia));
+    return {for (final e in filas.map(caja.Entrega.desdeFila)) e.cobradorId: e};
   }
 
   /// Anota (o corrige) lo que un cobrador entregó ese día.
@@ -1131,30 +1075,45 @@ class SupabaseService {
   Future<caja.Entrega?> miEntregaDeHoy() async {
     final sesion = sesionCobrador;
     if (sesion == null) return null;
-    try {
-      final fila = await client
-          .from('entregas_cobrador')
-          .select()
-          .eq('cobrador_id', sesion.cobradorId)
-          .eq('fecha', caja.claveDia(DateTime.now()))
-          .maybeSingle();
-      return fila == null ? null : caja.Entrega.desdeFila(fila);
-    } catch (_) {
-      return null;
-    }
+    final fila = await client
+        .from('entregas_cobrador')
+        .select()
+        .eq('cobrador_id', sesion.cobradorId)
+        .eq('fecha', caja.claveDia(DateTime.now()))
+        .maybeSingle();
+    return fila == null ? null : caja.Entrega.desdeFila(fila);
   }
 
-  /// Cobros desde una fecha (también los anulados, marcados), para las
-  /// gráficas de Reportes.
+  /// Cobros desde una fecha (también los anulados e importados, marcados),
+  /// para las gráficas de Reportes. Trae además los cobros ANTERIORES de esos
+  /// mismos préstamos: la ganancia de cada cobro depende de lo que ya se
+  /// había pagado antes (ver graficas.interesPorCobro).
   Future<List<graficas.CobroGrafica>> obtenerCobrosGraficas(
       String prestamistaId, DateTime desde) async {
-    final filas = await _conColumnasPago(() => client
+    const columnas =
+        'id, prestamo_id, numero_recibo, monto, monto_mora, descuento, fecha_pago, anulado, metodo';
+    final desdeIso = desde.toUtc().toIso8601String();
+    final recientes = await _todasLasFilas(() => client
         .from('pagos')
-        .select('prestamo_id, monto, monto_mora, fecha_pago, anulado, metodo'
-            '${_hayDescuentoEnPagos ? ', descuento' : ''}')
+        .select(columnas)
         .eq('prestamista_id', prestamistaId)
-        .gte('fecha_pago', desde.toUtc().toIso8601String()));
-    return filas.where(_noImportado).map(graficas.CobroGrafica.desdeFila).toList();
+        .gte('fecha_pago', desdeIso)
+        .order('fecha_pago')
+        .order('id'));
+    final ids = {for (final f in recientes) f['prestamo_id'] as String}.toList();
+    final anteriores = <Map<String, dynamic>>[];
+    // De 100 en 100 préstamos, para que la dirección de la consulta no sea muy larga.
+    for (var i = 0; i < ids.length; i += 100) {
+      final grupo = ids.sublist(i, min(i + 100, ids.length));
+      anteriores.addAll(await _todasLasFilas(() => client
+          .from('pagos')
+          .select(columnas)
+          .inFilter('prestamo_id', grupo)
+          .lt('fecha_pago', desdeIso)
+          .order('fecha_pago')
+          .order('id')));
+    }
+    return [...anteriores, ...recientes].map(graficas.CobroGrafica.desdeFila).toList();
   }
 
   /// Cierres de caja guardados, por día ("2026-09-23" → fila).
@@ -1190,25 +1149,18 @@ class SupabaseService {
   // ---------------------------------------------------------
 
   /// Gastos desde `desde` (y hasta `hasta`, si se da), el más reciente
-  /// primero. Si la tabla no existe todavía (falta correr la migración),
-  /// devuelve vacío para que Reportes y la caja se vean igual.
+  /// primero.
   Future<List<gastos.Gasto>> obtenerGastos(String prestamistaId,
       {required DateTime desde, DateTime? hasta}) async {
-    try {
-      var consulta = client
-          .from('gastos')
-          .select()
-          .eq('prestamista_id', prestamistaId)
-          .gte('fecha', caja.claveDia(desde));
-      if (hasta != null) consulta = consulta.lte('fecha', caja.claveDia(hasta));
-      final filas =
-          await consulta.order('fecha', ascending: false).order('created_at', ascending: false);
-      return filas.map(gastos.Gasto.desdeFila).toList();
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GASTOS: $e');
-      return const [];
-    }
+    var consulta = client
+        .from('gastos')
+        .select()
+        .eq('prestamista_id', prestamistaId)
+        .gte('fecha', caja.claveDia(desde));
+    if (hasta != null) consulta = consulta.lte('fecha', caja.claveDia(hasta));
+    final filas =
+        await consulta.order('fecha', ascending: false).order('created_at', ascending: false);
+    return filas.map(gastos.Gasto.desdeFila).toList();
   }
 
   Future<void> agregarGasto(String prestamistaId, gastos.Gasto g) async {
@@ -1232,7 +1184,9 @@ class SupabaseService {
 
   /// Al entrar sin perfil de prestamista: si ese correo fue invitado como
   /// cobrador, lo amarra y deja lista [sesionCobrador]. Null si no es
-  /// cobrador (o si falta la migración de cobradores).
+  /// cobrador. Si algo falla (sin señal y sin nada guardado, o un error de
+  /// la base de datos) lanza el error: así nunca se manda a un cobrador a
+  /// registrar un negocio por un fallo pasajero.
   Future<cob.SesionCobrador?> entrarComoCobrador() async {
     sesionCobrador = null;
     cobradorSinPlan = null;
@@ -1240,44 +1194,33 @@ class SupabaseService {
       await client.rpc('aceptar_invitacion_cobrador');
       final filas = await client.rpc('mi_jefe') as List;
       if (filas.isEmpty) {
-        try {
-          cobradorSinPlan = await client.rpc('cobrador_sin_plan') as String?;
-        } catch (_) {
-          // Sin la migración de seguridad todavía.
-        }
+        cobradorSinPlan = await client.rpc('cobrador_sin_plan') as String?;
         return null;
       }
       final fila = Map<String, dynamic>.from(filas.first as Map);
       unawaited(SinConexion.guardarIdentidad('jefe', fila));
       return sesionCobrador = cob.SesionCobrador.desdeFila(fila);
-    } catch (e) {
+    } catch (e, pila) {
       // Sin señal en la app de Android: con lo guardado, para poder cobrar.
       if (SinConexion.disponible && SinConexion.esFaltaDeConexion(e)) {
         SinConexion.sinSenal.value = true;
         final guardado = await SinConexion.identidad('jefe');
         if (guardado != null) return sesionCobrador = cob.SesionCobrador.desdeFila(guardado);
       }
-      // ignore: avoid_print
-      print('ERROR REAL ENTRAR COMO COBRADOR: $e');
-      return null;
+      registrarError(e, pila, 'ENTRAR COMO COBRADOR');
+      rethrow;
     }
   }
 
   /// Los cobradores del prestamista, los activos primero.
   Future<List<cob.Cobrador>> listarCobradores(String prestamistaId) async {
-    try {
-      final filas = await client
-          .from('cobradores')
-          .select()
-          .eq('prestamista_id', prestamistaId)
-          .order('activo', ascending: false)
-          .order('created_at');
-      return filas.map(cob.Cobrador.desdeFila).toList();
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL COBRADORES: $e');
-      return const [];
-    }
+    final filas = await client
+        .from('cobradores')
+        .select()
+        .eq('prestamista_id', prestamistaId)
+        .order('activo', ascending: false)
+        .order('created_at');
+    return filas.map(cob.Cobrador.desdeFila).toList();
   }
 
   /// Convierte los errores de la base de datos en mensajes claros.
@@ -1332,8 +1275,10 @@ class SupabaseService {
   }
 
   /// Guarda un cliente del Excel y, si trae, su préstamo en la calle. Lo que
-  /// ya pagó se anota como un cobro "importado" del día del préstamo: cubre
-  /// las primeras cuotas y no cuenta como dinero de la caja.
+  /// ya pagó se anota como un cobro "importado" con la fecha de HOY (ver
+  /// importar.PrestamoImportado.cobroImportado): cubre las primeras cuotas,
+  /// no cuenta como dinero de la caja y el atraso de antes de importarlo no
+  /// genera mora.
   Future<void> importarCliente(String prestamistaId, importar.FilaImportada f) async {
     final cliente = await _conLimite(() => client
         .from('clientes')
@@ -1347,26 +1292,23 @@ class SupabaseService {
         .insert({...p.datos(), 'prestamista_id': prestamistaId, 'cliente_id': cliente['id']})
         .select('id')
         .single();
-    if (p.yaPago > 0) {
+    final cobro = p.cobroImportado(DateTime.now());
+    if (cobro != null) {
       await client.from('pagos').insert({
+        ...cobro,
         'prestamo_id': prestamo['id'],
         'prestamista_id': prestamistaId,
-        'monto': p.yaPago,
-        'monto_mora': 0,
-        'metodo': 'importado',
-        'fecha_pago':
-            DateTime(p.fecha.year, p.fecha.month, p.fecha.day, 12).toUtc().toIso8601String(),
       });
     }
   }
 
   /// Clientes con su cobrador, para repartir la ruta.
   Future<List<Map<String, dynamic>>> clientesParaRepartir(String prestamistaId) async {
-    final filas = await _conArchivo(() => client
+    final filas = await client
         .from('clientes')
-        .select('id, nombre, direccion, cobrador_id')
+        .select('id, nombre, direccion, cobrador_id, archivado_en')
         .eq('prestamista_id', prestamistaId)
-        .order('nombre'));
+        .order('nombre');
     return filas.where((c) => !estaArchivado(c)).toList();
   }
 
@@ -1389,44 +1331,30 @@ class SupabaseService {
   // GESTIONES Y ACUERDOS DE COBRO
   // ---------------------------------------------------------
 
-  /// Gestiones de un préstamo, la más reciente primero. Si la tabla no
-  /// existe todavía (falta correr la migración), devuelve vacío para que
-  /// el cobro siga funcionando.
+  /// Gestiones de un préstamo, la más reciente primero.
   Future<List<gest.Gestion>> obtenerGestiones(String prestamoId) async {
-    try {
-      final filas = await client
-          .from('gestiones')
-          .select()
-          .eq('prestamo_id', prestamoId)
-          .order('created_at', ascending: false);
-      return filas.map(gest.Gestion.desdeFila).toList();
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GESTIONES: $e');
-      return const [];
-    }
+    final filas = await client
+        .from('gestiones')
+        .select()
+        .eq('prestamo_id', prestamoId)
+        .order('created_at', ascending: false);
+    return filas.map(gest.Gestion.desdeFila).toList();
   }
 
   /// Gestiones de varios préstamos a la vez, agrupadas por préstamo (para
-  /// Inicio). Vacío si la tabla no existe todavía.
+  /// Inicio).
   Future<Map<String, List<gest.Gestion>>> _gestionesDe(List<String> prestamoIds) async {
     if (prestamoIds.isEmpty) return const {};
-    try {
-      final filas = await client
-          .from('gestiones')
-          .select()
-          .inFilter('prestamo_id', prestamoIds)
-          .order('created_at', ascending: false);
-      final porPrestamo = <String, List<gest.Gestion>>{};
-      for (final g in filas.map(gest.Gestion.desdeFila)) {
-        porPrestamo.putIfAbsent(g.prestamoId, () => []).add(g);
-      }
-      return porPrestamo;
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GESTIONES: $e');
-      return const {};
+    final filas = await client
+        .from('gestiones')
+        .select()
+        .inFilter('prestamo_id', prestamoIds)
+        .order('created_at', ascending: false);
+    final porPrestamo = <String, List<gest.Gestion>>{};
+    for (final g in filas.map(gest.Gestion.desdeFila)) {
+      porPrestamo.putIfAbsent(g.prestamoId, () => []).add(g);
     }
+    return porPrestamo;
   }
 
   /// Anota una gestión de cobro. Las gestiones no se editan ni se borran.
@@ -1589,61 +1517,67 @@ class PrestamoConDatos {
 }
 
 /// Ya existe un cliente con esa cédula para este prestamista.
-class ClienteRepetido implements Exception {
+class ClienteRepetido extends AvisoParaUsuario {
   final String nombre;
   /// El que tiene esa cédula está en "Clientes eliminados".
   final bool eliminado;
   const ClienteRepetido(this.nombre, {this.eliminado = false});
 
   @override
-  String toString() => eliminado
+  String get mensaje => eliminado
       ? 'Ya tienes un cliente con esa cédula: $nombre. Está en Clientes → Eliminados: restáuralo.'
       : 'Ya tienes un cliente con esa cédula: $nombre';
 }
 
 /// No se puede archivar: el cliente tiene un préstamo en la calle.
-class ClienteConPrestamo implements Exception {
+class ClienteConPrestamo extends AvisoParaUsuario {
   const ClienteConPrestamo();
 
   @override
-  String toString() =>
+  String get mensaje =>
       'Tiene un préstamo en la calle. Solo se puede eliminar cuando lo termine de pagar.';
 }
 
-/// Falta correr migracion_2026_10_18_saldar_antes.sql.
-class FaltaMigracionSaldar implements Exception {
-  const FaltaMigracionSaldar();
+/// Al saldar: mientras el prestamista miraba, el saldo cambió (otro cobro,
+/// o pasó la medianoche y subió la mora). Hay que volver a abrir Saldar.
+class SaldoCambio extends AvisoParaUsuario {
+  /// Lo que hay que pagar ahora para saldar.
+  final double montoNuevo;
+  const SaldoCambio(this.montoNuevo);
 
   @override
-  String toString() => 'Falta actualizar la base de datos (migración saldar_antes).';
+  String get mensaje =>
+      'El saldo cambió: ahora son RD\$${montoNuevo.round()}. Vuelve a abrir Saldar.';
 }
 
-/// Falta correr migracion_2026_10_18_archivar_clientes.sql.
-class FaltaMigracionArchivo implements Exception {
-  const FaltaMigracionArchivo();
+/// Al saldar: lo que ya pagó cubre todo lo que debe hoy (pagó de más por
+/// adelantado). No se guarda un cobro de cero.
+class SaldoCubierto extends AvisoParaUsuario {
+  const SaldoCubierto();
 
   @override
-  String toString() => 'Falta actualizar la base de datos (migración archivar_clientes).';
+  String get mensaje =>
+      'Lo que ya pagó alcanza para saldarlo hoy: no hay nada que cobrarle.';
 }
 
-/// El plan del prestamista no permite más clientes.
 /// El plan del prestamista no permite más cobradores.
-class LimiteCobradores implements Exception {
+class LimiteCobradores extends AvisoParaUsuario {
   final int limite;
   const LimiteCobradores(this.limite);
 
   @override
-  String toString() => limite == 0
+  String get mensaje => limite == 0
       ? 'Tu plan no incluye cobradores. Con el Básico tienes 1 y con el Pro, 3.'
       : 'Tu plan permite $limite cobrador(es). Mejora tu plan para agregar más.';
 }
 
-class LimitePlan implements Exception {
+/// El plan del prestamista no permite más clientes.
+class LimitePlan extends AvisoParaUsuario {
   final int limite;
   const LimitePlan(this.limite);
 
   @override
-  String toString() => limite == 0
+  String get mensaje => limite == 0
       ? 'Tu cuenta todavía no está aprobada.'
       : 'Llegaste al límite de tu plan ($limite clientes).';
 }

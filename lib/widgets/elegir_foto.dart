@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../services/errores.dart';
+
 /// Máximo que se acepta por foto (ya achicada). Las de iPhone recientes
 /// pueden pesar más de 5 MB aun convertidas.
 const maxBytesFoto = 10 * 1024 * 1024;
@@ -51,9 +53,8 @@ Future<Uint8List?> elegirFoto(
       return null;
     }
     return bytes;
-  } catch (e) {
-    // ignore: avoid_print
-    print('ERROR REAL ELEGIR FOTO: $e');
+  } catch (e, pila) {
+    registrarError(e, pila, 'ELEGIR FOTO');
     mensajero.showSnackBar(SnackBar(content: Text('No se pudo cargar la foto: $e')));
     return null;
   }
@@ -89,9 +90,8 @@ Future<List<Uint8List>> elegirVariasFotos(BuildContext context, {required int ma
           content: Text('$pesadas foto(s) pesan más de 10MB y no se agregaron.')));
     }
     return bytes;
-  } catch (e) {
-    // ignore: avoid_print
-    print('ERROR REAL ELEGIR FOTOS: $e');
+  } catch (e, pila) {
+    registrarError(e, pila, 'ELEGIR FOTOS');
     mensajero.showSnackBar(SnackBar(content: Text('No se pudieron cargar las fotos: $e')));
     return const [];
   }

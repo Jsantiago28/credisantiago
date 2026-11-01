@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/validacion.dart';
 import '../recibos/recibo_pdf.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/elegir_foto.dart';
@@ -118,10 +119,9 @@ class _MiReciboScreenState extends State<MiReciboScreen> {
       if (!mounted) return;
       mensajero.showSnackBar(const SnackBar(content: Text('Tu recibo quedó guardado')));
       Navigator.of(context).pop(true);
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL GUARDAR RECIBO: $e');
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'GUARDAR RECIBO');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo guardar. ${mensajeError(e)}')));
     } finally {
       if (mounted) setState(() => _guardando = false);
     }

@@ -4,6 +4,7 @@ import '../logic/caja.dart';
 import '../logic/cobradores.dart';
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
 import '../services/recordatorio.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../services/version_nueva.dart';
 import '../theme/app_theme.dart';
@@ -126,17 +127,20 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
     try {
       final servicio = SupabaseService.instance;
       final cobros = await servicio.misCobrosDeHoy();
-      final entrega = await servicio.miEntregaDeHoy();
+      // Si no se puede ver la entrega, la caja se ve igual (sin ella).
+      final entrega = await servicio.miEntregaDeHoy().catchError((Object e, StackTrace pila) {
+        registrarError(e, pila, 'MI ENTREGA');
+        return null;
+      });
       if (mounted) {
         setState(() {
           _cobros = cobros;
           _entrega = entrega;
         });
       }
-    } catch (e) {
-      // ignore: avoid_print
-      print('ERROR REAL MI CAJA: $e');
-      if (mounted) setState(() => _error = '$e');
+    } catch (e, pila) {
+      registrarError(e, pila, 'MI CAJA');
+      if (mounted) setState(() => _error = mensajeError(e));
     }
   }
 
