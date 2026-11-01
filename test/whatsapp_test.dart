@@ -99,6 +99,8 @@ void main() {
     test('saldado: agradece', () {
       final pagos = [PagoRegistrado(fecha: DateTime(2026, 9, 2, 9), monto: 12000)];
       expect(mensaje(pagos, DateTime(2026, 9, 3)), contains('Su préstamo está saldado'));
+      // Y lo invita a volver.
+      expect(mensaje(pagos, DateTime(2026, 9, 3)), contains('necesita otro préstamo'));
     });
   });
 }

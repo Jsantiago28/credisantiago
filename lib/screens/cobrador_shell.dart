@@ -173,11 +173,11 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
                             Text('COBRASTE HOY',
                                 style: TextStyle(
                                     color: AppColors.green,
-                                    fontSize: 11,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w700)),
                             Text(rd(dia.total),
                                 style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
-                            Text('${dia.cantidad} cobro(s) · esto es lo que entregas',
+                            Text('${plural(dia.cantidad, 'cobro', 'cobros')} · esto es lo que entregas',
                                 style: TextStyle(color: AppColors.grey)),
                             if (dia.mora > 0)
                               Text('De eso, mora: ${rd(dia.mora)}',

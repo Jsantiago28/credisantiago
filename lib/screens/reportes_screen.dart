@@ -1,11 +1,13 @@
 import 'package:excel/excel.dart' hide Border;
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../archivos/archivos.dart';
 import '../logic/caja.dart';
 import '../logic/calculo_prestamo.dart';
 import '../logic/gastos.dart';
 import '../logic/gestiones.dart' show Gestion;
-import '../logic/graficas.dart' show gananciaPorMes;
+import '../logic/graficas.dart' show gananciaPorMes, prestadoVsCobrado;
+import '../logic/whatsapp.dart';
 import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -15,6 +17,7 @@ import 'caja_screen.dart';
 import 'cliente_detalle_screen.dart';
 import 'gastos_screen.dart';
 import 'graficas_screen.dart';
+import 'volver_a_prestar_screen.dart';
 
 /// Pantalla de Reportes (Fase 3).
 /// La descarga de Excel usa lib/archivos/: en la web baja el archivo y en el
@@ -37,6 +40,10 @@ class _ReportesScreenState extends State<ReportesScreen> {
 
   /// Ganancia real de este mes (interés + mora − gastos); null mientras carga.
   ({double interes, double mora, double gastos, double real})? _real;
+
+  /// Lo cobrado este mes (cuotas + mora, sin anulados ni importados); null
+  /// si no se pudo cargar.
+  double? _cobradoMes;
 
   @override
   void initState() {
@@ -109,11 +116,46 @@ class _ReportesScreenState extends State<ReportesScreen> {
       final g = gananciaPorMes(cobros, {for (final p in prestamos) p['id'] as String: p}, hoy,
               meses: 1)
           .single;
+      _cobradoMes = prestadoVsCobrado(prestamos, cobros, hoy, meses: 1).single.cobrado;
       final gastos = await servicio.obtenerGastos(widget.prestamistaId, desde: mes);
       return gananciaReal(interes: g.interes, mora: g.mora, gastos: totalGastos(gastos));
     } catch (e, pila) {
       registrarError(e, pila, 'GANANCIA REAL');
       return null;
+    }
+  }
+
+  /// Arma el resumen de este mes y abre WhatsApp para mandárselo a quien
+  /// uno elija (sin número).
+  Future<void> _compartirResumen({required double ganancia, required double mora}) async {
+    final mensajero = ScaffoldMessenger.of(context);
+    final prestamos = _prestamos ?? const [];
+    final hoy = DateTime.now();
+    String negocio = '';
+    try {
+      negocio = ((await SupabaseService.instance.perfilDelNegocio())?['nombre'] as String?) ?? '';
+    } catch (e, pila) {
+      registrarError(e, pila, 'RESUMEN NEGOCIO'); // sin nombre, el resumen sale igual
+    }
+    final texto = mensajeResumenMes(
+      negocio: negocio,
+      mes: DateTime(hoy.year, hoy.month),
+      prestado: prestadoVsCobrado(prestamos, const [], hoy, meses: 1).single.prestado,
+      cobrado: _cobradoMes ?? 0,
+      ganancia: ganancia,
+      moraCobrada: mora,
+      enLaCalle: prestamos
+          .where((p) => p['estado'] == 'en_calle')
+          .fold<double>(0, (s, p) => s + ((p['balance'] as num?)?.toDouble() ?? 0)),
+      atrasados: prestamos.where((p) => (_hoy(p)?.atrasado ?? 0) > 0).length,
+    );
+    try {
+      if (!await launchUrl(enlaceCompartirWhatsApp(texto), mode: LaunchMode.externalApplication)) {
+        mensajero.showSnackBar(const SnackBar(content: Text('No se pudo abrir WhatsApp.')));
+      }
+    } catch (e, pila) {
+      registrarError(e, pila, 'COMPARTIR RESUMEN');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo abrir WhatsApp. ${mensajeError(e)}')));
     }
   }
 
@@ -420,6 +462,15 @@ class _ReportesScreenState extends State<ReportesScreen> {
             _tarjetaGanancia(ganancia, anterior, moraDelMes),
             const SizedBox(height: 12),
             _tarjetaGananciaReal(),
+            OutlinedButton.icon(
+              onPressed: () => _compartirResumen(
+                ganancia: _real == null ? ganancia.yaLlevas + moraDelMes : _real!.interes + _real!.mora,
+                mora: _real?.mora ?? moraDelMes,
+              ),
+              icon: const Icon(Icons.share_rounded),
+              label: const Text('Compartir resumen del mes'),
+            ),
+            const SizedBox(height: 12),
             Panel(
               borde: AppColors.green.withValues(alpha: 0.5),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -454,7 +505,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   child: Text('No han pagado hoy',
                       style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
                 ),
-                Pildora('${atrasados.length} cliente(s)'),
+                Pildora(plural(atrasados.length, 'cliente', 'clientes')),
               ],
             ),
             const SizedBox(height: 12),
@@ -534,7 +585,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                   children: [
                     Text('GANANCIA PROYECTADA ESTE MES',
                         style: TextStyle(
-                            color: AppColors.green, fontSize: 11, fontWeight: FontWeight.w700)),
+                            color: AppColors.green, fontSize: 12, fontWeight: FontWeight.w700)),
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(rd(g.proyectada),
@@ -606,7 +657,18 @@ class _ReportesScreenState extends State<ReportesScreen> {
             Pildora('$esteMes este mes'),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => VolverAPrestarScreen(prestamistaId: widget.prestamistaId),
+            )),
+            icon: const Icon(Icons.replay_rounded, size: 18),
+            label: const Text('Pagaron todo y no tienen préstamo'),
+          ),
+        ),
+        const SizedBox(height: 4),
         if (saldados.isEmpty)
           const Vacio(
               icono: Icons.verified_rounded,
@@ -710,7 +772,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 Text(
                   '${rd(p['balance'] as num)} • '
-                  '${dias > 0 ? '$dias día(s) atrasado' : atrasado ? 'debe mora' : 'vence hoy'}'
+                  '${dias > 0 ? '${plural(dias, 'día', 'días')} atrasado' : atrasado ? 'debe mora' : 'vence hoy'}'
                   '${mora > 0 ? ' • mora ${rd(mora)}' : ''}',
                   style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
