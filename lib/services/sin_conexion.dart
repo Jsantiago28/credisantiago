@@ -33,7 +33,10 @@ class SinConexion {
   static FlutterSecureStorage _almacen = const FlutterSecureStorage();
 
   @visibleForTesting
-  static set almacenParaPruebas(FlutterSecureStorage almacen) => _almacen = almacen;
+  static set almacenParaPruebas(FlutterSecureStorage almacen) {
+    _almacen = almacen;
+    _ultimaRuta = null;
+  }
 
   /// Cobros guardados en el teléfono que todavía no suben.
   static final pendientes = ValueNotifier<int>(0);
@@ -84,10 +87,12 @@ class SinConexion {
   /// Guarda (o borra, si [valor] es null). Con [estricto] (la cola de
   /// cobros, que es dinero) un fallo se lanza, para que la app no diga
   /// "guardado" si no se guardó; lo demás (ruta, identidad) se puede perder.
-  static Future<void> _escribir(String que, Object? valor, {bool estricto = false}) async {
+  /// Devuelve si se guardó.
+  static Future<bool> _escribir(String que, Object? valor, {bool estricto = false}) async {
+    if (que == 'ruta' && valor == null) _ultimaRuta = null;
     if (!disponible || _uid == null) {
       if (estricto) throw StateError('No se puede guardar en este teléfono');
-      return;
+      return false;
     }
     try {
       if (valor == null) {
@@ -95,9 +100,11 @@ class SinConexion {
       } else {
         await _almacen.write(key: _clave(que), value: jsonEncode(valor));
       }
+      return true;
     } catch (e, pila) {
       registrarError(e, pila, 'GUARDAR SIN CONEXION');
       if (estricto) rethrow;
+      return false;
     }
   }
 
@@ -111,14 +118,34 @@ class SinConexion {
     return v is Map ? Map<String, dynamic>.from(v) : null;
   }
 
-  /// Guarda la ruta que se acaba de cargar con señal.
-  static Future<void> guardarRuta(List<PrestamoConDatos> cartera) async {
+  /// Cuánto puede esperar la ruta guardada si no cambió nada.
+  static const _refrescoRuta = Duration(minutes: 3);
+
+  /// Lo último que se guardó de la ruta en este teléfono (para no cifrar y
+  /// reescribir lo mismo cada vez que carga el Inicio).
+  static ({String? uid, String cartera, DateTime cuando})? _ultimaRuta;
+
+  /// Guarda la ruta que se acaba de cargar con señal. Si es igual a la que
+  /// se guardó hace menos de [_refrescoRuta], no se vuelve a escribir.
+  static Future<void> guardarRuta(List<PrestamoConDatos> cartera, {DateTime? ahora}) async {
     rutaGuardadaDe.value = null;
     sinSenal.value = false;
-    await _escribir('ruta', {
-      'guardada': DateTime.now().toUtc().toIso8601String(),
-      'cartera': [for (final d in cartera) rutaAFila(d)],
+    final momento = ahora ?? DateTime.now();
+    final filas = [for (final d in cartera) rutaAFila(d)];
+    final texto = jsonEncode(filas);
+    final ultima = _ultimaRuta;
+    if (ultima != null &&
+        ultima.uid == _uid &&
+        ultima.cartera == texto &&
+        momento.difference(ultima.cuando).abs() < _refrescoRuta) {
+      return;
+    }
+    _ultimaRuta = null;
+    final guardo = await _escribir('ruta', {
+      'guardada': momento.toUtc().toIso8601String(),
+      'cartera': filas,
     });
+    if (guardo) _ultimaRuta = (uid: _uid, cartera: texto, cuando: momento);
   }
 
   /// La ruta guardada, o null si no hay o ya venció (y entonces se borra).

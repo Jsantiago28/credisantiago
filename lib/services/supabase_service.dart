@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../logic/archivo_clientes.dart';
@@ -408,13 +408,93 @@ class SupabaseService {
     await client.from('solicitudes').insert(data);
   }
 
-  /// Stream en tiempo real de las solicitudes nuevas del prestamista logueado.
+  /// Las solicitudes nuevas del prestamista logueado, en vivo (la más
+  /// reciente primero). Antes se escuchaban TODAS las solicitudes de la
+  /// historia (con fotos e ingresos) y se filtraban en el teléfono; ahora la
+  /// conexión en vivo solo avisa que algo cambió y se vuelven a pedir solo
+  /// las que siguen nuevas. No se usa `.stream()` con `estado = nueva`: al
+  /// aprobar o rechazar, la fila deja de cumplir el filtro y el aviso no
+  /// llega, así que se quedaría pegada en la lista.
   Stream<List<Map<String, dynamic>>> solicitudesNuevasStream(String prestamistaId) {
-    return client
-        .from('solicitudes')
-        .stream(primaryKey: ['id'])
-        .eq('prestamista_id', prestamistaId)
-        .order('created_at');
+    return _avisosDeCambios('solicitudes', prestamistaId)
+        .asyncMap((_) => _solicitudesNuevas(prestamistaId));
+  }
+
+  /// Las solicitudes que siguen nuevas, la más reciente primero.
+  Future<List<Map<String, dynamic>>> _solicitudesNuevas(String prestamistaId) =>
+      _todasLasFilas(() => client
+          .from('solicitudes')
+          .select()
+          .eq('prestamista_id', prestamistaId)
+          .eq('estado', 'nueva')
+          .order('created_at', ascending: false)
+          .order('id'));
+
+  /// Para que cada conexión en vivo tenga su propio nombre.
+  static int _canales = 0;
+
+  /// Avisa (sin traer filas) cuando cambia algo en [tabla] para el
+  /// prestamista: una vez al conectarse (y al reconectarse, por si se perdió
+  /// algo) y después por cada cambio. Los cambios seguidos se juntan en uno
+  /// solo ([espera]) para no recargar 20 veces por un mismo cobro.
+  Stream<void> _avisosDeCambios(String tabla, String prestamistaId,
+      {Duration espera = const Duration(milliseconds: 700)}) {
+    late StreamController<void> avisos;
+    RealtimeChannel? canal;
+    Timer? pendiente;
+
+    void avisar() {
+      pendiente?.cancel();
+      pendiente = null;
+      if (!avisos.isClosed) avisos.add(null);
+    }
+
+    avisos = StreamController<void>(
+      onListen: () {
+        canal = client
+            .channel('avisos_${tabla}_${prestamistaId}_${_canales++}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: tabla,
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'prestamista_id',
+                value: prestamistaId,
+              ),
+              callback: (_) {
+                pendiente?.cancel();
+                pendiente = Timer(espera, avisar);
+              },
+            )
+            .subscribe((estado, [error]) {
+          switch (estado) {
+            case RealtimeSubscribeStatus.subscribed:
+              avisar();
+            case RealtimeSubscribeStatus.timedOut:
+            case RealtimeSubscribeStatus.channelError:
+              if (!avisos.isClosed) {
+                avisos.addError(RealtimeSubscribeException(estado, error));
+              }
+            case RealtimeSubscribeStatus.closed:
+              break;
+          }
+        });
+      },
+      onCancel: () async {
+        pendiente?.cancel();
+        final c = canal;
+        canal = null;
+        if (c != null) {
+          try {
+            await client.removeChannel(c);
+          } catch (e, pila) {
+            registrarError(e, pila, 'CERRAR AVISOS EN VIVO');
+          }
+        }
+      },
+    );
+    return avisos.stream;
   }
 
   Future<void> aprobarSolicitud(Map<String, dynamic> solicitud) async {
@@ -652,13 +732,16 @@ class SupabaseService {
 
   /// Lista corta de clientes (para buscar mientras se escribe). Trae
   /// también los archivados (con `archivado_en`), para avisar de repetidos.
+  /// Solo columnas livianas, y por páginas: pasados los 1,000 clientes
+  /// Supabase cortaba la lista sin avisar y un repetido se colaba.
   Future<List<Map<String, dynamic>>> listarClientes(String prestamistaId) {
-    return client
+    return _todasLasFilas(() => client
         .from('clientes')
         .select('id, prestamista_id, nombre, cedula, telefono, direccion, foto_cara_url, '
             'archivado_en')
         .eq('prestamista_id', prestamistaId)
-        .order('nombre');
+        .order('nombre')
+        .order('id'));
   }
 
   /// Quita al cliente de la lista sin borrarlo: queda archivado con sus
@@ -809,26 +892,19 @@ class SupabaseService {
     await client.from('prestamos').update(datos).eq('id', prestamoId);
   }
 
-  /// Stream en tiempo real de los préstamos "en la calle" del prestamista.
-  Stream<List<Map<String, dynamic>>> prestamosEnCalleStream(String prestamistaId) {
-    return client
-        .from('prestamos')
-        .stream(primaryKey: ['id'])
-        .eq('prestamista_id', prestamistaId)
-        .order('proximo_pago');
-  }
-
-  /// Suma el BALANCE real (cuotas + mora, menos lo ya pagado) de todos los
-  /// préstamos "en la calle" — no el monto prestado original, que no baja
-  /// nunca aunque el cliente vaya pagando.
-  Future<double> obtenerBalanceTotalEnCalle(
-      List<Map<String, dynamic>> prestamosEnCalle) async {
-    double total = 0;
-    for (final p in prestamosEnCalle) {
-      total += (await obtenerEstado(p)).balance;
-    }
-    return total;
-  }
+  /// Avisa cuando cambia algún préstamo del prestamista (nuevo, cobrado,
+  /// saldado): una vez al conectarse y después por cada cambio, ya
+  /// agrupados (ver [_avisosDeCambios]). No trae filas: antes se bajaban
+  /// TODOS los préstamos de la historia solo para saber que algo cambió; el
+  /// que escucha recarga con [obtenerCartera].
+  ///
+  /// No se filtra por `estado = en_calle`: al saldarse, el préstamo deja de
+  /// cumplir el filtro y ese aviso (el más importante) no llegaría.
+  ///
+  /// El que escucha debe ignorar una recarga vieja que termine después de
+  /// una nueva (un número de turno), porque dos recargas pueden cruzarse.
+  Stream<void> prestamosEnCalleStream(String prestamistaId) =>
+      _avisosDeCambios('prestamos', prestamistaId);
 
   /// Lo que se lee de cada cobro de un préstamo. `metodo` dice si es lo que
   /// ya había pagado un cliente importado de Excel.
@@ -849,11 +925,18 @@ class SupabaseService {
   /// Supabase entrega como mucho 1,000 filas por consulta: esto las pide por
   /// páginas hasta traerlas todas. [consulta] debe venir ordenada.
   Future<List<Map<String, dynamic>>> _todasLasFilas(
-      PostgrestTransformBuilder<PostgrestList> Function() consulta) async {
-    const pagina = 1000;
+          PostgrestTransformBuilder<PostgrestList> Function() consulta) =>
+      juntarPaginas((desde, hasta) => consulta().range(desde, hasta));
+
+  /// Pide páginas de [pagina] filas (de `desde` a `hasta`, ambas incluidas)
+  /// hasta que una venga incompleta, y las junta.
+  @visibleForTesting
+  static Future<List<Map<String, dynamic>>> juntarPaginas(
+      Future<List<Map<String, dynamic>>> Function(int desde, int hasta) pedir,
+      {int pagina = 1000}) async {
     final filas = <Map<String, dynamic>>[];
     while (true) {
-      final parte = await consulta().range(filas.length, filas.length + pagina - 1);
+      final parte = await pedir(filas.length, filas.length + pagina - 1);
       filas.addAll(parte);
       if (parte.length < pagina) return filas;
     }
@@ -1030,17 +1113,20 @@ class SupabaseService {
   static bool _noImportado(Map<String, dynamic> fila) => fila['metodo'] != 'importado';
 
   /// Cobros del prestamista desde `desde` (también los anulados), con el
-  /// nombre del cliente, para la caja por día.
+  /// nombre del cliente, para la caja por día. Por páginas: un año de cobros
+  /// pasa fácil de 1,000 filas y Supabase cortaba sin avisar.
   Future<List<caja.CobroCaja>> obtenerCobrosCaja(String prestamistaId, {DateTime? desde}) async {
-    var consulta = client
-        .from('pagos')
-        .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
-            'cobrador_id, sin_conexion, revisar, lat, lng, prestamos(clientes(nombre))')
-        .eq('prestamista_id', prestamistaId);
-    if (desde != null) {
-      consulta = consulta.gte('fecha_pago', desde.toUtc().toIso8601String());
-    }
-    final filas = await consulta.order('fecha_pago', ascending: false);
+    final filas = await _todasLasFilas(() {
+      var consulta = client
+          .from('pagos')
+          .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
+              'cobrador_id, sin_conexion, revisar, lat, lng, prestamos(clientes(nombre))')
+          .eq('prestamista_id', prestamistaId);
+      if (desde != null) {
+        consulta = consulta.gte('fecha_pago', desde.toUtc().toIso8601String());
+      }
+      return consulta.order('fecha_pago', ascending: false).order('id');
+    });
     return filas.where(_noImportado).map(caja.CobroCaja.desdeFila).toList();
   }
 
@@ -1347,22 +1433,6 @@ class SupabaseService {
     return filas.map(gest.Gestion.desdeFila).toList();
   }
 
-  /// Gestiones de varios préstamos a la vez, agrupadas por préstamo (para
-  /// Inicio).
-  Future<Map<String, List<gest.Gestion>>> _gestionesDe(List<String> prestamoIds) async {
-    if (prestamoIds.isEmpty) return const {};
-    final filas = await client
-        .from('gestiones')
-        .select()
-        .inFilter('prestamo_id', prestamoIds)
-        .order('created_at', ascending: false);
-    final porPrestamo = <String, List<gest.Gestion>>{};
-    for (final g in filas.map(gest.Gestion.desdeFila)) {
-      porPrestamo.putIfAbsent(g.prestamoId, () => []).add(g);
-    }
-    return porPrestamo;
-  }
-
   /// Anota una gestión de cobro. Las gestiones no se editan ni se borran.
   Future<gest.Gestion> registrarGestion({
     required Map<String, dynamic> prestamo,
@@ -1392,24 +1462,28 @@ class SupabaseService {
 
   /// Todos los préstamos en la calle con su cliente y sus pagos: es lo que
   /// necesita el tablero de Inicio para calcular cobros del día y atrasos.
+  ///
+  /// Una sola consulta (cliente, pagos y gestiones van anidados), por
+  /// páginas de 1,000 préstamos. Antes eran 2 consultas por préstamo: unas
+  /// 600 para 300 préstamos, y se repetían con cada cambio en vivo. Los
+  /// permisos (RLS) se aplican igual a lo anidado: el cobrador solo ve lo suyo.
   Future<List<PrestamoConDatos>> obtenerCartera(String prestamistaId) async {
-    final prestamos = await client
+    final filas = await _todasLasFilas(() => client
         .from('prestamos')
-        .select()
+        .select('*, clientes($columnasClienteCartera), pagos($_columnasPago), gestiones(*)')
         .eq('prestamista_id', prestamistaId)
-        .eq('estado', 'en_calle');
-    final porPrestamo = await _gestionesDe([for (final p in prestamos) p['id'] as String]);
-    return Future.wait(prestamos.map((p) async {
-      final cliente = await client
-          .from('clientes')
-          .select('nombre, direccion, telefono, foto_cara_url, lat, lng')
-          .eq('id', p['cliente_id'])
-          .maybeSingle();
-      final pagos = await obtenerPagos(p['id']);
-      return PrestamoConDatos(
-          prestamo: p, cliente: cliente, pagos: pagos, gestiones: porPrestamo[p['id']] ?? const []);
-    }));
+        .eq('estado', 'en_calle')
+        .order('created_at')
+        .order('id'));
+    return filas.map(PrestamoConDatos.desdeFilaAnidada).toList();
   }
+
+  /// Lo que la cartera lee del cliente de cada préstamo.
+  static const columnasClienteCartera = 'nombre, direccion, telefono, foto_cara_url, lat, lng';
+
+  /// Lo que el reporte lee del cliente de cada préstamo.
+  static const columnasClienteReporte =
+      'nombre, telefono, direccion, jefe_nombre, jefe_telefono, ref1_nombre, ref1_telefono';
 
   Future<void> cerrarSesion() async {
     // La ruta guardada en el teléfono se borra; los cobros sin subir no.
@@ -1440,59 +1514,64 @@ class SupabaseService {
   /// Trae todos los préstamos (en la calle o pagados) junto con el nombre
   /// y teléfono del cliente, y cuánto se ha pagado de cada uno. Es la
   /// base para la pantalla de Reportes y para el Excel.
+  ///
+  /// Una sola consulta (cliente y pagos anidados), por páginas de 1,000
+  /// préstamos. Antes eran 2 consultas por préstamo, una tras otra (unas
+  /// 1,600 para 800 préstamos, incluidos los ya pagados).
   Future<List<Map<String, dynamic>>> obtenerReportePrestamos(
       String prestamistaId) async {
-    final prestamos = await client
+    final filas = await _todasLasFilas(() => client
         .from('prestamos')
-        .select()
+        .select('*, clientes($columnasClienteReporte), pagos($_columnasPago)')
         .eq('prestamista_id', prestamistaId)
-        .inFilter('estado', ['en_calle', 'pagado', 'atrasado']);
+        .inFilter('estado', ['en_calle', 'pagado', 'atrasado'])
+        .order('created_at')
+        .order('id'));
+    final hoy = DateTime.now();
+    return [for (final f in filas) filaDeReporte(f, hoy)];
+  }
 
-    final resultado = <Map<String, dynamic>>[];
-    for (final p in prestamos) {
-      final cliente = await client
-          .from('clientes')
-          .select('nombre, telefono, direccion, jefe_nombre, jefe_telefono, '
-              'ref1_nombre, ref1_telefono')
-          .eq('id', p['cliente_id'])
-          .maybeSingle();
-      final pagos = await obtenerPagos(p['id']);
-      final hoy = DateTime.now();
-      final estado = calc.estadoPrestamo(p, pagos, hoy);
-      final proximo = estado.proximoPago;
+  /// Una fila del reporte a partir de un préstamo con su cliente y sus
+  /// pagos anidados (ver [obtenerReportePrestamos]).
+  static Map<String, dynamic> filaDeReporte(Map<String, dynamic> fila, DateTime hoy) {
+    final datos = PrestamoConDatos.desdeFilaAnidada(fila);
+    final p = datos.prestamo;
+    final cliente = datos.cliente;
+    final pagos = datos.pagos;
+    final estado = calc.estadoPrestamo(p, pagos, hoy);
+    final proximo = estado.proximoPago;
+    final validos = calc.pagosValidos(pagos);
 
-      resultado.add({
-        ...p,
-        'cliente_nombre': cliente?['nombre'] ?? '',
-        'cliente_telefono': cliente?['telefono'] ?? '',
-        'cliente_direccion': cliente?['direccion'] ?? '',
-        'cliente_jefe': cliente?['jefe_nombre'] ?? '',
-        'cliente_jefe_telefono': cliente?['jefe_telefono'] ?? '',
-        'cliente_ref1': cliente?['ref1_nombre'] ?? '',
-        'cliente_ref1_telefono': cliente?['ref1_telefono'] ?? '',
-        'monto_total': estado.montoTotal,
-        // Solo lo que fue a cuotas (capital + interés), sin mora.
-        'total_pagado': estado.cobradoCuotas,
-        // Interés perdonado al saldar antes (no es dinero recibido).
-        'total_descuento': estado.descuentos,
-        'mora_cobrada': estado.moraCobrada,
-        'mora_cobrada_mes': calc.moraCobradaEnMes(pagos, hoy),
-        // Día del último cobro: para un préstamo pagado, es cuando se saldó.
-        'fecha_ultimo_pago': calc.pagosValidos(pagos).isEmpty
-            ? null
-            : calc.pagosValidos(pagos).map((x) => x.fecha).fold<DateTime?>(
-                null, (a, b) => a == null || b.isAfter(a) ? b : a),
-        'mora_pendiente': estado.moraPendiente,
-        // Lo que debe en total: cuotas + mora.
-        'balance': estado.balance,
-        // El estado completo, para la gráfica de la cartera.
-        'estado_calculado': estado,
-        // Desde el cronograma, no desde la columna: préstamos cobrados antes
-        // de que registrarPago la actualizara la tienen desfasada.
-        if (proximo != null) 'proximo_pago': calc.fechaSql(proximo),
-      });
-    }
-    return resultado;
+    return {
+      ...p,
+      'cliente_nombre': cliente?['nombre'] ?? '',
+      'cliente_telefono': cliente?['telefono'] ?? '',
+      'cliente_direccion': cliente?['direccion'] ?? '',
+      'cliente_jefe': cliente?['jefe_nombre'] ?? '',
+      'cliente_jefe_telefono': cliente?['jefe_telefono'] ?? '',
+      'cliente_ref1': cliente?['ref1_nombre'] ?? '',
+      'cliente_ref1_telefono': cliente?['ref1_telefono'] ?? '',
+      'monto_total': estado.montoTotal,
+      // Solo lo que fue a cuotas (capital + interés), sin mora.
+      'total_pagado': estado.cobradoCuotas,
+      // Interés perdonado al saldar antes (no es dinero recibido).
+      'total_descuento': estado.descuentos,
+      'mora_cobrada': estado.moraCobrada,
+      'mora_cobrada_mes': calc.moraCobradaEnMes(pagos, hoy),
+      // Día del último cobro: para un préstamo pagado, es cuando se saldó.
+      'fecha_ultimo_pago': validos.isEmpty
+          ? null
+          : validos.map((x) => x.fecha).fold<DateTime?>(
+              null, (a, b) => a == null || b.isAfter(a) ? b : a),
+      'mora_pendiente': estado.moraPendiente,
+      // Lo que debe en total: cuotas + mora.
+      'balance': estado.balance,
+      // El estado completo, para la gráfica de la cartera.
+      'estado_calculado': estado,
+      // Desde el cronograma, no desde la columna: préstamos cobrados antes
+      // de que registrarPago la actualizara la tienen desfasada.
+      if (proximo != null) 'proximo_pago': calc.fechaSql(proximo),
+    };
   }
 }
 
@@ -1511,6 +1590,35 @@ class PrestamoConDatos {
     required this.pagos,
     this.gestiones = const [],
   });
+
+  /// Lo que viene de una consulta a `prestamos` con `clientes(...)`,
+  /// `pagos(...)` y (si se pidió) `gestiones(*)` anidados. El préstamo queda
+  /// sin esas llaves, igual que si se hubiera leído solo; los pagos van por
+  /// fecha (y recibo) y las gestiones, la más reciente primero.
+  factory PrestamoConDatos.desdeFilaAnidada(Map<String, dynamic> fila) {
+    final prestamo = Map<String, dynamic>.from(fila)
+      ..remove('clientes')
+      ..remove('pagos')
+      ..remove('gestiones');
+    final cliente = fila['clientes'];
+    final pagos = [
+      for (final f in (fila['pagos'] as List?) ?? const [])
+        calc.PagoRegistrado.desdeFila(Map<String, dynamic>.from(f as Map)),
+    ]..sort((a, b) {
+        final porFecha = a.fecha.compareTo(b.fecha);
+        return porFecha != 0 ? porFecha : (a.numeroRecibo ?? 0).compareTo(b.numeroRecibo ?? 0);
+      });
+    final gestiones = [
+      for (final f in (fila['gestiones'] as List?) ?? const [])
+        gest.Gestion.desdeFila(Map<String, dynamic>.from(f as Map)),
+    ]..sort((a, b) => b.fecha.compareTo(a.fecha));
+    return PrestamoConDatos(
+      prestamo: prestamo,
+      cliente: cliente is Map ? Map<String, dynamic>.from(cliente) : null,
+      pagos: pagos,
+      gestiones: gestiones,
+    );
+  }
 
   String get nombre => (cliente?['nombre'] as String?) ?? '...';
   String get direccion => (cliente?['direccion'] as String?) ?? '';
