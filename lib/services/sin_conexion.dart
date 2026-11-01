@@ -240,6 +240,7 @@ class SinConexion {
         ubicacion: c.ubicacion,
         id: c.id,
         fechaSinConexion: c.fecha,
+        metodo: c.metodo,
       );
 
   static Future<void> _subirTodo() async {
@@ -329,6 +330,10 @@ class CobroPendiente {
   final DateTime fecha;
   final ({double lat, double lng})? ubicacion;
 
+  /// Cómo pagó: 'efectivo' o 'transferencia'. Los guardados antes de esto
+  /// no lo traen: son efectivo.
+  final String metodo;
+
   const CobroPendiente({
     required this.id,
     required this.prestamoId,
@@ -337,10 +342,11 @@ class CobroPendiente {
     required this.montoMora,
     required this.fecha,
     this.ubicacion,
+    this.metodo = 'efectivo',
   });
 
-  PagoRegistrado get comoPago =>
-      PagoRegistrado(id: id, fecha: fecha, monto: monto, montoMora: montoMora, sinSubir: true);
+  PagoRegistrado get comoPago => PagoRegistrado(
+      id: id, fecha: fecha, monto: monto, montoMora: montoMora, sinSubir: true, metodo: metodo);
 
   Map<String, dynamic> aFila() => {
         'id': id,
@@ -350,6 +356,7 @@ class CobroPendiente {
         'monto_mora': montoMora,
         'fecha': fecha.toUtc().toIso8601String(),
         if (ubicacion case final u?) ...{'lat': u.lat, 'lng': u.lng},
+        'metodo': metodo,
       };
 
   factory CobroPendiente.desdeFila(Map<String, dynamic> f) => CobroPendiente(
@@ -363,6 +370,7 @@ class CobroPendiente {
           (final num lat, final num lng) => (lat: lat.toDouble(), lng: lng.toDouble()),
           _ => null,
         },
+        metodo: f['metodo'] == 'transferencia' ? 'transferencia' : 'efectivo',
       );
 }
 

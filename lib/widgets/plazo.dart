@@ -42,6 +42,74 @@ class SelectorUnidadPlazo extends StatelessWidget {
   }
 }
 
+/// Etiqueta de cada método de interés al elegirlo.
+String etiquetaTipoInteres(TipoInteres t) => switch (t) {
+      TipoInteres.saldo => 'Sobre saldo (cuota fija)',
+      TipoInteres.fijo => 'Fijo sobre el monto',
+      TipoInteres.reditos => 'Solo réditos (capital al final)',
+    };
+
+/// Elegir cómo se cobra el interés (sobre saldo, fijo o solo réditos), con
+/// una explicación corta del elegido.
+class SelectorTipoInteres extends StatelessWidget {
+  final TipoInteres valor;
+  final ValueChanged<TipoInteres> onCambio;
+
+  /// En una sola línea (lista para elegir), sin la explicación: para
+  /// pantallas donde ya hay mucho (la calculadora).
+  final bool compacto;
+
+  const SelectorTipoInteres(
+      {super.key, required this.valor, required this.onCambio, this.compacto = false});
+
+  @override
+  Widget build(BuildContext context) {
+    if (compacto) {
+      return DropdownButtonFormField<TipoInteres>(
+        initialValue: valor,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Cómo se cobra el interés',
+          filled: true,
+          fillColor: AppColors.surface,
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        ),
+        items: [
+          for (final t in TipoInteres.values)
+            DropdownMenuItem(value: t, child: Text(etiquetaTipoInteres(t))),
+        ],
+        onChanged: (t) {
+          if (t != null) onCambio(t);
+        },
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final t in TipoInteres.values)
+              ChoiceChip(
+                label: Text(etiquetaTipoInteres(t)),
+                selected: t == valor,
+                selectedColor: AppColors.greenDark,
+                labelStyle: TextStyle(
+                    color: t == valor ? AppColors.green : AppColors.grey,
+                    fontWeight: FontWeight.w600),
+                onSelected: (_) => onCambio(t),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(valor.explicacion, style: TextStyle(color: AppColors.grey, fontSize: 12)),
+      ],
+    );
+  }
+}
+
 /// Tabla de amortización de un plan: fecha, cuota, interés, capital y lo
 /// que queda debiendo después de cada cuota. Con muchas cuotas (ej. diario)
 /// muestra las primeras y deja ver todas con un botón.
@@ -80,8 +148,11 @@ class _TablaAmortizacionState extends State<TablaAmortizacion> {
         children: [
           const Text('Tabla de amortización', style: TextStyle(fontWeight: FontWeight.w800)),
           Text(
-            'Interés ${widget.plan.tipo.nombre}. Cada cuota paga primero el interés y el '
-            'resto baja lo que se debe.',
+            widget.plan.tipo == TipoInteres.reditos
+                ? 'Interés ${widget.plan.tipo.nombre}. Cada cuota paga solo el interés y '
+                    'la última paga además todo el capital.'
+                : 'Interés ${widget.plan.tipo.nombre}. Cada cuota paga primero el interés y '
+                    'el resto baja lo que se debe.',
             style: TextStyle(color: AppColors.grey, fontSize: 12),
           ),
           const SizedBox(height: 8),

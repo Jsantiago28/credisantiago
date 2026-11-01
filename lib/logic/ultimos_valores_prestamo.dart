@@ -2,10 +2,15 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'calculo_prestamo.dart' show TipoInteres;
+
 /// Los valores que el prestamista usó en su último préstamo (interés,
-/// plazo, frecuencia, mora y gracia), para no escribirlos cada vez.
+/// plazo, frecuencia, mora y gracia), para no escribirlos cada vez. El
+/// método de interés se guarda aparte (ver [guardarUltimoTipoInteres]): lo
+/// cambian tanto Prestar como la Calculadora.
 
 const _clave = 'ultimos_valores_prestamo';
+const _claveTipo = 'ultimo_tipo_interes';
 const _frecuencias = {'diario', 'semanal', 'quincenal', 'mensual'};
 
 class UltimosValoresPrestamo {
@@ -81,5 +86,21 @@ Future<UltimosValoresPrestamo?> leerUltimosValoresPrestamo() async {
 Future<void> guardarUltimosValoresPrestamo(UltimosValoresPrestamo v) async {
   try {
     await (await SharedPreferences.getInstance()).setString(_clave, v.codificar());
+  } catch (_) {}
+}
+
+/// El último método de interés que eligió el prestamista (al prestar o en
+/// la calculadora). Null si nunca eligió o lo guardado no se entiende.
+Future<TipoInteres?> leerUltimoTipoInteres() async {
+  try {
+    return TipoInteres.desdeValor((await SharedPreferences.getInstance()).getString(_claveTipo));
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> guardarUltimoTipoInteres(TipoInteres tipo) async {
+  try {
+    await (await SharedPreferences.getInstance()).setString(_claveTipo, tipo.valor);
   } catch (_) {}
 }

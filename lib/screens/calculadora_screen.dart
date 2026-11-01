@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../logic/calculo_prestamo.dart';
+import '../logic/ultimos_valores_prestamo.dart';
 import '../theme/app_theme.dart';
 import '../widgets/plazo.dart';
 import '../widgets/ui.dart';
@@ -27,6 +28,17 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
   /// El plazo se escribe en meses (si no, en días).
   bool _enMeses = false;
 
+  /// Cómo se cobra el interés. Se recuerda (y Prestar abre con el mismo).
+  TipoInteres _tipo = TipoInteres.saldo;
+
+  @override
+  void initState() {
+    super.initState();
+    leerUltimoTipoInteres().then((t) {
+      if (t != null && mounted) setState(() => _tipo = t);
+    });
+  }
+
   static const _plazosRapidos = [15, 30, 45, 60, 90, 120];
   static const _mesesRapidos = [1, 2, 3, 6, 12, 24, 36, 60];
 
@@ -43,7 +55,7 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
         tasaInteresMensual: _tasaValor,
         diasPlazo: _diasValor,
         frecuencia: frecuencia,
-        tipo: TipoInteres.saldo,
+        tipo: _tipo,
       );
     } on ArgumentError {
       return null; // ej. monto muy chico para tantas cuotas
@@ -61,7 +73,7 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
   String _cotizacion() {
     final hoy = DateTime.now();
     final lineas = <String>[
-      'Préstamo de ${rd(_montoValor)} (${_tasa.text}% mensual sobre saldo, '
+      'Préstamo de ${rd(_montoValor)} (${_tasa.text}% mensual ${_tipo.nombre}, '
           '${_enMeses ? '${_dias.text} meses' : '$_diasValor días'}):',
       '',
     ];
@@ -125,10 +137,22 @@ class _CalculadoraScreenState extends State<CalculadoraScreen> {
           const Text('Cómo quedaría',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          Text('Interés sobre saldo, con cuota fija. Toca una opción para ver su tabla de pagos.',
+          Text('Interés ${_tipo.nombre}. Toca una opción para ver su tabla de pagos.',
               style: TextStyle(color: AppColors.grey, fontSize: 13)),
           const SizedBox(height: 12),
           for (final f in frecuencias) _opcion(f),
+          const SizedBox(height: 4),
+          SelectorTipoInteres(
+            // La llave cambia con el valor: el campo se rehace si el guardado llega después.
+            key: ValueKey(_tipo),
+            compacto: true,
+            valor: _tipo,
+            onCambio: (t) {
+              setState(() => _tipo = t);
+              guardarUltimoTipoInteres(t); // "Prestar con esto" abre con el mismo
+            },
+          ),
+          const SizedBox(height: 4),
           if (elegido != null) ...[
             const SizedBox(height: 8),
             TablaAmortizacion(plan: elegido, frecuencia: _elegida, desde: DateTime.now()),

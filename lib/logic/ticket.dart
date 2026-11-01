@@ -109,6 +109,7 @@ List<LineaTicket> lineasTicket({
     ...fila('MONTO RECIBIDO', _rd(r.monto), negrita: true),
     ...fila('  A cuota', _rd(r.aCuota)),
     if (r.aMora > 0) ...fila('  A mora', _rd(r.aMora)),
+    if (r.metodo != null) ...fila('Forma de pago', r.metodo!),
     if (r.cubre.isNotEmpty) ...[
       const LineaTicket('Cubre:'),
       for (final c in r.cubre)

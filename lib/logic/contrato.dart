@@ -91,7 +91,7 @@ class DatosContrato {
   final double monto;
   final double tasaMensual;
 
-  /// Sobre saldo (cuota fija) o fijo sobre el monto.
+  /// Sobre saldo (cuota fija), fijo sobre el monto o solo réditos.
   final TipoInteres tipoInteres;
   final double montoTotal;
   final String frecuencia;
@@ -132,9 +132,12 @@ class DatosContrato {
         _ => 'Mensual',
       };
 
-  String get tasaTexto => tasaMensual > 0
-      ? '${_porcentaje(tasaMensual)}% mensual, ${tipoInteres.nombre}'
-      : 'No aplica';
+  String get tasaTexto => tasaMensual <= 0
+      ? 'No aplica'
+      : tipoInteres == TipoInteres.reditos
+          ? '${_porcentaje(tasaMensual)}% mensual, solo réditos: cada cuota paga el '
+              'interés sobre el monto prestado y la última cuota paga además todo el capital'
+          : '${_porcentaje(tasaMensual)}% mensual, ${tipoInteres.nombre}';
 
   /// Cómo se cobra la mora, o null si el préstamo no tiene mora.
   String? get moraTexto {

@@ -497,7 +497,11 @@ class SupabaseService {
     return avisos.stream;
   }
 
-  Future<void> aprobarSolicitud(Map<String, dynamic> solicitud) async {
+  /// Aprueba una solicitud: crea el cliente con sus datos y su préstamo en
+  /// "borrador". Devuelve los dos, para ir directo a Prestar (como
+  /// [crearClienteManual]).
+  Future<({Map<String, dynamic> cliente, Map<String, dynamic> prestamo})> aprobarSolicitud(
+      Map<String, dynamic> solicitud) async {
     // 1. Crea el cliente con los datos de la solicitud. Va primero: si el
     //    plan no permite más clientes, falla aquí y la solicitud sigue nueva.
     final cliente = await _conLimite(() => client.from('clientes').insert({
@@ -532,17 +536,28 @@ class SupabaseService {
     }).select().single());
 
     // 2. Crea el préstamo en estado "borrador" para que el prestamista lo ajuste
-    await client.from('prestamos').insert({
-      'prestamista_id': solicitud['prestamista_id'],
-      'cliente_id': cliente['id'],
-      'monto': solicitud['monto_solicitado'] ?? 0,
-      'estado': 'borrador',
-    });
+    final prestamo = await _crearBorradorDeSolicitud(solicitud, cliente);
 
     // 3. Marca la solicitud como aprobada
     await client
         .from('solicitudes')
         .update({'estado': 'aprobada'}).eq('id', solicitud['id']);
+    return (cliente: cliente, prestamo: prestamo);
+  }
+
+  /// El préstamo "borrador" de una solicitud aprobada, con el monto que pidió.
+  Future<Map<String, dynamic>> _crearBorradorDeSolicitud(
+      Map<String, dynamic> solicitud, Map<String, dynamic> cliente) {
+    return client
+        .from('prestamos')
+        .insert({
+          'prestamista_id': solicitud['prestamista_id'],
+          'cliente_id': cliente['id'],
+          'monto': solicitud['monto_solicitado'] ?? 0,
+          'estado': 'borrador',
+        })
+        .select()
+        .single();
   }
 
   /// Convierte el error de la base de datos por límite del plan en
@@ -678,19 +693,20 @@ class SupabaseService {
 
   /// Aprueba la solicitud de alguien que YA es cliente (misma cédula): no
   /// crea otro cliente, le abre un préstamo en "borrador" en su ficha.
-  Future<void> aprobarParaClienteExistente(
+  /// Devuelve el cliente completo y ese préstamo, para ir directo a Prestar.
+  Future<({Map<String, dynamic> cliente, Map<String, dynamic> prestamo})>
+      aprobarParaClienteExistente(
     Map<String, dynamic> solicitud,
     Map<String, dynamic> cliente,
   ) async {
     await client
         .from('solicitudes')
         .update({'estado': 'aprobada'}).eq('id', solicitud['id']);
-    await client.from('prestamos').insert({
-      'prestamista_id': solicitud['prestamista_id'],
-      'cliente_id': cliente['id'],
-      'monto': solicitud['monto_solicitado'] ?? 0,
-      'estado': 'borrador',
-    });
+    final prestamo = await _crearBorradorDeSolicitud(solicitud, cliente);
+    // [cliente] puede venir de la lista corta: se lee completo.
+    final completo =
+        await client.from('clientes').select().eq('id', cliente['id']).maybeSingle();
+    return (cliente: completo ?? cliente, prestamo: prestamo);
   }
 
   /// Crea un cliente a mano (sin solicitud, para quien no puede llenar el
@@ -853,6 +869,13 @@ class SupabaseService {
   /// Confirma el préstamo: fija monto, interés, frecuencia y mora, calcula
   /// la cantidad de cuotas y el monto de cada una (ver calc.calcularPlan),
   /// y lo pasa a estado "en_calle".
+  ///
+  /// [primerPago]: fecha de la primera cuota si el prestamista eligió otra
+  /// (si no, un período después de hoy). El préstamo se guarda con
+  /// fecha_desembolso un período antes de esa fecha (ver
+  /// calc.baseParaPrimerPago), para que el cronograma, la mora y el saldar
+  /// salgan igual que siempre. La primera cuota lleva el interés de un
+  /// período completo.
   Future<void> confirmarPrestamo({
     required String prestamoId,
     required double monto,
@@ -862,9 +885,12 @@ class SupabaseService {
     required double moraDiaria, // % diario de lo que falta de la cuota
     required int diasGracia,
     calc.TipoInteres tipo = calc.TipoInteres.saldo,
+    DateTime? primerPago,
   }) async {
     if (moraDiaria < 0) throw ArgumentError.value(moraDiaria, 'moraDiaria');
     if (diasGracia < 0) throw ArgumentError.value(diasGracia, 'diasGracia');
+    final hoy = DateTime.now();
+    final desembolso = calc.fechaDesembolsoParaPrimerPago(hoy, frecuencia, primerPago);
     final plan = calc.calcularPlan(
       monto: monto,
       tasaInteresMensual: tasaInteresMensual,
@@ -883,7 +909,7 @@ class SupabaseService {
       'dias_gracia': diasGracia,
       'frecuencia': frecuencia,
       'tipo_interes': tipo.valor,
-      'fecha_desembolso': calc.fechaSql(DateTime.now()),
+      'fecha_desembolso': calc.fechaSql(desembolso),
       'estado': 'en_calle',
     };
     // La primera cuota del cronograma, así sale de la misma fuente que Cobrar.
@@ -972,7 +998,11 @@ class SupabaseService {
     /// base de datos lo revisa y lo marca si algo no cuadra.
     String? id,
     DateTime? fechaSinConexion,
+
+    /// Cómo pagó: 'efectivo' o 'transferencia' (ver calc.metodosPago).
+    String metodo = 'efectivo',
   }) async {
+    if (!calc.metodosPago.contains(metodo)) throw ArgumentError.value(metodo, 'metodo');
     final prestamo = await client
         .from('prestamos')
         .select()
@@ -1003,7 +1033,7 @@ class SupabaseService {
           'prestamista_id': prestamistaId,
           'monto': monto,
           'monto_mora': reparto.mora,
-          'metodo': 'efectivo',
+          'metodo': metodo,
           if (descuento > 0) 'descuento': descuento,
           if (id != null) 'id': id,
           if (fechaSinConexion != null) ...{

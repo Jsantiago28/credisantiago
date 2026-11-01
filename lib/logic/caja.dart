@@ -26,6 +26,10 @@ class CobroCaja {
   /// Por qué hay que revisarlo (lo pone la base de datos; null = sin novedad).
   final String? revisar;
 
+  /// Cómo pagó: 'efectivo' o 'transferencia' (pagos.metodo). Los cobros de
+  /// antes, sin método, son efectivo.
+  final String metodo;
+
   const CobroCaja({
     this.id,
     this.numeroRecibo,
@@ -38,9 +42,13 @@ class CobroCaja {
     this.ubicacion,
     this.sinConexion = false,
     this.revisar,
+    this.metodo = 'efectivo',
   });
 
   double get montoCuota => monto - montoMora;
+
+  /// Pagó por transferencia: el dinero no lo trae el cobrador en la mano.
+  bool get esTransferencia => metodo == 'transferencia';
 
   /// Fila de `pagos` con el préstamo y el cliente embebidos
   /// (`prestamos(clientes(nombre))`).
@@ -62,6 +70,7 @@ class CobroCaja {
       },
       sinConexion: fila['sin_conexion'] == true,
       revisar: fila['revisar'] as String?,
+      metodo: fila['metodo'] == 'transferencia' ? 'transferencia' : 'efectivo',
     );
   }
 }
@@ -81,6 +90,13 @@ class DiaCaja {
   double get total => validos.fold(0.0, (s, c) => s + c.monto);
   double get mora => validos.fold(0.0, (s, c) => s + c.montoMora);
   double get cuotas => total - mora;
+
+  /// Lo recibido por transferencia (llegó al banco, no a la mano).
+  double get transferencia =>
+      validos.where((c) => c.esTransferencia).fold(0.0, (s, c) => s + c.monto);
+
+  /// Lo recibido en efectivo: lo que tiene que haber en la caja.
+  double get efectivo => total - transferencia;
   int get cantidad => validos.length;
   int get anulados => cobros.length - validos.length;
 }
@@ -130,15 +146,18 @@ String resumenCajaTexto(DiaCaja d,
     'Total recibido: ${_rd(d.total)} (${d.cantidad} cobro${d.cantidad == 1 ? '' : 's'})',
     '  A cuotas: ${_rd(d.cuotas)}',
     if (d.mora > 0) '  A mora: ${_rd(d.mora)}',
+    if (d.transferencia > 0) '  ${efectivoYTransferencia(d.efectivo, d.transferencia)}',
     '',
-    for (final c in d.validos) '• ${_hora(c.fecha)} ${c.cliente}: ${_rd(c.monto)}',
+    for (final c in d.validos)
+      '• ${_hora(c.fecha)} ${c.cliente}: ${_rd(c.monto)}${c.esTransferencia ? ' (transferencia)' : ''}',
     if (d.anulados > 0) '(${d.anulados} cobro(s) anulado(s), no cuentan)',
     if (conCobradores) ...[
       '',
       'Por cobrador:',
       for (final c in porCobrador)
         '• ${c.cobradorId == null ? 'Yo' : (nombresCobradores[c.cobradorId] ?? 'Cobrador')}: '
-            '${_rd(c.total)} (${c.cantidad})',
+            '${_rd(c.total)} (${c.cantidad})'
+            '${c.efectivo < c.total ? ' · en efectivo ${_rd(c.efectivo)}' : ''}',
     ],
     if (gastos.isNotEmpty) ...[
       '',
@@ -153,17 +172,29 @@ String resumenCajaTexto(DiaCaja d,
 
 /// Lo que cobró cada quien en un día: cada cobrador y el prestamista
 /// (cobradorId null). Sin anulados. El que más cobró primero; el
-/// prestamista al final. Solo quien cobró algo.
-List<({String? cobradorId, double total, double mora, int cantidad})> cajaPorCobrador(DiaCaja d) {
-  final totales = <String?, ({double total, double mora, int cantidad})>{};
+/// prestamista al final. Solo quien cobró algo. `efectivo` es lo que cobró
+/// en la mano (sin transferencias): es lo que tiene que entregar.
+List<({String? cobradorId, double total, double mora, int cantidad, double efectivo})>
+    cajaPorCobrador(DiaCaja d) {
+  final totales = <String?, ({double total, double mora, int cantidad, double efectivo})>{};
   for (final c in d.validos) {
-    final t = totales[c.cobradorId] ?? (total: 0.0, mora: 0.0, cantidad: 0);
-    totales[c.cobradorId] =
-        (total: t.total + c.monto, mora: t.mora + c.montoMora, cantidad: t.cantidad + 1);
+    final t = totales[c.cobradorId] ?? (total: 0.0, mora: 0.0, cantidad: 0, efectivo: 0.0);
+    totales[c.cobradorId] = (
+      total: t.total + c.monto,
+      mora: t.mora + c.montoMora,
+      cantidad: t.cantidad + 1,
+      efectivo: t.efectivo + (c.esTransferencia ? 0 : c.monto),
+    );
   }
   final lista = [
     for (final e in totales.entries)
-      (cobradorId: e.key, total: e.value.total, mora: e.value.mora, cantidad: e.value.cantidad),
+      (
+        cobradorId: e.key,
+        total: e.value.total,
+        mora: e.value.mora,
+        cantidad: e.value.cantidad,
+        efectivo: e.value.efectivo,
+      ),
   ]..sort((a, b) {
       if ((a.cobradorId == null) != (b.cobradorId == null)) return a.cobradorId == null ? 1 : -1;
       return b.total.compareTo(a.total);
@@ -171,13 +202,18 @@ List<({String? cobradorId, double total, double mora, int cantidad})> cajaPorCob
   return lista;
 }
 
+/// "Efectivo RD$X · Transferencia RD$Y".
+String efectivoYTransferencia(double efectivo, double transferencia) =>
+    'Efectivo ${_rd(efectivo)} · Transferencia ${_rd(transferencia)}';
+
 /// Lo que un cobrador le entregó al prestamista un día.
 class Entrega {
   final String? id;
   final String cobradorId;
   final DateTime fecha;
 
-  /// Lo que había cobrado cuando se anotó la entrega.
+  /// Lo que había cobrado EN EFECTIVO cuando se anotó la entrega (las
+  /// transferencias no las entrega en la mano).
   final double cobrado;
   final double entregado;
   final String? nota;

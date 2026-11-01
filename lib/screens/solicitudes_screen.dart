@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../logic/validacion.dart';
 import '../logic/whatsapp.dart';
+import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contacto.dart';
@@ -141,39 +142,15 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
     await marcarLinkCompartido();
   }
 
-  /// El cliente y su préstamo "borrador" recién creados al aprobar, para
-  /// abrir Prestar de una vez. Null si no se encuentran.
-  Future<({Map<String, dynamic> cliente, Map<String, dynamic> prestamo})?> _buscarParaPrestar(
-      Map<String, dynamic> solicitud,
-      {Map<String, dynamic>? existente,
-      Set<Object?> idsAntes = const {}}) async {
-    try {
-      final servicio = SupabaseService.instance;
-      var id = existente?['id'] as String?;
-      if (id == null) {
-        final lista = await servicio.listarClientes(widget.prestamistaId);
-        if (mounted) setState(() => _clientes = lista); // próximas solicitudes lo detectan
-        final mismos = buscarRepetidos(lista, cedula: solicitud['cedula'])
-            .map((r) => r.registro)
-            .toList();
-        id = (mismos.where((c) => !idsAntes.contains(c['id'])).firstOrNull ??
-            mismos.firstOrNull)?['id'] as String?;
-      }
-      if (id == null) return null;
-      final cliente = await servicio.obtenerCliente(id);
-      final prestamo = await servicio.obtenerUltimoPrestamo(id);
-      if (cliente == null || prestamo == null || prestamo['estado'] != 'borrador') return null;
-      final monto = prestamo['monto'] as num?;
-      return (
-        cliente: cliente,
-        prestamo: {
-          ...prestamo,
-          if (monto == null || monto <= 0) 'monto': solicitud['monto_solicitado'],
-        },
-      );
-    } catch (_) {
-      return null;
-    }
+  /// El préstamo "borrador" recién creado, con el monto que pidió puesto si
+  /// el borrador no lo trae.
+  static Map<String, dynamic> _conMontoPedido(
+      Map<String, dynamic> prestamo, Map<String, dynamic> solicitud) {
+    final monto = prestamo['monto'] as num?;
+    return {
+      ...prestamo,
+      if (monto == null || monto <= 0) 'monto': solicitud['monto_solicitado'],
+    };
   }
 
   /// Después de aprobar: ofrecer avisarle al cliente por WhatsApp.
@@ -235,7 +212,7 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
     final existente = buscarRepetidos(_clientes, cedula: solicitud['cedula'])
         .map((r) => r.registro)
         .firstOrNull;
-    final idsAntes = {for (final c in _clientes) c['id']};
+    final ({Map<String, dynamic> cliente, Map<String, dynamic> prestamo}) aprobado;
     try {
       if (existente != null) {
         final usarFicha = await showDialog<bool>(
@@ -256,29 +233,29 @@ class _SolicitudesScreenState extends State<SolicitudesScreen> {
           ),
         );
         if (usarFicha != true) return;
-        await SupabaseService.instance.aprobarParaClienteExistente(solicitud, existente);
+        aprobado = await SupabaseService.instance.aprobarParaClienteExistente(solicitud, existente);
       } else {
-        await SupabaseService.instance.aprobarSolicitud(solicitud);
+        aprobado = await SupabaseService.instance.aprobarSolicitud(solicitud);
       }
     } on LimitePlan catch (e) {
       if (mounted) await avisarLimitePlan(context, e);
       return;
-    } catch (e) {
-      mensajero.showSnackBar(SnackBar(content: Text('No se pudo aprobar: $e')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'APROBAR SOLICITUD');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo aprobar. ${mensajeError(e)}')));
       return;
     }
-    // Aprobado: directo a Prestar, con el monto que pidió ya puesto.
-    final datos = await _buscarParaPrestar(solicitud, existente: existente, idsAntes: idsAntes);
     if (!mounted) return;
-    var prestado = false;
-    if (datos != null) {
-      prestado = await Navigator.of(context).push<bool>(MaterialPageRoute(
-            builder: (_) => PrestarScreen(cliente: datos.cliente, prestamo: datos.prestamo),
-          )) ==
-          true;
-      if (!mounted) return;
-    }
-    await _ofrecerAvisoAprobado(solicitud, prestado: prestado, sinPrestar: datos == null);
+    // Las próximas solicitudes de esta persona ya la ven como cliente.
+    if (existente == null) setState(() => _clientes = [..._clientes, aprobado.cliente]);
+    // Aprobado: directo a Prestar, con el monto que pidió ya puesto.
+    final prestado = await Navigator.of(context).push<bool>(MaterialPageRoute(
+          builder: (_) => PrestarScreen(
+              cliente: aprobado.cliente, prestamo: _conMontoPedido(aprobado.prestamo, solicitud)),
+        )) ==
+        true;
+    if (!mounted) return;
+    await _ofrecerAvisoAprobado(solicitud, prestado: prestado, sinPrestar: false);
   }
 
   Future<void> _rechazar(Map<String, dynamic> solicitud) async {

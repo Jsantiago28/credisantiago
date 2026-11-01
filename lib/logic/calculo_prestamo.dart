@@ -15,7 +15,13 @@ enum TipoInteres {
 
   /// Sobre el monto prestado, todos los períodos (interés "plano"): como se
   /// calculaban los préstamos de antes. Sale más caro con la misma tasa.
-  fijo;
+  fijo,
+
+  /// Solo réditos: cada cuota paga nada más el interés del monto prestado
+  /// (monto × tasa de la cuota) y la ÚLTIMA paga el interés más todo el
+  /// capital. Ej. 10,000 al 10% mensual, 3 cuotas mensuales → 1,000, 1,000
+  /// y 11,000.
+  reditos;
 
   /// Lo que se guarda en la base de datos (prestamos.tipo_interes).
   String get valor => name;
@@ -23,13 +29,31 @@ enum TipoInteres {
   String get nombre => switch (this) {
         TipoInteres.saldo => 'sobre saldo (cuota fija)',
         TipoInteres.fijo => 'fijo sobre el monto',
+        TipoInteres.reditos => 'solo réditos (capital al final)',
       };
+
+  /// Cómo se le explica al prestamista al elegirlo.
+  String get explicacion => switch (this) {
+        TipoInteres.saldo =>
+          'Cuota fija. El interés se cobra sobre lo que todavía debe, como en los bancos.',
+        TipoInteres.fijo => 'El interés se cobra sobre el monto prestado en todas las cuotas.',
+        TipoInteres.reditos => 'Cada cuota paga solo el interés del monto. En la última '
+            'paga el interés más todo el capital.',
+      };
+
+  /// El método como lo guarda la base de datos (null si no es ninguno).
+  static TipoInteres? desdeValor(Object? valor) {
+    for (final t in values) {
+      if (t.valor == valor) return t;
+    }
+    return null;
+  }
 }
 
 /// El método de interés de un préstamo guardado. Los de antes de que
 /// existiera la columna son "fijo".
 TipoInteres tipoInteresDe(Map<String, dynamic> prestamo) =>
-    prestamo['tipo_interes'] == 'saldo' ? TipoInteres.saldo : TipoInteres.fijo;
+    TipoInteres.desdeValor(prestamo['tipo_interes']) ?? TipoInteres.fijo;
 
 /// La tasa de cada cuota: la mensual repartida por días (30 días = 1 mes).
 /// Ej. 20% mensual semanal → 20% × 7 ÷ 30 = 4.67% por semana.
@@ -149,6 +173,16 @@ List<FilaAmortizacion> _amortizacionFija(
   ];
 }
 
+/// Tabla de amortización de solo réditos: todas las cuotas son interés
+/// ([cuota] = monto × tasa de la cuota, en pesos enteros) y la última paga
+/// además todo el capital.
+List<FilaAmortizacion> amortizacionReditos(double monto, double cuota, int cantidadCuotas) => [
+      for (var n = 1; n <= cantidadCuotas; n++)
+        n == cantidadCuotas
+            ? FilaAmortizacion(n, cuota + monto, cuota, monto, 0)
+            : FilaAmortizacion(n, cuota, cuota, 0, monto),
+    ];
+
 /// Frecuencias de cobro que se pueden elegir al prestar.
 const frecuencias = ['diario', 'semanal', 'quincenal', 'mensual'];
 
@@ -203,6 +237,57 @@ DateTime fechaCuota(DateTime desembolso, String frecuencia, int numero) {
       desembolso.day <= ultimoDia ? desembolso.day : ultimoDia);
 }
 
+/// Fecha del primer pago si no se elige otra: un período después del
+/// desembolso.
+DateTime primerPagoNormal(DateTime desembolso, String frecuencia) =>
+    fechaCuota(desembolso, frecuencia, 1);
+
+/// Con qué fecha se guarda el préstamo (prestamos.fecha_desembolso) para que
+/// su primera cuota caiga en [primerPago]: un período antes. Todo el
+/// cronograma (cuotas, mora, saldar) sale de esa fecha. Null si con esa
+/// frecuencia no se puede: mensual del 29 al 31 cuando el mes anterior es
+/// más corto (ej. 30 de marzo: febrero no tiene 30).
+DateTime? baseParaPrimerPago(DateTime primerPago, String frecuencia) {
+  final primer = DateTime(primerPago.year, primerPago.month, primerPago.day);
+  final DateTime base;
+  if (frecuencia == 'mensual') {
+    final mesAntes = DateTime(primer.year, primer.month - 1, 1);
+    final ultimoDia = DateTime(mesAntes.year, mesAntes.month + 1, 0).day;
+    base = DateTime(
+        mesAntes.year, mesAntes.month, primer.day <= ultimoDia ? primer.day : ultimoDia);
+  } else {
+    base = DateTime(primer.year, primer.month, primer.day - diasPorCuota(frecuencia));
+  }
+  return fechaCuota(base, frecuencia, 1) == primer ? base : null;
+}
+
+/// Días hacia adelante que se puede poner el primer pago.
+const maxDiasPrimerPago = 120;
+
+/// Si [primerPago] se puede elegir prestando [hoy]: desde mañana hasta
+/// [maxDiasPrimerPago] días, y que con esa frecuencia se pueda (ver
+/// [baseParaPrimerPago]).
+bool primerPagoPermitido(DateTime hoy, String frecuencia, DateTime primerPago) {
+  final dias = _dia(primerPago) - _dia(hoy);
+  return dias >= 1 &&
+      dias <= maxDiasPrimerPago &&
+      baseParaPrimerPago(primerPago, frecuencia) != null;
+}
+
+/// La fecha_desembolso que se guarda al prestar [hoy]: hoy mismo si no se
+/// eligió primer pago (o es el de siempre), o un período antes del primer
+/// pago elegido. Falla con [ArgumentError] si ese primer pago no se puede.
+DateTime fechaDesembolsoParaPrimerPago(DateTime hoy, String frecuencia, DateTime? primerPago) {
+  final dia = DateTime(hoy.year, hoy.month, hoy.day);
+  if (primerPago == null || _dia(primerPago) == _dia(primerPagoNormal(dia, frecuencia))) {
+    return dia;
+  }
+  if (!primerPagoPermitido(dia, frecuencia, primerPago)) {
+    throw ArgumentError.value(primerPago, 'primerPago', 'no se puede con cobro $frecuencia');
+  }
+  return baseParaPrimerPago(primerPago, frecuencia)!;
+}
+
 /// REGLA DE INTERÉS: la tasa que pone el prestamista es MENSUAL. Se escala
 /// según los días que dura el préstamo (30 días = 1 mes completo).
 /// Ejemplo: 20% con 30 días diario = 20% de interés total.
@@ -219,6 +304,8 @@ DateTime fechaCuota(DateTime desembolso, String frecuencia, int numero) {
 ///
 /// [tipo] sobre saldo: cuota fija como en bancos y cooperativas (ver
 /// [amortizacionSobreSaldo]); el interés total sale menor que el fijo.
+/// Solo réditos: cada cuota es monto × tasa de la cuota (en pesos enteros) y
+/// la última le suma todo el capital (ver [amortizacionReditos]).
 ///
 /// La tasa se redondea a 2 decimales (ver [redondearTasa]): es la que se
 /// guarda, y así la vista previa y el préstamo guardado dan lo mismo.
@@ -274,6 +361,26 @@ PlanPrestamo calcularPlan({
     );
   }
 
+  if (tipo == TipoInteres.reditos) {
+    final cuota = (monto * tasaPorCuota(tasaInteresMensual, frecuencia)).roundToDouble();
+    if (cuota < 1) {
+      // Sin interés no hay réditos que cobrar.
+      throw ArgumentError.value(
+          tasaInteresMensual, 'tasaInteresMensual', 'los réditos no llegan a RD\$1 por cuota');
+    }
+    final montoTotal = cuota * cantidadCuotas + monto;
+    return PlanPrestamo(
+      diasCobrados: diasCobrados,
+      interesTotal: montoTotal - monto,
+      montoTotal: montoTotal,
+      cantidadCuotas: cantidadCuotas,
+      cuota: cuota,
+      ultimaCuota: cuota + monto,
+      tipo: tipo,
+      filas: amortizacionReditos(monto, cuota, cantidadCuotas),
+    );
+  }
+
   final montoTotal =
       (monto + monto * (tasaInteresMensual / 100) * (diasCobrados / 30)).roundToDouble();
   final cuota = (montoTotal / cantidadCuotas).floorToDouble();
@@ -321,7 +428,8 @@ bool estaSaldado(Map<String, dynamic> prestamo, double totalPagado) {
 /// se guarda en la base de datos. Cada cuota trae:
 ///  - 'monto': lo que vale (la última absorbe el redondeo),
 ///  - 'interes': la parte de ganancia de esa cuota (proporcional si el
-///    interés es fijo; según la tabla de amortización si es sobre saldo),
+///    interés es fijo; según la tabla de amortización si es sobre saldo;
+///    toda la cuota si es de réditos, menos el capital de la última),
 ///  - 'pendiente': lo que falta por cobrarle (0 si está pagada),
 ///  - 'pagada' y 'fecha'.
 /// Los pagos van cubriendo las cuotas en orden: una cuota está pagada
@@ -354,6 +462,7 @@ List<Map<String, dynamic>> generarCronograma({
           cuota: cuota,
         )
       : null;
+  final reditos = tipoInteresDe(prestamo) == TipoInteres.reditos;
 
   var acumulado = 0.0;
   return List.generate(cantidadCuotas, (i) {
@@ -368,7 +477,11 @@ List<Map<String, dynamic>> generarCronograma({
       'monto': montoCuota,
       'interes': sobreSaldo != null && i < sobreSaldo.length
           ? sobreSaldo[i].interes.clamp(0.0, montoCuota)
-          : montoCuota * proporcionInteres,
+          : reditos
+              // Réditos: todo es interés, salvo el capital de la última.
+              ? (numero == cantidadCuotas ? montoCuota - monto : montoCuota)
+                  .clamp(0.0, montoCuota)
+              : montoCuota * proporcionInteres,
       'pendiente': pendiente < _centavo ? 0.0 : pendiente,
       'pagada': pendiente < _centavo,
     };
@@ -482,6 +595,10 @@ class PagoRegistrado {
   /// fecha no genera mora (ver [estadoPrestamo]).
   final bool importado;
 
+  /// Cómo pagó: 'efectivo', 'transferencia' (pagos.metodo). Null si no se
+  /// sabe (ej. un cobro guardado en el teléfono antes de esto).
+  final String? metodo;
+
   const PagoRegistrado({
     this.id,
     this.numeroRecibo,
@@ -495,6 +612,7 @@ class PagoRegistrado {
     this.anuladoEn,
     this.cobradorId,
     this.importado = false,
+    this.metodo,
   });
 
   double get montoCuota => monto - montoMora;
@@ -518,8 +636,21 @@ class PagoRegistrado {
         anuladoEn: DateTime.tryParse(fila['anulado_en'] as String? ?? '')?.toLocal(),
         cobradorId: fila['cobrador_id'] as String?,
         importado: fila['metodo'] == 'importado',
+        metodo: fila['metodo'] as String?,
       );
 }
+
+/// Formas de pago que se pueden elegir al cobrar (pagos.metodo). La base de
+/// datos solo le deja estas dos al cobrador.
+const metodosPago = ['efectivo', 'transferencia'];
+
+/// "Efectivo", "Transferencia". Null si no hay que mostrar nada (no se sabe
+/// o es lo que ya traía un cliente importado).
+String? nombreMetodoPago(String? metodo) => switch (metodo) {
+      'efectivo' => 'Efectivo',
+      'transferencia' => 'Transferencia',
+      _ => null,
+    };
 
 /// Solo los cobros que valen (sin los anulados).
 List<PagoRegistrado> pagosValidos(List<PagoRegistrado> pagos) =>
@@ -847,6 +978,9 @@ class DatosRecibo {
   /// Cobrado sin señal y todavía sin subir: el recibo lo dice.
   final bool pendiente;
 
+  /// Forma de pago para el recibo ("Efectivo", "Transferencia"), o null.
+  final String? metodo;
+
   const DatosRecibo({
     required this.numero,
     required this.fecha,
@@ -860,6 +994,7 @@ class DatosRecibo {
     required this.proximoPagoMonto,
     required this.saldado,
     this.pendiente = false,
+    this.metodo,
   });
 }
 
@@ -926,6 +1061,7 @@ DatosRecibo datosRecibo(
     proximoPagoMonto: proxima?.porCobrar ?? 0,
     saldado: despues.saldado,
     pendiente: pago.sinSubir,
+    metodo: nombreMetodoPago(pago.metodo),
   );
 }
 
@@ -958,4 +1094,13 @@ DatosRecibo datosRecibo(
     }
   }
   return (atrasado: atrasado, venceHoy: venceHoy, diasAtraso: diasAtraso);
+}
+
+/// Lo que falta de la primera cuota que tiene algo por cobrar (cuota +
+/// su mora), o 0 si no debe nada. Es el botón rápido "Cuota" al cobrar.
+double proximaCuotaPorCobrar(EstadoPrestamo estado) {
+  for (final c in estado.cuotas) {
+    if (c.porCobrar >= _centavo) return c.porCobrar;
+  }
+  return 0;
 }
