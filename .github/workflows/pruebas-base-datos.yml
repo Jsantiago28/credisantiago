@@ -1,0 +1,46 @@
+# Pruebas de seguridad de la base de datos: en GitHub se arma una base de
+# PRUEBA (vacía, en el servidor de GitHub) con schema.sql y todas las
+# migraciones, y se revisa que cada prestamista vea solo lo suyo, que nadie
+# sin cuenta lea datos y que los cobros raros se rechacen. Nunca toca la
+# base de datos de verdad.
+name: Pruebas de la base de datos
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/**', '.github/workflows/pruebas-base-datos.yml']
+  pull_request:
+    paths: ['supabase/**', '.github/workflows/pruebas-base-datos.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruebas-base-datos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seguridad:
+    name: Seguridad (RLS y reglas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+
+      - name: Armar las migraciones de prueba
+        run: bash supabase/pruebas/armar_base.sh
+
+      # Solo la base de datos (sin correo, ni panel, ni fotos): es lo que se prueba.
+      - name: Levantar la base de prueba
+        working-directory: supabase/..
+        run: |
+          supabase init --force --with-vscode-settings=false --with-intellij-settings=false || supabase init --force
+          supabase db start
+
+      - name: Pruebas
+        run: supabase test db

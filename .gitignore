@@ -49,3 +49,9 @@ app.*.map.json
 
 # Copias de trabajo de los ayudantes de Claude
 .claude/worktrees/
+
+# Base de prueba que arma GitHub (supabase/pruebas/armar_base.sh)
+supabase/migrations/
+supabase/config.toml
+supabase/.gitignore
+supabase/seed.sql
