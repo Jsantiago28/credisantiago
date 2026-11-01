@@ -171,22 +171,28 @@
 
 La app ya hace todo lo que un prestamista necesita (solicitudes por link, préstamos con interés sobre saldo, cobros, mora, recibos, contrato, cobradores, reportes, planes, web y APK). Lo que falta es sobre todo **legal, de confianza y de prueba con gente real**. ✅ = hecho · ⬜ = falta.
 
-### 🗓️ Para mañana (después del 01-11-2026) — segunda ronda de la revisión con 5 revisores
+### 🗓️ Revisión con 5 revisores (01 y 02-11-2026)
 
 **Hecho el 01-11-2026:** blindaje de seguridad aplicado en producción (migración `migracion_2026_11_01_blindaje.sql`: cobros válidos, cédulas protegidas, el cobrador no marca "pagado" ni esconde cobros, freno de solicitudes sin trampa, fotos de afuera solo de solicitudes, invitación con correo confirmado, no prestar a eliminados, cuentas nuevas siempre aprobadas). Sin aprobación de cuentas nuevas (quitado de Admin). Arreglos de dinero (importar de Excel con tipo de interés y sin mora sorpresa, ganancia por mes exacta, confirmar cobros de más, saldar con datos frescos y cierre de préstamos ya cubiertos, tasa redondeada, fechas, atrasos iguales en Inicio y Reportes). Sin señal sin cobros dobles ni perdidos. Errores reportados en todas las pantallas y mensajes en palabras normales. Solicitud del cliente que no se pierde, aprobar → prestar directo, Prestar recuerda tus condiciones. Publicación protegida y portada honesta. 355 pruebas.
 
-**Segunda ronda (en este orden):**
-1. ⬜ **Velocidad:** Inicio y Reportes con una sola consulta (hoy ~600 y ~1,600 con 300 préstamos); Caja y gráficas sin el tope de 1,000 filas (resumen por día en la base de datos + índices); escucha en vivo sin recargar todo; solicitudes en vivo solo las nuevas; guardar la ruta sin señal con menos frecuencia.
-2. ⬜ **Tipos de interés de la calle:** interés fijo y solo réditos al prestar ("no cobrar domingos" descartado el 02-11-2026: los prestamistas cobran todos los días); **fecha del primer pago** (que `confirmarPrestamo` acepte la fecha); que `aprobarSolicitud` devuelva el cliente y el préstamo.
-3. ⬜ **Cobrar en 1 toque:** botón "Cobrar lo de hoy RD$X" y botones rápidos; **efectivo o transferencia** (el cuadre del cobrador cuenta solo el efectivo).
-4. ⬜ **Ruta del cobrador:** "Cobrados 7 de 15 · RD$X", ya cobrados abajo, orden por cercanía, "No estaba" en un toque.
-5. ⬜ **Volver a prestar** a quienes terminaron de pagar; **recordar a los de mañana** por WhatsApp uno tras otro; recibo corto por WhatsApp.
-6. ⬜ **Lectura al sol:** letra mínima 13, verde más oscuro, botones de 48; textos con singular y plural (sin "(s)") y términos parejos (cuota / cobro / pago).
-7. ⬜ **De Citabox:** (comisión por cobrador: solo si alguien la pide; los cobradores cobran sueldo fijo) reporte por WhatsApp, "Reportar un problema", 7 días de gracia al vencer el plan, cobros de la semana, verificación en dos pasos, historial de cambios general.
-8. ⬜ **Operación:** migraciones en formato del CLI con baseline (y que se apliquen solas), pruebas SQL de seguridad en CI, copia diaria de la base de datos y copia de las fotos (Cloudflare R2), prueba de restauración, CSP en modo reporte, SEO (robots, canonical, imagen 1200x630), manifest; quitar 4 librerías sin uso y subir supabase_flutter.
-9. ⬜ **APK 1.0.8** cuando el dueño lo pida (lleva Cloudflare, registro sin cédula y todo lo anterior).
+**Segunda ronda — hecha y publicada el 02-11-2026 (418 pruebas, migraciones 33 a 35 aplicadas):**
+1. ✅ **Velocidad:** Inicio y Reportes con una sola consulta, Caja sin tope de 1,000, escucha en vivo sin recargar todo, índices nuevos, quitadas 4 librerías sin uso.
+2. ✅ **Tipos de interés:** sobre saldo, fijo y **solo réditos** (capital al final); **fecha del primer pago**; aprobar solicitud → prestar directo. ("No cobrar domingos": descartado.)
+3. ✅ **Cobrar en 1 toque:** "Cobrar lo de hoy RD$X", botones rápidos, **efectivo o transferencia** (el cobrador entrega solo el efectivo).
+4. ✅ **Ruta del cobrador:** avance "Cobrados 7 de 15", ya cobrados abajo, orden por cercanía, "No estaba".
+5. ✅ **Volver a prestar**, **recordar a los de mañana**, pantalla **Semana**, resumen del mes por WhatsApp.
+6. ✅ **Lectura al sol:** verde más oscuro, letra y botones más grandes, plurales bien escritos.
+7. ✅ **De Citabox:** "Reportar un problema" (Perfil → llega al panel de errores), 7 días de gracia al vencer el plan. (Comisión por cobrador: solo si alguien la pide.)
+8. ✅ Copia diaria de la base de datos, SEO (robots, sitemap, canonical), manifest, CSP en modo reporte.
 
-**Para el dueño:** en Supabase → Authentication → URL Configuration, poner Site URL `https://credisantiago.pages.dev` y agregarla a Redirect URLs. Opcional: token de Cloudflare para que GitHub publique solo.
+**Lo que queda:**
+- ⬜ **APK 1.0.8+9** cuando el dueño lo pida.
+- ⬜ Copia de las fotos: hay que activar Cloudflare R2 (pide tarjeta, es gratis hasta 10 GB).
+- ⬜ Migraciones en formato del CLI con baseline (que se apliquen solas) y pruebas SQL de seguridad en CI.
+- ⬜ CSP de verdad (hoy solo reporta), verificación en dos pasos, historial de cambios general.
+- ⬜ Letras de 10–11 en algunas pantallas (gráficas, plazo, historial del cliente, gastos, editar cliente) y el verde viejo en la solicitud pública.
+- ⬜ "No estaba" necesita señal (no entra en la cola sin conexión).
+- Opcional: token de Cloudflare en GitHub para que publique solo.
 
 ### 📋 Resumen de lo que falta (al 18-10-2026, APK 1.0.6)
 
@@ -435,6 +441,10 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 29 | `migracion_2026_10_18_saldar_antes.sql` | Saldar antes de tiempo: pagos.descuento (interés perdonado, no es dinero recibido); el cobrador no puede dar descuentos |
 | 30 | `migracion_2026_10_18_seguridad.sql` | Freno a solicitudes falsas (30 por hora, 3 por día por cédula), cobradores bloqueados si el plan del jefe no los cubre, el cobrador ve la cara de sus clientes, funciones del plan cerradas a quien no tiene cuenta y aviso de versión nueva del APK (ajustes_app.apk_version y apk_enlace) |
 | 31 | `migracion_2026_10_19_sin_conexion.sql` | Cobrar sin señal: pagos.sin_conexion, registrado_en, reloj_telefono y revisar; el vigilante pone la fecha del servidor a los cobros con señal del cobrador y marca para revisar los cobros sin señal que no cuadran (reloj cambiado, subidos más de 12 h después, otro cobro mientras tanto) |
+| 32 | `migracion_2026_11_01_blindaje.sql` | Blindaje: cobros válidos, fotos y cédulas protegidas, el cobrador no marca "pagado" ni esconde cobros, freno de solicitudes, invitación con correo confirmado, cuentas nuevas siempre aprobadas |
+| 33 | `migracion_2026_11_02_gracia.sql` | 7 días de gracia al vencer el plan en los límites de clientes y cobradores |
+| 34 | `migracion_2026_11_02_indices.sql` | Índices para que Inicio, Caja y Reportes vayan rápido |
+| 35 | `migracion_2026_11_02_reditos.sql` | Permite el tipo de interés "solo réditos" |
 
 `schema.sql` refleja el esquema completo al día.
 
