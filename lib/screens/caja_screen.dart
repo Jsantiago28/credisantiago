@@ -51,7 +51,7 @@ class FilaDiaCaja extends StatelessWidget {
                 Text(
                   dia.cantidad == 0
                       ? 'Sin cobros'
-                      : '${dia.cantidad} cobro(s)${dia.mora > 0 ? ' · mora ${rd(dia.mora)}' : ''}'
+                      : '${plural(dia.cantidad, 'cobro', 'cobros')}${dia.mora > 0 ? ' · mora ${rd(dia.mora)}' : ''}'
                           '${dia.transferencia > 0 ? ' · transferencias ${rd(dia.transferencia)}' : ''}',
                   style: TextStyle(color: AppColors.grey, fontSize: 12),
                 ),
@@ -375,7 +375,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                     Text(cobradorId == null ? 'Tú' : (_nombres[cobradorId] ?? 'Cobrador'),
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w800)),
-                    Text('$cantidad cobro(s)',
+                    Text(plural(cantidad, 'cobro', 'cobros'),
                         style: TextStyle(color: AppColors.grey, fontSize: 12)),
                     if (transferido >= 0.5)
                       Text(efectivoYTransferencia(efectivo, transferido),
@@ -441,7 +441,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Se guarda: ${rd(_d.total)} en ${_d.cantidad} cobro(s).',
+            Text('Se guarda: ${rd(_d.total)} en ${plural(_d.cantidad, 'cobro', 'cobros')}.',
                 style: TextStyle(color: AppColors.grey)),
             const SizedBox(height: 12),
             TextField(
@@ -540,7 +540,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                         color: AppColors.green, fontSize: 11, fontWeight: FontWeight.w700)),
                 Text(rd(_d.total),
                     style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
-                Text('${_d.cantidad} cobro(s)', style: TextStyle(color: AppColors.grey)),
+                Text(plural(_d.cantidad, 'cobro', 'cobros'), style: TextStyle(color: AppColors.grey)),
                 if (_d.cantidad > 0)
                   Text(efectivoYTransferencia(_d.efectivo, _d.transferencia),
                       key: const Key('caja_metodos'),

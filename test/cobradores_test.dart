@@ -153,7 +153,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(find.text('Esperando que entre'), findsOneWidget);
-      expect(find.text('12 cliente(s) en su ruta'), findsOneWidget);
+      expect(find.text('12 clientes en su ruta'), findsOneWidget);
       expect(find.text('Mándale cómo entrar por WhatsApp.'), findsOneWidget);
       expect(find.text('Repartir clientes'), findsOneWidget); // solo el activo
       expect(find.text('Activar de nuevo'), findsOneWidget);
@@ -182,12 +182,12 @@ void main() {
         ),
       );
       expect(tester.takeException(), isNull);
-      expect(find.text('Guardar (1 cliente(s))'), findsOneWidget);
+      expect(find.text('Guardar (1 cliente)'), findsOneWidget);
       expect(find.textContaining('Lo cobra Pedro Díaz'), findsOneWidget);
 
       await tester.tap(find.text('Bernardo Núñez'));
       await tester.pump();
-      expect(find.text('Guardar (2 cliente(s))'), findsOneWidget);
+      expect(find.text('Guardar (2 clientes)'), findsOneWidget);
       expect(find.textContaining('Pasa de Pedro Díaz a Juan'), findsOneWidget);
 
       // Buscar sin acentos.
@@ -249,7 +249,8 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(find.text('RD\$1,100'), findsWidgets);
-      expect(find.text('1 cobro · esto es lo que entregas'), findsOneWidget);
+      expect(find.text('1 cobro'), findsOneWidget);
+      expect(find.text('Esto es lo que entregas'), findsOneWidget);
       expect(find.textContaining('ANULADO por tu jefe'), findsOneWidget);
     });
   });

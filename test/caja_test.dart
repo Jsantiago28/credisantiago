@@ -64,7 +64,7 @@ void main() {
     expect(texto, contains('• 8:05 am José Pérez: RD\$400'));
     expect(texto, contains('• 4:40 pm María Rosario: RD\$460'));
     expect(texto, isNot(contains('Luis Guzmán')));
-    expect(texto, contains('(1 cobro(s) anulado(s), no cuentan)'));
+    expect(texto, contains('(1 cobro anulado, no cuenta)'));
     expect(texto, contains('Nota: Le entregué todo a Juan'));
   });
 

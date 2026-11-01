@@ -401,7 +401,7 @@ Map<String, dynamic> rutaAFila(PrestamoConDatos d) => {
             'descuento': p.descuento,
             'anulado': p.anulado,
             'cobrador_id': p.cobradorId,
-            if (p.importado) 'metodo': 'importado',
+            'metodo': p.importado ? 'importado' : p.metodo,
           },
       ],
     };

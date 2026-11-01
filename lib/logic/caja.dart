@@ -150,7 +150,7 @@ String resumenCajaTexto(DiaCaja d,
     '',
     for (final c in d.validos)
       '• ${_hora(c.fecha)} ${c.cliente}: ${_rd(c.monto)}${c.esTransferencia ? ' (transferencia)' : ''}',
-    if (d.anulados > 0) '(${d.anulados} cobro(s) anulado(s), no cuentan)',
+    if (d.anulados > 0) d.anulados == 1 ? '(1 cobro anulado, no cuenta)' : '(${d.anulados} cobros anulados, no cuentan)',
     if (conCobradores) ...[
       '',
       'Por cobrador:',

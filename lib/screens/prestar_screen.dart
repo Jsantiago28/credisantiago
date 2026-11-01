@@ -299,7 +299,7 @@ class _PrestarScreenState extends State<PrestarScreen> {
             ),
             if (_mora > 0 && _gracia >= 0 && _plan != null)
               Text(
-                'Si una cuota se atrasa más de $_gracia día(s), se le suma el '
+                'Si una cuota se atrasa más de ${plural(_gracia, 'día', 'días')}, se le suma el '
                 '${_mora.toStringAsFixed(_mora == _mora.roundToDouble() ? 0 : 1)}% '
                 'de lo que falte de ella por cada día '
                 '(RD\$ ${(_plan!.cuota * _mora / 100).round()} diarios sobre una cuota completa).',

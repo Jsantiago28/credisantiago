@@ -226,13 +226,15 @@ String? _frecuencia(Object? v) {
 }
 
 /// "Tipo de interés": vacío → fijo (como se presta en la calle); "fijo",
-/// "plano" o "sobre el monto" → fijo; "saldo" o "sobre saldo" → saldo. Null
+/// "plano" o "sobre el monto" → fijo; "saldo" o "sobre saldo" → saldo;
+/// "réditos" → solo réditos. Null
 /// si dice otra cosa.
 TipoInteres? _tipoInteres(Object? v) {
   final t = _clave(_texto(v) ?? '');
   if (t.isEmpty) return TipoInteres.fijo;
   if (t.contains('saldo') || t == 'frances') return TipoInteres.saldo;
   if (t.contains('fijo') || t.contains('plano') || t.contains('monto')) return TipoInteres.fijo;
+  if (t.contains('redito')) return TipoInteres.reditos;
   return null;
 }
 
@@ -311,7 +313,7 @@ TipoInteres? _tipoInteres(Object? v) {
       if (pagado < 0) errores.add('"Ya pagó" no puede ser negativo');
       if (mora != null && mora < 0) errores.add('La mora no puede ser negativa');
       if (gracia != null && gracia < 0) errores.add('Los días de gracia no pueden ser negativos');
-      if (tipo == null) errores.add('Tipo de interés no válido: usa fijo o saldo');
+      if (tipo == null) errores.add('Tipo de interés no válido: usa fijo, saldo o réditos');
 
       if (errores.isEmpty) {
         prestamo = PrestamoImportado(

@@ -193,7 +193,7 @@ void main() {
       ['Juan Pérez', '00112345678', '8095551234', null, 10000, 10, 'mensual', 90, '1/9/2026', 0,
           null, null, 'raro'],
     ]).filas.single;
-    expect(mal.errores, ['Tipo de interés no válido: usa fijo o saldo']);
+    expect(mal.errores, ['Tipo de interés no válido: usa fijo, saldo o réditos']);
   });
 
   test('si ya pagó todo, entra como saldado', () {
@@ -241,11 +241,11 @@ void main() {
       home: ImportarScreen(prestamistaId: 'p1', filas: filas),
     ));
     expect(tester.takeException(), isNull);
-    expect(find.text('2 listo(s)'), findsOneWidget);
+    expect(find.text('2 listos'), findsOneWidget);
     expect(find.text('1 con préstamo'), findsOneWidget);
     expect(find.text('1 ya existe(n)'), findsOneWidget);
     expect(find.text('1 con errores'), findsOneWidget);
-    expect(find.text('Importar 2 cliente(s)'), findsOneWidget);
+    expect(find.text('Importar 2 clientes'), findsOneWidget);
     expect(find.textContaining('Préstamo RD\$10,000 semanal, interés fijo, del 1 sep 2026'), findsOneWidget);
     expect(find.text('Ya tienes un cliente con esa cédula: no se importa'), findsOneWidget);
   });

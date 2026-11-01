@@ -142,7 +142,7 @@ class _ImportarScreenState extends State<ImportarScreen> {
                 ElevatedButton.icon(
                   onPressed: _listas.isEmpty ? null : _importar,
                   icon: const Icon(Icons.upload_rounded),
-                  label: Text('Importar ${_listas.length} cliente(s)'),
+                  label: Text('Importar ${plural(_listas.length, 'cliente', 'clientes')}'),
                 ),
               const SizedBox(height: 16),
               ...filas.map((f) => FilaRevisada(fila: f)),
@@ -164,7 +164,8 @@ class _ImportarScreenState extends State<ImportarScreen> {
             'Nombre, cédula y teléfono son obligatorios. Si el cliente tiene un préstamo en la '
             'calle, llena también monto, interés, frecuencia, plazo, fecha y lo que ya pagó. '
             '"Tipo de interés": fijo (sobre el monto, como se presta en la calle) o saldo '
-            '(sobre lo que debe, cuota fija); si lo dejas vacío, es fijo. '
+            '(sobre lo que debe, cuota fija) o réditos (solo interés, el capital al final); '
+            'si lo dejas vacío, es fijo. '
             'Lo que ya pagó cuenta desde hoy: las cuotas atrasadas de antes empiezan a '
             'cobrar mora desde hoy, no desde que vencieron. '
             'Borra las filas de ejemplo.',
@@ -201,7 +202,7 @@ class _ImportarScreenState extends State<ImportarScreen> {
             children: [
               Icon(Icons.check_circle, color: AppColors.green, size: 36),
               const SizedBox(height: 8),
-              Text('Listo: $_importados cliente(s) importado(s)',
+              Text('Listo: ${plural(_importados ?? 0, 'cliente importado', 'clientes importados')}',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
               Text(
                 'Lo que ya habían pagado cuenta para su balance, pero no como dinero de la caja.',
@@ -245,7 +246,7 @@ class ResumenImportacion extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        Pildora('$listas listo(s)'),
+        Pildora(plural(listas, 'listo', 'listos')),
         if (conPrestamo > 0) Pildora('$conPrestamo con préstamo'),
         if (repetidas > 0)
           Pildora('$repetidas ya existe(n)', color: AppColors.amber, fondo: AppColors.amberDark),

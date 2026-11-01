@@ -168,10 +168,10 @@ class _CobradoresScreenState extends State<CobradoresScreen> {
                 children: [
                   Text(
                     _limite == null
-                        ? 'Tu plan permite cobradores sin límite. Tienes $_activos activo(s).'
+                        ? 'Tu plan permite cobradores sin límite. Tienes ${plural(_activos, 'activo', 'activos')}.'
                         : _limite == 0
                             ? 'Tu plan no incluye cobradores. Con el Básico tienes 1 y con el Pro, 3.'
-                            : 'Tu plan permite $_limite cobrador(es). Tienes $_activos activo(s).',
+                            : 'Tu plan permite ${plural(_limite ?? 0, 'cobrador', 'cobradores')}. Tienes ${plural(_activos, 'activo', 'activos')}.',
                     style: TextStyle(color: AppColors.grey),
                   ),
                   const SizedBox(height: 4),
@@ -254,7 +254,7 @@ class TarjetaCobrador extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text('$clientes cliente(s) en su ruta',
+          Text('${plural(clientes, 'cliente', 'clientes')} en su ruta',
               style: const TextStyle(fontWeight: FontWeight.w600)),
           if (c.activo && !c.yaEntro)
             Text('Mándale cómo entrar por WhatsApp.',
@@ -482,7 +482,7 @@ class _RepartirClientesScreenState extends State<RepartirClientesScreen> {
       await servicio.asignarCobrador(agregar, widget.cobrador.id);
       await servicio.asignarCobrador(quitar, null);
       mensajero.showSnackBar(SnackBar(
-          content: Text('${widget.cobrador.nombre}: ${_marcados.length} cliente(s) en su ruta')));
+          content: Text('${widget.cobrador.nombre}: ${plural(_marcados.length, 'cliente', 'clientes')} en su ruta')));
       navegador.pop(true);
     } catch (e, pila) {
       registrarError(e, pila, 'REPARTIR (${clientes.length} clientes)');
@@ -506,7 +506,7 @@ class _RepartirClientesScreenState extends State<RepartirClientesScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _guardando ? null : _guardar,
                   icon: const Icon(Icons.check),
-                  label: Text('Guardar (${_marcados.length} cliente(s))'),
+                  label: Text('Guardar (${plural(_marcados.length, 'cliente', 'clientes')})'),
                 ),
               ),
             ),

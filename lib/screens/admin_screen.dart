@@ -525,7 +525,7 @@ class _AdminScreenState extends State<AdminScreen> {
         children: [
           Text('Mensualidades cobradas', style: TextStyle(color: AppColors.grey, fontSize: 13)),
           Text(rd(total), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-          Text('este mes · ${delMes.length} pago(s)',
+          Text('este mes · ${plural(delMes.length, 'pago', 'pagos')}',
               style: TextStyle(color: AppColors.grey, fontSize: 12)),
           const Divider(height: 20),
           for (final pago in _pagos.take(10)) FilaPagoPlan(pago, onBorrar: () => _borrarPago(pago)),

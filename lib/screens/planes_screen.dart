@@ -109,7 +109,7 @@ class _TarjetaMiPlanState extends State<TarjetaMiPlan> {
                               color: AppColors.amber, fontSize: 13, fontWeight: FontWeight.w700))
                     else if (dias != null)
                       Text(
-                        dias <= 5 ? 'Vence en $dias día(s)' : 'Vence el ${fechaLarga(e.vence!)}',
+                        dias <= 5 ? 'Vence en ${plural(dias, 'día', 'días')}' : 'Vence el ${fechaLarga(e.vence!)}',
                         style: TextStyle(
                             color: dias <= 5 ? AppColors.amber : AppColors.grey, fontSize: 12),
                       ),

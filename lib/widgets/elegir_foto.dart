@@ -87,7 +87,7 @@ Future<List<Uint8List>> elegirVariasFotos(BuildContext context, {required int ma
     }
     if (pesadas > 0) {
       mensajero.showSnackBar(SnackBar(
-          content: Text('$pesadas foto(s) pesan más de 10MB y no se agregaron.')));
+          content: Text(pesadas == 1 ? '1 foto pesa más de 10MB y no se agregó.' : '$pesadas fotos pesan más de 10MB y no se agregaron.')));
     }
     return bytes;
   } catch (e, pila) {

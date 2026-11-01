@@ -177,8 +177,19 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
                                     fontWeight: FontWeight.w700)),
                             Text(rd(dia.total),
                                 style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
-                            Text('${plural(dia.cantidad, 'cobro', 'cobros')} · esto es lo que entregas',
+                            Text(plural(dia.cantidad, 'cobro', 'cobros'),
                                 style: TextStyle(color: AppColors.grey)),
+                            // Las transferencias le llegan al jefe directo:
+                            // el cobrador entrega solo el efectivo.
+                            Text(
+                                dia.transferencia > 0
+                                    ? 'Efectivo para entregar: ${rd(dia.efectivo)} · '
+                                        'transferencias ${rd(dia.transferencia)}'
+                                    : 'Esto es lo que entregas',
+                                style: TextStyle(
+                                    color: AppColors.grey,
+                                    fontWeight:
+                                        dia.transferencia > 0 ? FontWeight.w700 : FontWeight.normal)),
                             if (dia.mora > 0)
                               Text('De eso, mora: ${rd(dia.mora)}',
                                   style: TextStyle(color: AppColors.red, fontSize: 13)),
@@ -186,7 +197,7 @@ class _MiCajaCobradorState extends State<MiCajaCobrador> {
                               const Divider(height: 20),
                               Text(
                                 'Tu jefe recibió ${rd(e.entregado)} · '
-                                '${cuadre(cobrado: dia.total, entregado: e.entregado).texto}',
+                                '${cuadre(cobrado: dia.efectivo, entregado: e.entregado).texto}',
                                 style: const TextStyle(fontWeight: FontWeight.w800),
                               ),
                             ],

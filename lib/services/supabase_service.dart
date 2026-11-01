@@ -1096,7 +1096,7 @@ class SupabaseService {
     final pagos =
         calc.pagosValidos(await obtenerPagos(prestamo['id'])).where((p) => !p.esMarcaImportacion);
     if (pagos.isNotEmpty) {
-      throw StateError('Tiene ${pagos.length} cobro(s). Anúlalos primero.');
+      throw StateError(pagos.length == 1 ? 'Tiene 1 cobro. Anúlalo primero.' : 'Tiene ${pagos.length} cobros. Anúlalos primero.');
     }
     await client.from('prestamos').update({'estado': 'cancelado'}).eq('id', prestamo['id']);
   }
