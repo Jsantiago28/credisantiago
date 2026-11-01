@@ -13,6 +13,10 @@ String rd(num v) {
   return 'RD\$${formato.format(d)}';
 }
 
+/// "1 cobro", "7 cobros", "0 clientes": el número con la palabra bien
+/// escrita, en vez de "cobro(s)".
+String plural(int n, String singular, String plural) => '$n ${n == 1 ? singular : plural}';
+
 const _meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 /// "23 sep 2026"
@@ -229,7 +233,7 @@ class EtiquetaEstado extends StatelessWidget {
           const SizedBox(width: 4),
           Text(estado.texto,
               style: TextStyle(
-                  color: estado.color, fontSize: 11, fontWeight: FontWeight.w800)),
+                  color: estado.color, fontSize: 12, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -306,7 +310,7 @@ class TarjetaTotal extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(titulo,
-                style: TextStyle(color: AppColors.grey, fontSize: 11, letterSpacing: 0.3)),
+                style: TextStyle(color: AppColors.grey, fontSize: 12, letterSpacing: 0.3)),
           ),
           const SizedBox(height: 4),
           FittedBox(
@@ -318,7 +322,7 @@ class TarjetaTotal extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(detalle,
-                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ],
       ),

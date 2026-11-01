@@ -76,7 +76,10 @@ class Paleta {
     surface: Color(0xFFFFFFFF),
     surfaceAlt: Color(0xFFEDF1EF),
     border: Color(0xFFDCE2DF),
-    green: Color(0xFF16A34A),
+    // Verde más oscuro que el de la marca (#16A34A, 3.3:1): sobre blanco da
+    // 5:1 y se lee a pleno sol, tanto en letras como con letra blanca encima
+    // (botones).
+    green: Color(0xFF15803D),
     greenDark: Color(0xFFDCFCE7),
     red: Color(0xFFDC2626),
     redDark: Color(0xFFFEE2E2),

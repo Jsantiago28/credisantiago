@@ -13,6 +13,10 @@ String? telefonoWhatsApp(String? telefono) {
   return digitos;
 }
 
+/// Enlace que abre WhatsApp para compartir el mensaje con quien uno elija
+/// (sin número: WhatsApp pregunta a quién mandarlo).
+Uri enlaceCompartirWhatsApp(String mensaje) => Uri.https('wa.me', '/', {'text': mensaje});
+
 /// Enlace que abre el chat de WhatsApp con el mensaje ya escrito.
 Uri? enlaceWhatsApp(String? telefono, String mensaje) {
   final numero = telefonoWhatsApp(telefono);
@@ -63,7 +67,8 @@ String mensajeCobro({
   if (estado.balance >= 0.01) {
     return '$saludo Le recordamos que tiene un balance pendiente de ${_rd(estado.balance)}. ¡Gracias!';
   }
-  return '$saludo Su préstamo está saldado. ¡Gracias por cumplir!';
+  return '$saludo Su préstamo está saldado. ¡Gracias por cumplir! '
+      'Si más adelante necesita otro préstamo, aquí estamos para servirle.';
 }
 
 /// "Hola José" (o solo "Hola" si no hay nombre).
@@ -91,3 +96,51 @@ String mensajeSolicitudRechazada({required String nombreCliente, required String
     '${_hola(nombreCliente)}, le saluda $negocio. Gracias por enviarnos su solicitud. '
     'Por ahora no podemos aprobarle el préstamo, pero más adelante puede volver a '
     'intentarlo. ¡Que tenga un buen día!';
+
+/// Para el cliente que pagó todo: se le agradece y se le invita a pedir
+/// otro préstamo con el link de solicitudes del prestamista ([link]).
+String mensajeVolverAPrestar({required String nombreCliente, required String link}) =>
+    '${_hola(nombreCliente)}, usted cumplió con su préstamo. Si necesita otro, aquí estoy.'
+    '${link.trim().isEmpty ? '' : ' Puede pedirlo aquí: ${link.trim()}'}';
+
+const _diasSemana = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+/// Recordatorio para el que paga mañana: el monto y la fecha.
+String mensajeRecordatorioManana({
+  required String nombreCliente,
+  required String negocio,
+  required double monto,
+  required DateTime fecha,
+}) =>
+    '${_hola(nombreCliente)}, le saluda $negocio. Le recordamos que mañana, '
+    '${_diasSemana[fecha.weekday - 1]} ${fecha.day} ${_meses[fecha.month - 1]}, '
+    'le toca su cuota de ${_rd(monto)}. ¡Gracias!';
+
+const _mesesLargos = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', //
+  'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+/// Resumen corto del mes para compartir por WhatsApp (con un socio, el
+/// contador o uno mismo).
+String mensajeResumenMes({
+  required String negocio,
+  required DateTime mes,
+  required double prestado,
+  required double cobrado,
+  required double ganancia,
+  required double moraCobrada,
+  required double enLaCalle,
+  required int atrasados,
+}) {
+  final titulo = negocio.trim().isEmpty ? 'Resumen' : 'Resumen de ${negocio.trim()}';
+  return [
+    '$titulo · ${_mesesLargos[mes.month - 1]} ${mes.year}',
+    'Prestado: ${_rd(prestado)}',
+    'Cobrado: ${_rd(cobrado)}',
+    'Ganancia: ${_rd(ganancia)}',
+    'Mora cobrada: ${_rd(moraCobrada)}',
+    'En la calle: ${_rd(enLaCalle)}',
+    'Atrasados: $atrasados ${atrasados == 1 ? 'cliente' : 'clientes'}',
+  ].join('\n');
+}

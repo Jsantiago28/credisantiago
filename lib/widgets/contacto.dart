@@ -57,7 +57,9 @@ Future<void> llamar(BuildContext context, String? telefono) async {
 class BotonWhatsApp extends StatelessWidget {
   final VoidCallback onPressed;
   final double tamano;
-  const BotonWhatsApp({super.key, required this.onPressed, this.tamano = 40});
+  final String tooltip;
+  const BotonWhatsApp(
+      {super.key, required this.onPressed, this.tamano = 48, this.tooltip = 'Cobrar por WhatsApp'});
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +67,7 @@ class BotonWhatsApp extends StatelessWidget {
       width: tamano,
       height: tamano,
       child: IconButton.filled(
-        tooltip: 'Cobrar por WhatsApp',
+        tooltip: tooltip,
         padding: EdgeInsets.zero,
         style: IconButton.styleFrom(
           backgroundColor: verdeWhatsApp.withValues(alpha: 0.15),
@@ -97,13 +99,16 @@ class FilaContacto extends StatelessWidget {
         ),
         if (tel.isNotEmpty) ...[
           TextButton.icon(
-            style: TextButton.styleFrom(foregroundColor: verdeWhatsApp),
+            // 48 de alto como mínimo: fácil de tocar en la calle.
+            style: TextButton.styleFrom(
+                foregroundColor: verdeWhatsApp, minimumSize: const Size(48, 48)),
             onPressed: onWhatsApp,
             icon: const Icon(Icons.chat_rounded, size: 18),
             label: const Text('WhatsApp'),
           ),
           IconButton(
             tooltip: 'Llamar',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             onPressed: () => llamar(context, tel),
             icon: Icon(Icons.call_rounded, color: AppColors.green),
           ),

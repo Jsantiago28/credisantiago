@@ -249,7 +249,7 @@ void main() {
       );
       expect(tester.takeException(), isNull);
       expect(find.text('RD\$1,100'), findsWidgets);
-      expect(find.text('1 cobro(s) · esto es lo que entregas'), findsOneWidget);
+      expect(find.text('1 cobro · esto es lo que entregas'), findsOneWidget);
       expect(find.textContaining('ANULADO por tu jefe'), findsOneWidget);
     });
   });

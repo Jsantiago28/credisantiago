@@ -85,8 +85,14 @@ class BotonBorrarCuenta extends StatelessWidget {
         Wrap(
           alignment: WrapAlignment.center,
           children: [
-            TextButton(onPressed: () => abrirPaginaLegal('terminos'), child: const Text('Términos')),
-            TextButton(onPressed: () => abrirPaginaLegal('privacidad'), child: const Text('Privacidad')),
+            TextButton(
+                style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                onPressed: () => abrirPaginaLegal('terminos'),
+                child: const Text('Términos')),
+            TextButton(
+                style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                onPressed: () => abrirPaginaLegal('privacidad'),
+                child: const Text('Privacidad')),
           ],
         ),
       ],
@@ -118,8 +124,8 @@ class CasillaAcepto extends StatelessWidget {
     final enlace = TextButton.styleFrom(
       foregroundColor: color,
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      minimumSize: const Size(0, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      // 48 de alto: el enlace se puede tocar con el dedo sin fallar.
+      minimumSize: const Size(48, 48),
       textStyle: const TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
     );
     return Row(

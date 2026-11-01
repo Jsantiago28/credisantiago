@@ -10,6 +10,7 @@ import 'cliente_detalle_screen.dart';
 import 'importar_screen.dart';
 import 'nuevo_cliente_screen.dart';
 import 'prestar_screen.dart';
+import 'volver_a_prestar_screen.dart';
 
 class ClientesScreen extends StatefulWidget {
   final String prestamistaId;
@@ -178,8 +179,8 @@ class _ClientesScreenState extends State<ClientesScreen> {
                     Expanded(
                       child: Text(
                           busqueda.isEmpty
-                              ? '${todos.length} cliente(s)'
-                              : '${clientes.length} de ${todos.length} cliente(s)',
+                              ? plural(todos.length, 'cliente', 'clientes')
+                              : '${clientes.length} de ${plural(todos.length, 'cliente', 'clientes')}',
                           style: TextStyle(color: AppColors.grey)),
                     ),
                     if (eliminados.isNotEmpty)
@@ -190,6 +191,17 @@ class _ClientesScreenState extends State<ClientesScreen> {
                       ),
                   ],
                 ),
+                if (todos.isNotEmpty)
+                  ActionChip(
+                    avatar: Icon(Icons.replay_rounded, color: AppColors.green, size: 18),
+                    label: const Text('Pagaron todo: volver a prestarles'),
+                    labelStyle:
+                        TextStyle(color: AppColors.green, fontWeight: FontWeight.w700),
+                    side: BorderSide(color: AppColors.green),
+                    backgroundColor: AppColors.surface,
+                    onPressed: () =>
+                        _abrir(VolverAPrestarScreen(prestamistaId: widget.prestamistaId)),
+                  ),
               ],
             ),
           );

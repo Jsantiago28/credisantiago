@@ -119,7 +119,7 @@ class _MapaCobrosScreenState extends State<MapaCobrosScreen> {
             Text(
               p.aCobrar > 0
                   ? 'Cobrar hoy: ${rd(p.aCobrar)}'
-                      '${p.hoy.diasAtraso > 0 ? ' · ${p.hoy.diasAtraso} día(s) atrasado' : ''}'
+                      '${p.hoy.diasAtraso > 0 ? ' · ${plural(p.hoy.diasAtraso, 'día', 'días')} atrasado' : ''}'
                   : 'Nada que cobrar hoy · debe ${rd(p.datos.estado(DateTime.now()).balance)}',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),

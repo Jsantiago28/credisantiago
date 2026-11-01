@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../logic/calculo_prestamo.dart';
 import '../logic/gestiones.dart';
+import '../logic/ruta.dart';
+import '../logic/ruta_del_dia.dart';
 import '../services/errores.dart';
 import '../services/sin_conexion.dart';
 import '../services/supabase_service.dart';
@@ -13,12 +15,20 @@ import '../widgets/cobro_prestamo.dart';
 import '../widgets/contacto.dart';
 import '../widgets/gestiones.dart';
 import '../widgets/primeros_pasos.dart';
+import '../widgets/progreso_ruta.dart';
+import '../widgets/ubicacion.dart';
 import '../widgets/ui.dart';
 import 'calculadora_screen.dart';
 import 'mapa_cobros_screen.dart';
+import 'recordar_manana_screen.dart';
+import 'semana_screen.dart';
 
 /// Qué préstamos muestra la lista de abajo.
 enum _Filtro { hoy, atrasados, todos }
+
+/// En qué orden sale la lista: los más atrasados primero, o el más cercano
+/// (desde donde está el teléfono) y de ahí al siguiente más cercano.
+enum _Orden { atraso, cercania }
 
 /// Tablero principal: totales, aviso de solicitudes y cobros del día.
 class InicioScreen extends StatefulWidget {
@@ -59,9 +69,16 @@ class _Fila {
   final EstadoPrestamo estado;
   final ({double atrasado, double venceHoy, int diasAtraso}) hoy;
   final InfoPromesa? promesa;
-  _Fila(this.datos, this.estado, this.hoy, this.promesa);
+
+  /// Lo que entró hoy de este préstamo (también lo cobrado sin señal).
+  final double cobradoHoy;
+  _Fila(this.datos, this.estado, this.hoy, this.promesa, this.cobradoHoy);
 
   double get aCobrar => hoy.atrasado + hoy.venceHoy;
+  ParadaDelDia get parada => (aCobrar: aCobrar, cobradoHoy: cobradoHoy);
+
+  /// Dónde vive el cliente (null si no se guardó).
+  Punto? get punto => puntoDe(datos.cliente?['lat'], datos.cliente?['lng']);
   EstadoCobro get etiqueta => hoy.atrasado > 0
       ? EstadoCobro.atrasado
       : hoy.venceHoy > 0
@@ -74,6 +91,23 @@ class _InicioScreenState extends State<InicioScreen> {
   String? _error;
   _Filtro _filtro = _Filtro.hoy;
   StreamSubscription? _cambios;
+  _Orden _orden = _Orden.atraso;
+
+  /// Dónde estaba el teléfono al elegir "Por cercanía".
+  Punto? _yo;
+  bool _buscandoUbicacion = false;
+
+  /// La sección "Ya cobrados hoy" está abierta.
+  bool _verCobrados = false;
+
+  /// Espera un momento antes de recargar por un cambio en vivo: un cobro
+  /// manda varios avisos seguidos y basta con una sola recarga.
+  Timer? _espera;
+  static const _esperaCambios = Duration(milliseconds: 1500);
+
+  /// Número de la última carga: si una carga vieja termina después de una
+  /// nueva, su resultado se bota.
+  int _secuencia = 0;
 
   String get _prestamistaId => widget.perfil['id'] as String;
 
@@ -87,13 +121,23 @@ class _InicioScreenState extends State<InicioScreen> {
         .skip(1)
         // Si la conexión en vivo falla, Inicio igual carga (y se recarga
         // jalando hacia abajo); solo deja de refrescarse solo.
-        .listen((_) => _cargar(), onError: (_) {});
+        .listen((_) => _recargarPronto(), onError: (_) {});
+  }
+
+  /// Recarga 1.5 s después del último aviso de cambio.
+  void _recargarPronto() {
+    _espera?.cancel();
+    if (!mounted) return;
+    _espera = Timer(_esperaCambios, () {
+      if (mounted) _cargar();
+    });
   }
 
   @override
   void dispose() {
     _cambios?.cancel();
     _reintento?.cancel();
+    _espera?.cancel();
     super.dispose();
   }
 
@@ -124,29 +168,129 @@ class _InicioScreenState extends State<InicioScreen> {
       final seguir = SinConexion.sinSenal.value || SinConexion.pendientes.value > 0;
       _reintento?.cancel();
       // Si ya se salió de la pantalla, no queda un reloj recargando.
-      _reintento = seguir && mounted ? Timer(const Duration(minutes: 1), _cargar) : null;
+      _reintento = null;
+      if (seguir && mounted) {
+        _reintento = Timer(const Duration(minutes: 1), () {
+          if (mounted) _cargar();
+        });
+      }
     }
   }
 
   Future<void> _cargar() async {
+    final mia = ++_secuencia;
     try {
       final cartera = await _cartera();
       final ahora = DateTime.now();
       final filas = cartera.map((d) {
         final e = d.estado(ahora);
-        return _Fila(d, e, cobroDelDia(e, ahora), d.promesa(ahora));
+        return _Fila(d, e, cobroDelDia(e, ahora), d.promesa(ahora), cobradoEnDia(d.pagos, ahora));
       }).toList();
-      if (mounted) {
-        setState(() {
-          _filas = filas;
-          _error = null;
-        });
-      }
+      // Ya salió de la pantalla, o empezó otra carga más nueva: esta se bota.
+      if (!mounted || mia != _secuencia) return;
+      setState(() {
+        _filas = filas;
+        _error = null;
+      });
     } catch (e, pila) {
+      if (!mounted || mia != _secuencia) return;
       registrarError(e, pila, 'INICIO');
       // El aviso de "sin ruta guardada" ya viene en palabras; lo demás no.
-      if (mounted) setState(() => _error = e is String ? e : mensajeError(e));
+      setState(() => _error = e is String ? e : mensajeError(e));
     }
+  }
+
+  /// Cambia el orden de la lista. Para "Por cercanía" busca dónde está el
+  /// teléfono; si no se puede, se queda por atraso.
+  Future<void> _elegirOrden(_Orden orden) async {
+    if (orden == _Orden.atraso) {
+      setState(() => _orden = orden);
+      return;
+    }
+    final mensajero = ScaffoldMessenger.of(context);
+    setState(() => _buscandoUbicacion = true);
+    final yo = await ubicacionSinAvisar();
+    if (!mounted) return;
+    setState(() {
+      _buscandoUbicacion = false;
+      if (yo != null) {
+        _yo = yo;
+        _orden = _Orden.cercania;
+      }
+    });
+    if (yo == null) {
+      mensajero.showSnackBar(const SnackBar(
+          content: Text('No pudimos saber dónde estás. Prende la ubicación y dale permiso '
+              'a la app.')));
+    }
+  }
+
+  /// Ordena la lista según lo elegido. Por cercanía, los que no tienen
+  /// ubicación guardada van al final (por atraso).
+  List<_Fila> _ordenar(List<_Fila> filas) {
+    int porAtraso(_Fila a, _Fila b) {
+      final dias = b.hoy.diasAtraso.compareTo(a.hoy.diasAtraso);
+      if (dias != 0) return dias;
+      return b.aCobrar.compareTo(a.aCobrar);
+    }
+
+    final yo = _yo;
+    if (_orden == _Orden.atraso || yo == null) return [...filas]..sort(porAtraso);
+    final conLugar = filas.where((f) => f.punto != null).toList();
+    final sinLugar = filas.where((f) => f.punto == null).toList()..sort(porAtraso);
+    return [...ordenarRuta(conLugar, (f) => f.punto!, inicio: yo), ...sinLugar];
+  }
+
+  Future<void> _noEstaba(_Fila f) async {
+    if (await anotarNoEstaba(context, f.datos)) _cargar();
+  }
+
+  /// Nombre del negocio que firma los mensajes.
+  String get _negocio {
+    final n = widget.modoCobrador
+        ? widget.negocioDelJefe
+        : (widget.perfil['nombre'] as String?);
+    return (n == null || n.trim().isEmpty) ? 'su prestamista' : n.trim();
+  }
+
+  List<RecordatorioManana> _deManana(List<_Fila> filas) => [
+        for (final m in pagosDeManana(filas, (f) => f.estado, DateTime.now()))
+          (
+            nombre: m.item.datos.nombre,
+            telefono: m.item.datos.cliente?['telefono'] as String?,
+            monto: m.monto,
+            fecha: m.fecha,
+          ),
+      ];
+
+  Widget _accesos(List<_Fila> filas) {
+    final manana = _deManana(filas);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SemanaScreen(
+              cartera: [for (final f in filas) f.datos],
+              onAbrir: (d) => CobroPrestamo(context, d, onCambio: _cargar).abrirCuotas(),
+            ),
+          )),
+          icon: const Icon(Icons.calendar_view_week_rounded, size: 20),
+          label: const Text('Semana'),
+        ),
+        if (manana.isNotEmpty)
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => RecordarMananaScreen(clientes: manana, negocio: _negocio),
+            )),
+            icon: const Icon(Icons.notifications_active_rounded, size: 20),
+            label: Text('Recordar a los de mañana (${manana.length})'),
+          ),
+      ],
+    );
   }
 
   void _abrir(_Fila f) => CobroPrestamo(context, f.datos, onCambio: _cargar).abrirCuotas();
@@ -180,6 +324,8 @@ class _InicioScreenState extends State<InicioScreen> {
                     onVerClientes: widget.onBuscar,
                   ),
                 _totales(filas!),
+                const SizedBox(height: 12),
+                _accesos(filas),
                 if (widget.solicitudesNuevas > 0) ...[
                   const SizedBox(height: 12),
                   _avisoSolicitudes(),
@@ -190,8 +336,13 @@ class _InicioScreenState extends State<InicioScreen> {
                 ],
                 const SizedBox(height: 24),
                 _tituloLista(),
+                const SizedBox(height: 8),
+                _selectorOrden(),
                 const SizedBox(height: 12),
+                if (_filtro == _Filtro.hoy && progresoRuta(filas.map((f) => f.parada)).total > 0)
+                  BarraProgresoRuta(progresoRuta(filas.map((f) => f.parada))),
                 ..._lista(filas),
+                if (_filtro == _Filtro.hoy) ..._yaCobrados(filas),
               ],
             ],
           ),
@@ -294,7 +445,7 @@ class _InicioScreenState extends State<InicioScreen> {
               icono: Icons.account_balance_wallet_rounded,
               titulo: 'EN LA CALLE',
               valor: rd(enLaCalle),
-              detalle: '${filas.length} préstamo(s)',
+              detalle: plural(filas.length, 'préstamo', 'préstamos'),
               color: AppColors.green,
               fondoIcono: AppColors.greenDark,
               seleccionada: _filtro == _Filtro.todos,
@@ -307,7 +458,7 @@ class _InicioScreenState extends State<InicioScreen> {
               icono: Icons.event_available_rounded,
               titulo: 'POR COBRAR HOY',
               valor: rd(montoHoy),
-              detalle: '${hoy.length} cobro(s) hoy',
+              detalle: '${plural(hoy.length, 'cobro', 'cobros')} hoy',
               color: AppColors.amber,
               fondoIcono: AppColors.amberDark,
               seleccionada: _filtro == _Filtro.hoy,
@@ -320,7 +471,7 @@ class _InicioScreenState extends State<InicioScreen> {
               icono: Icons.warning_amber_rounded,
               titulo: 'ATRASADOS',
               valor: rd(montoAtrasado),
-              detalle: '${atrasados.length} cliente(s)',
+              detalle: plural(atrasados.length, 'cliente', 'clientes'),
               color: AppColors.red,
               fondoIcono: AppColors.redDark,
               seleccionada: _filtro == _Filtro.atrasados,
@@ -455,17 +606,13 @@ class _InicioScreenState extends State<InicioScreen> {
   }
 
   List<Widget> _lista(List<_Fila> filas) {
-    final visibles = switch (_filtro) {
+    // Por atraso: primero los más atrasados, luego lo que vence hoy, luego
+    // el resto. Por cercanía: del más cercano al siguiente.
+    final visibles = _ordenar(switch (_filtro) {
       _Filtro.hoy => filas.where((f) => f.aCobrar > 0).toList(),
       _Filtro.atrasados => filas.where((f) => f.hoy.atrasado > 0).toList(),
       _Filtro.todos => [...filas],
-    }
-      // Primero los más atrasados, luego lo que vence hoy, luego el resto.
-      ..sort((a, b) {
-        final porAtraso = b.hoy.diasAtraso.compareTo(a.hoy.diasAtraso);
-        if (porAtraso != 0) return porAtraso;
-        return b.aCobrar.compareTo(a.aCobrar);
-      });
+    });
 
     if (visibles.isEmpty) {
       return [
@@ -483,12 +630,95 @@ class _InicioScreenState extends State<InicioScreen> {
     return visibles.map(_filaCobro).toList();
   }
 
+  /// "Por atraso / Por cercanía".
+  Widget _selectorOrden() {
+    Widget opcion(_Orden o, String texto, IconData icono) => ChoiceChip(
+          avatar: Icon(icono,
+              size: 18, color: _orden == o ? AppColors.green : AppColors.grey),
+          label: Text(texto),
+          selected: _orden == o,
+          showCheckmark: false,
+          selectedColor: AppColors.greenDark,
+          backgroundColor: AppColors.surface,
+          labelStyle: TextStyle(
+              color: _orden == o ? AppColors.green : AppColors.texto,
+              fontWeight: FontWeight.w700),
+          onSelected: _buscandoUbicacion ? null : (_) => _elegirOrden(o),
+        );
+    return Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        opcion(_Orden.atraso, 'Por atraso', Icons.warning_amber_rounded),
+        opcion(_Orden.cercania, 'Por cercanía', Icons.near_me_rounded),
+        if (_buscandoUbicacion)
+          const SizedBox(
+              width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+      ],
+    );
+  }
+
+  /// Sección plegable con los que ya pagaron todo lo de hoy.
+  List<Widget> _yaCobrados(List<_Fila> filas) {
+    final cobrados = filas.where((f) => yaCobradoHoy(f.parada)).toList()
+      ..sort((a, b) => a.datos.nombre.toLowerCase().compareTo(b.datos.nombre.toLowerCase()));
+    if (cobrados.isEmpty) return const [];
+    final total = cobrados.fold<double>(0, (s, f) => s + f.cobradoHoy);
+    return [
+      const SizedBox(height: 8),
+      InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => setState(() => _verCobrados = !_verCobrados),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: AppColors.green),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Ya cobrados hoy (${cobrados.length}) · ${rd(total)}',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              ),
+              Icon(_verCobrados ? Icons.expand_less : Icons.expand_more, color: AppColors.grey),
+            ],
+          ),
+        ),
+      ),
+      if (_verCobrados)
+        for (final f in cobrados)
+          Panel(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 8),
+            onTap: () => _abrir(f),
+            child: Row(
+              children: [
+                AvatarIniciales(
+                    nombre: f.datos.nombre,
+                    fotoUrl: f.datos.cliente?['foto_cara_url'] as String?,
+                    tamano: 40),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(f.datos.nombre,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                ),
+                Text(rd(f.cobradoHoy),
+                    style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+    ];
+  }
+
   Widget _filaCobro(_Fila f) {
     final proximo = f.estado.proximoPago;
     final cuando = f.hoy.atrasado > 0
-        ? (f.hoy.diasAtraso > 0 ? '${f.hoy.diasAtraso} día(s) atrasado' : 'Debe mora')
+        ? (f.hoy.diasAtraso > 0
+            ? '${plural(f.hoy.diasAtraso, 'día', 'días')} atrasado'
+            : 'Debe mora')
         : f.hoy.venceHoy > 0
-            ? 'Pago hoy'
+            ? 'Vence hoy'
             : proximo != null
                 ? 'Próximo pago ${fechaCorta(proximo)}'
                 // Préstamos viejos sin cronograma: debe, pero sin fechas.
@@ -497,9 +727,7 @@ class _InicioScreenState extends State<InicioScreen> {
                     : 'Sin cuotas pendientes';
     final monto = f.aCobrar > 0 ? f.aCobrar : f.estado.balance;
 
-    return Panel(
-      onTap: () => _abrir(f),
-      child: Row(
+    final fila = Row(
         children: [
           AvatarIniciales(
               nombre: f.datos.nombre, fotoUrl: f.datos.cliente?['foto_cara_url'] as String?),
@@ -553,7 +781,29 @@ class _InicioScreenState extends State<InicioScreen> {
             ],
           ),
         ],
-      ),
+      );
+
+    return Panel(
+      onTap: () => _abrir(f),
+      child: _filtro == _Filtro.todos || f.aCobrar <= 0
+          ? fila
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                fila,
+                Align(
+                  alignment: Alignment.centerRight,
+                  // Un toque: anota la visita sin abrir el formulario.
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                        foregroundColor: AppColors.grey, minimumSize: const Size(48, 48)),
+                    onPressed: () => _noEstaba(f),
+                    icon: const Icon(Icons.person_off_rounded, size: 18),
+                    label: const Text('No estaba'),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }

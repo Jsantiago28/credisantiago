@@ -231,6 +231,28 @@ Future<bool> anotarGestion(BuildContext context, PrestamoConDatos datos) async {
   return guardo == true;
 }
 
+/// Anota de una vez una visita en la que el cliente no estaba, sin abrir el
+/// formulario (un toque desde la ruta). Avisa con un mensajito. Devuelve
+/// true si se guardó.
+Future<bool> anotarNoEstaba(BuildContext context, PrestamoConDatos datos) async {
+  final mensajero = ScaffoldMessenger.of(context);
+  try {
+    await SupabaseService.instance.registrarGestion(
+      prestamo: datos.prestamo,
+      tipo: 'visita',
+      resultado: 'no_estaba',
+    );
+    mensajero.showSnackBar(
+        SnackBar(content: Text('Anotado: ${datos.nombre} no estaba.')));
+    return true;
+  } catch (e, pila) {
+    registrarError(e, pila, 'GESTION NO ESTABA');
+    mensajero.showSnackBar(
+        SnackBar(content: Text('No se pudo anotar la visita. ${mensajeError(e)}')));
+    return false;
+  }
+}
+
 /// Historial de gestiones del préstamo (la más reciente arriba), con el
 /// estado de cada promesa. Se lee de nuevo para que salga lo último.
 Future<void> verGestiones(BuildContext context, PrestamoConDatos datos,

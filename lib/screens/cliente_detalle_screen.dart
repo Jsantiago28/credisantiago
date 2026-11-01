@@ -292,7 +292,7 @@ class _ClienteDetalleScreenState extends State<ClienteDetalleScreen> {
                 child: FotoPrivada(guardado: fotos[i].$2, width: 120, height: 84),
               ),
               const SizedBox(height: 4),
-              Text(fotos[i].$1, style: TextStyle(color: AppColors.grey, fontSize: 11)),
+              Text(fotos[i].$1, style: TextStyle(color: AppColors.grey, fontSize: 12)),
             ],
           ),
         ),
