@@ -428,8 +428,8 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 4. Para cada versión nueva, subir `version:` en `pubspec.yaml` (ej. `1.0.6+7` → `1.0.7+8`): Android no instala encima una versión con el mismo número. El APK se saca solo cuando se terminan todos los cambios del día.
 
 ## Cómo publicar una versión nueva (web)
-1. `flutter build web --release`
-2. En app.netlify.com → proyecto **prestamistas-rd** → arrastrar el .zip de `build\web` en el recuadro de subir.
+1. **Automático:** al guardar en GitHub (rama main) corren las pruebas (CI) y, si pasan, "Publicar web" sube la web a Cloudflare Pages. Necesita los secretos `CLOUDFLARE_API_TOKEN` y `CLOUDFLARE_ACCOUNT_ID` en GitHub.
+2. **A mano desde la PC** (con `npx wrangler@3 login` hecho): `flutter build web --release` y `npx wrangler@3 pages deploy build/web --project-name=credisantiago --branch=main`. Las reglas de direcciones están en `web/_redirects` y las cabeceras de seguridad en `web/_headers`. Ya no se usa el zip de Netlify.
 3. En el celular, cerrar la pestaña y abrir de nuevo.
 4. Si se agregó una librería nueva, en la computadora hay que detener y volver a correr `flutter run` (la `R` no alcanza).
 
