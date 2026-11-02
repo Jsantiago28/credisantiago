@@ -1,8 +1,8 @@
 /* Estilo de las páginas fijas del sitio (presentación, términos, privacidad,
    borrar cuenta). La app en sí es Flutter y no usa este archivo. */
 :root {
-  --azul: #2B5FD9;
-  --azul-oscuro: #1838A8;
+  --marca: #15803D;
+  --marca-oscuro: #0F5F31;
   --verde: #16A34A;
   --texto: #111827;
   --gris: #4B5563;
@@ -19,7 +19,7 @@ body {
   background: var(--fondo);
   line-height: 1.6;
 }
-a { color: var(--azul); }
+a { color: var(--marca); }
 .contenedor { max-width: 960px; margin: 0 auto; padding: 0 16px; }
 
 /* Barra de arriba */
@@ -35,7 +35,7 @@ a { color: var(--azul); }
   text-decoration: none; text-align: center; border: 2px solid transparent;
 }
 .boton.principal { background: var(--verde); color: #fff; }
-.boton.secundario { border-color: var(--azul); color: var(--azul); background: transparent; }
+.boton.secundario { border-color: var(--marca); color: var(--marca); background: transparent; }
 .boton.chico { padding: 8px 14px; font-size: 14px; }
 
 /* Páginas de texto (términos, privacidad) */
@@ -44,7 +44,7 @@ a { color: var(--azul); }
 .documento h2 { font-size: 19px; margin: 28px 0 6px; }
 .documento .fecha { color: var(--gris); font-size: 14px; margin: 0 0 16px; }
 .documento li { margin: 4px 0; }
-.aviso { background: #EEF4FF; border-left: 4px solid var(--azul); padding: 12px 14px; border-radius: 8px; }
+.aviso { background: #ECFDF3; border-left: 4px solid var(--marca); padding: 12px 14px; border-radius: 8px; }
 
 /* Pie */
 .pie { color: var(--gris); font-size: 14px; padding: 24px 0 40px; text-align: center; }

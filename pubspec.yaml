@@ -44,7 +44,7 @@ flutter:
   assets:
     - assets/branding/icono.png
 
-# Íconos de la app (Android y web) a partir del logo. Para regenerarlos:
+# Íconos de la app de Android a partir del logo. Para regenerarlos:
 #   dart run flutter_launcher_icons
 flutter_launcher_icons:
   image_path: "assets/branding/icono.png"
@@ -56,8 +56,7 @@ flutter_launcher_icons:
   adaptive_icon_foreground: "assets/branding/icono_simbolo.png"
   # La imagen ya trae su margen: sin el 16% extra que pone por defecto.
   adaptive_icon_foreground_inset: 0
+  # Los de la web (web/icons, favicon) se hacen aparte desde
+  # assets/branding/logo.svg: este paquete pisaría el manifest.json.
   web:
-    generate: true
-    image_path: "assets/branding/icono.png"
-    background_color: "#F3F5F4"
-    theme_color: "#2B5FD9"
+    generate: false
