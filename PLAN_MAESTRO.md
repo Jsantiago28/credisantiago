@@ -191,7 +191,7 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 - ✅ Pruebas de seguridad de la base de datos en GitHub (02-11-2026, 24 pruebas: `supabase/tests/`, `pruebas-base-datos.yml`). Encontraron un hueco (el cobrador podía dar por pagado un préstamo viejo sin total): arreglado con la migración 36.
 - ✅ Verificación en dos pasos opcional (02-11-2026): Perfil → "Verificación en dos pasos" (app de códigos, QR o botón); al entrar se pide el código; la base de datos no muestra nada sin el código (migración 37); Admin → "Quitar dos pasos" para quien perdió el teléfono.
 - ✅ Letras mínimas 12 y verde que se lee al sol en la solicitud pública; "No estaba" se anota sin señal (02-11-2026).
-- ⬜ Que las migraciones se apliquen solas desde GitHub (hace falta guardar una clave de Supabase en GitHub).
+- ✅ Las migraciones se aplican solas desde GitHub (02-11-2026): basta subir el archivo `supabase/migracion_*.sql` a main; si pasan las pruebas de la base de datos, `aplicar-migraciones.yml` lo corre en producción y lo anota en `control.migraciones`. **Ya no se corren a mano.** Una ya aplicada no se repite aunque se edite: para cambiar algo, migración nueva.
 - ⬜ CSP de verdad (hoy solo reporta), historial de cambios general.
 - Opcional: token de Cloudflare en GitHub para que publique solo.
 
@@ -448,6 +448,7 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 35 | `migracion_2026_11_02_reditos.sql` | Permite el tipo de interés "solo réditos" |
 | 36 | `migracion_2026_11_02_pagado_sin_total.sql` | El cobrador no puede dar por pagado un préstamo viejo sin total (se exige por lo menos lo prestado) |
 | 37 | `migracion_2026_11_02_dos_pasos.sql` | Verificación en dos pasos: regla "dos_pasos" en todas las tablas y fotos, y `quitar_dos_pasos` para el admin. **A cada tabla nueva con RLS hay que ponerle la regla** (las pruebas avisan) |
+| 38 | `migracion_2026_11_02_control_migraciones.sql` | Lista de migraciones ya corridas (`control.migraciones`): desde aquí GitHub aplica solo las nuevas |
 
 `schema.sql` refleja el esquema completo al día.
 
