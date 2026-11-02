@@ -18,6 +18,7 @@ import '../widgets/primeros_pasos.dart';
 import '../widgets/progreso_ruta.dart';
 import '../widgets/ubicacion.dart';
 import '../widgets/ui.dart';
+import '../widgets/instalar_app.dart';
 import 'calculadora_screen.dart';
 import 'mapa_cobros_screen.dart';
 import 'recordar_manana_screen.dart';
@@ -308,6 +309,7 @@ class _InicioScreenState extends State<InicioScreen> {
               _encabezado(),
               const SizedBox(height: 16),
               const AvisoSinConexion(),
+              const TarjetaInstalar(),
               if (filas == null && _error == null)
                 const Padding(
                   padding: EdgeInsets.all(40),

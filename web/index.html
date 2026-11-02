@@ -39,6 +39,32 @@
 
   <title>CrediSantiago</title>
   <link rel="manifest" href="manifest.json">
+  <!-- Poner la app en la pantalla de inicio: Chrome, Samsung y Edge avisan
+       con "beforeinstallprompt" apenas carga la página, antes que la app; se
+       guarda para el botón "Instalar" de la app (lib/instalar/). El iPhone
+       no tiene este aviso: ahí la app explica los pasos. -->
+  <script>
+    window.credi = { aviso: null };
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      window.credi.aviso = e;
+      window.dispatchEvent(new Event("credi-instalacion"));
+    });
+    window.addEventListener("appinstalled", function () {
+      window.credi.aviso = null;
+      window.credi.instalada = true;
+      window.dispatchEvent(new Event("credi-instalacion"));
+    });
+    window.crediInstalar = function () {
+      var aviso = window.credi.aviso;
+      if (!aviso) return Promise.resolve("no-disponible");
+      aviso.prompt();
+      return aviso.userChoice.then(function (r) {
+        window.credi.aviso = null;
+        return r.outcome;
+      });
+    };
+  </script>
 </head>
 <body>
   <!--
