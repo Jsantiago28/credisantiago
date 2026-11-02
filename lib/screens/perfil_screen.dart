@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ajuste_dos_pasos.dart';
 import '../widgets/ajuste_recordatorio.dart';
 import '../widgets/reportar_problema.dart';
 import '../widgets/legal.dart';
@@ -224,6 +225,8 @@ class _PerfilScreenState extends State<PerfilScreen> {
           const SelectorColores(),
           const SizedBox(height: 8),
           const AjusteRecordatorio(),
+          const SizedBox(height: 8),
+          const AjusteDosPasos(),
           const SizedBox(height: 8),
           BotonReportarProblema(nombre: (perfil['nombre'] as String?) ?? ''),
           const SizedBox(height: 8),

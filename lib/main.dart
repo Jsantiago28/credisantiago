@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/dos_pasos.dart';
 import 'services/errores.dart';
 import 'services/inactividad.dart';
 import 'services/supabase_service.dart';
 import 'theme/app_theme.dart';
+import 'screens/codigo_dos_pasos_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/nueva_clave_screen.dart';
 import 'screens/registro_screen.dart';
@@ -109,6 +111,11 @@ class _RouterState extends State<_Router> {
 
         if (session == null) {
           return const LoginScreen();
+        }
+
+        // Tiene la verificación en dos pasos: falta el código de su app.
+        if (DosPasos.faltaCodigo) {
+          return const CodigoDosPasosScreen();
         }
 
         // Entró con código por "¿Olvidaste tu contraseña?": primero crea

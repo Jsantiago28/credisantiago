@@ -188,10 +188,11 @@ La app ya hace todo lo que un prestamista necesita (solicitudes por link, prést
 **Lo que queda:**
 - ⬜ **APK 1.0.8+9** cuando el dueño lo pida.
 - ⬜ Copia de las fotos: hay que activar Cloudflare R2 (pide tarjeta, es gratis hasta 10 GB).
-- ⬜ Migraciones en formato del CLI con baseline (que se apliquen solas) y pruebas SQL de seguridad en CI.
-- ⬜ CSP de verdad (hoy solo reporta), verificación en dos pasos, historial de cambios general.
-- ⬜ Letras de 10–11 en algunas pantallas (gráficas, plazo, historial del cliente, gastos, editar cliente) y el verde viejo en la solicitud pública.
-- ⬜ "No estaba" necesita señal (no entra en la cola sin conexión).
+- ✅ Pruebas de seguridad de la base de datos en GitHub (02-11-2026, 24 pruebas: `supabase/tests/`, `pruebas-base-datos.yml`). Encontraron un hueco (el cobrador podía dar por pagado un préstamo viejo sin total): arreglado con la migración 36.
+- ✅ Verificación en dos pasos opcional (02-11-2026): Perfil → "Verificación en dos pasos" (app de códigos, QR o botón); al entrar se pide el código; la base de datos no muestra nada sin el código (migración 37); Admin → "Quitar dos pasos" para quien perdió el teléfono.
+- ✅ Letras mínimas 12 y verde que se lee al sol en la solicitud pública; "No estaba" se anota sin señal (02-11-2026).
+- ⬜ Que las migraciones se apliquen solas desde GitHub (hace falta guardar una clave de Supabase en GitHub).
+- ⬜ CSP de verdad (hoy solo reporta), historial de cambios general.
 - Opcional: token de Cloudflare en GitHub para que publique solo.
 
 ### 📋 Resumen de lo que falta (al 18-10-2026, APK 1.0.6)
@@ -445,6 +446,8 @@ En `supabase/`, **en este orden**. Todas se pueden correr más de una vez sin pr
 | 33 | `migracion_2026_11_02_gracia.sql` | 7 días de gracia al vencer el plan en los límites de clientes y cobradores |
 | 34 | `migracion_2026_11_02_indices.sql` | Índices para que Inicio, Caja y Reportes vayan rápido |
 | 35 | `migracion_2026_11_02_reditos.sql` | Permite el tipo de interés "solo réditos" |
+| 36 | `migracion_2026_11_02_pagado_sin_total.sql` | El cobrador no puede dar por pagado un préstamo viejo sin total (se exige por lo menos lo prestado) |
+| 37 | `migracion_2026_11_02_dos_pasos.sql` | Verificación en dos pasos: regla "dos_pasos" en todas las tablas y fotos, y `quitar_dos_pasos` para el admin. **A cada tabla nueva con RLS hay que ponerle la regla** (las pruebas avisan) |
 
 `schema.sql` refleja el esquema completo al día.
 

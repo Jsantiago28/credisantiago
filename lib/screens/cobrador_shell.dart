@@ -8,6 +8,7 @@ import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../services/version_nueva.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ajuste_dos_pasos.dart';
 import '../widgets/ajuste_recordatorio.dart';
 import '../widgets/legal.dart';
 import '../widgets/selector_colores.dart';
@@ -281,6 +282,8 @@ class _Yo extends StatelessWidget {
           const SelectorColores(),
           const SizedBox(height: 8),
           const AjusteRecordatorio(),
+          const SizedBox(height: 8),
+          const AjusteDosPasos(),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(

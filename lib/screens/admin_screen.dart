@@ -94,6 +94,32 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  /// Perdió el teléfono con la app de códigos: se le quitan los dos pasos y
+  /// entra solo con la contraseña (después los puede activar de nuevo).
+  Future<void> _quitarDosPasos(Map<String, dynamic> p) async {
+    final si = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Quitarle los dos pasos a ${p['nombre']}?'),
+        content: const Text('Hazlo solo si te lo pidió y confirmaste que es esa persona '
+            '(por ejemplo, por WhatsApp desde su número). Después entra solo con la contraseña.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Quitarlos')),
+        ],
+      ),
+    );
+    if (si != true || !mounted) return;
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      await SupabaseService.instance.adminQuitarDosPasos(p['id'] as String);
+      mensajero.showSnackBar(SnackBar(content: Text('Listo: ${p['nombre']} ya entra sin el código.')));
+    } catch (e, pila) {
+      registrarError(e, pila, 'ADMIN QUITAR DOS PASOS');
+      mensajero.showSnackBar(SnackBar(content: Text('No se pudo. ${mensajeError(e)}')));
+    }
+  }
+
   /// La cédula que subió [p] al registrarse (número y los dos lados).
   void _verCedula(Map<String, dynamic> p) {
     Widget lado(String titulo, String? ruta) => Column(
@@ -777,6 +803,12 @@ class _AdminScreenState extends State<AdminScreen> {
                   onPressed: () => _darPremio(p),
                   icon: const Icon(Icons.card_giftcard_rounded, size: 18),
                   label: Text('Dar premio a ${p['invitado_por_nombre'] ?? 'quien invitó'}'),
+                ),
+              if (!esAdmin)
+                TextButton.icon(
+                  onPressed: () => _quitarDosPasos(p),
+                  icon: const Icon(Icons.phonelink_erase_rounded, size: 18),
+                  label: const Text('Quitar dos pasos'),
                 ),
               if (whatsapp != null)
                 TextButton.icon(

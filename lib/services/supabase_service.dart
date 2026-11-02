@@ -580,6 +580,11 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> obtenerPlanes() =>
       client.from('planes').select().order('orden');
 
+  /// Admin: le quita la verificación en dos pasos a quien perdió el
+  /// teléfono con la app de códigos.
+  Future<void> adminQuitarDosPasos(String usuarioId) =>
+      client.rpc('quitar_dos_pasos', params: {'usuario': usuarioId});
+
   /// WhatsApp de soporte, instrucciones de pago, etc. (null si no hay).
   Future<Map<String, dynamic>?> obtenerAjustes() =>
       client.from('ajustes_app').select().eq('id', 1).maybeSingle();

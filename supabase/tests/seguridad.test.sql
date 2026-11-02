@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(20);
+select plan(24);
 
 -- Dos prestamistas (A y B) y un cliente con préstamo de A ---------------------
 insert into auth.users (id, email, email_confirmed_at) values
@@ -123,6 +123,33 @@ select is((select count(*)::int from pagos where descuento > 0 or anulado), 0,
 select is((select count(*)::int from pagos), 2, 'El cobrador no puede borrar cobros');
 select is((select monto from prestamos where id = 'dddddddd-0000-0000-0000-000000000001'),
   5000::numeric, 'El préstamo sigue con su monto');
+
+-- Verificación en dos pasos ----------------------------------------------------
+select is(
+  (select count(*)::int from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+      and not exists (select 1 from pg_policies p
+                       where p.schemaname = 'public' and p.tablename = c.relname
+                         and p.policyname = 'dos_pasos')),
+  0, 'Todas las tablas tienen la regla de dos pasos (si falla: correr el paso 2 de migracion_2026_11_02_dos_pasos.sql para la tabla nueva)');
+
+-- A activa los dos pasos.
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+values (gen_random_uuid(), 'aaaaaaaa-0000-0000-0000-000000000001', 'prueba', 'totp', 'verified', now(), now());
+
+set local role authenticated;
+set local request.jwt.claims to '{"sub":"aaaaaaaa-0000-0000-0000-000000000001","role":"authenticated","aal":"aal1"}';
+select is((select count(*)::int from clientes), 0, 'Con dos pasos y sin el código, A no ve sus clientes');
+select throws_ok($$
+  insert into clientes (prestamista_id, nombre, cedula, telefono)
+  values ('aaaaaaaa-0000-0000-0000-000000000001', 'Sin código', '00100000009', '8099999999') $$,
+  '42501', null, 'Con dos pasos y sin el código, A no puede crear clientes');
+
+set local request.jwt.claims to '{"sub":"aaaaaaaa-0000-0000-0000-000000000001","role":"authenticated","aal":"aal2"}';
+select is((select count(*)::int from clientes), 3, 'Con el código puesto, A ve sus clientes');
+
+reset role;
+set local request.jwt.claims to '{}';
 
 select * from finish();
 rollback;
