@@ -507,7 +507,9 @@ values (${_q(c.usuario)}, ${_q(c.usuario)}, ${_q(c.usuario)},
     final estado = calc.estadoPrestamo(p.datos, pagos, hoy);
     if (estado.saldado ||
         estado.proximoPago == null ||
-        !estado.proximoPago!.isBefore(_dia(-1))) continue;
+        !estado.proximoPago!.isBefore(_dia(-1))) {
+      continue;
+    }
     _insert('gestiones', {
       'prestamista_id': jefe,
       'prestamo_id': p.id,
@@ -703,8 +705,9 @@ void _simular(Prestamo p, Conducta conducta, double lat, double lng) {
   final dejaDePagar = conducta == Conducta.atrasado ? 2 + _azar.nextInt(3) : 0;
   for (var i = 0; i < vencidas.length; i++) {
     final fecha = vencidas[i]['fecha'] as DateTime;
-    if (conducta == Conducta.atrasado && i >= vencidas.length - dejaDePagar)
+    if (conducta == Conducta.atrasado && i >= vencidas.length - dejaDePagar) {
       break;
+    }
     // Hoy: unos ya pagaron (la ruta muestra el avance) y otros no.
     if (fecha == hoyDia && _azar.nextBool()) continue;
     // A veces paga un día tarde (genera un poco de mora).
@@ -718,13 +721,15 @@ void _simular(Prestamo p, Conducta conducta, double lat, double lng) {
     final estado = calc.estadoPrestamo(p.datos, validos(), cuando);
     var monto = calc.proximaCuotaPorCobrar(estado).ceilToDouble();
     if (monto <= 0) continue;
-    if (conducta == Conducta.parcial && i.isOdd)
+    if (conducta == Conducta.parcial && i.isOdd) {
       monto = (monto / 2).roundToDouble();
+    }
     if (conducta == Conducta.adelantado && i == vencidas.length - 1) monto *= 2;
     cobrar(cuando, monto);
     // Un cobro repetido por error, que después se anula.
-    if (conducta == Conducta.parcial && i == 1)
+    if (conducta == Conducta.parcial && i == 1) {
       cobrar(cuando.add(const Duration(minutes: 3)), monto, anulado: true);
+    }
   }
 
   if (conducta == Conducta.pagado) {
@@ -737,7 +742,8 @@ void _simular(Prestamo p, Conducta conducta, double lat, double lng) {
     // Lo saldó antes de tiempo: se le perdonó el interés que no corrió.
     final cuando = _hora(_dia(-3));
     final s = calc.calcularSaldarHoy(p.datos, validos(), cuando);
-    if (s.monto >= 1)
+    if (s.monto >= 1) {
       cobrar(cuando, s.monto, descuento: max(0, s.balance - s.monto));
+    }
   }
 }
