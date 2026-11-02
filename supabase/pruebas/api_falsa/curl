@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# curl falso para probar aplicar_migraciones.sh sin tocar la base de verdad:
+# dice que ya se corrieron todas menos las de $FALSO_NUEVAS y anota lo que le mandan.
+out=""; while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift;; esac; shift; done
+body=$(cat)
+echo "$body" >> "$FALSO_LOG"
+if echo "$body" | grep -q "select nombre from control.migraciones"; then
+  ls "$FALSO_DIR"/migracion_*.sql | xargs -n1 basename | grep -vxF -f "$FALSO_NUEVAS" | jq -R '{nombre: .}' | jq -s . > "$out"
+else
+  echo '[]' > "$out"
+fi
+printf 201

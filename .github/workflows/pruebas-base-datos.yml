@@ -44,3 +44,6 @@ jobs:
 
       - name: Pruebas
         run: supabase test db
+
+      - name: Probar el aplicador de migraciones (con una API falsa)
+        run: bash supabase/pruebas/probar_aplicador.sh
