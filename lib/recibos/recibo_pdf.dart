@@ -175,6 +175,7 @@ Future<Uint8List> reciboPdf({
             ),
           ],
           if (r.metodo != null) fila('Forma de pago', r.metodo!),
+          fila('Atraso al pagar', r.diasAtraso > 0 ? r.atrasoTexto : 'Al día'),
           if (r.cubre.isNotEmpty) ...[
             pw.SizedBox(height: 4),
             pw.Text('Cubre:', style: normal),

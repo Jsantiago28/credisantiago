@@ -117,4 +117,22 @@ void main() {
     expect(dia.cuotas, 0);
     expect(dia.mora, 500);
   });
+
+  test('el recibo dice cuántos días llevaba atrasado al pagar', () {
+    final p = prestamo();
+    // La cuota #1 vence el 2/9: el 5/9 lleva 3 días atrasado.
+    final tarde = PagoRegistrado(id: 'a', numeroRecibo: 1, fecha: DateTime(2026, 9, 5, 10), monto: 400);
+    final r = datosRecibo(p, [tarde], tarde);
+    expect(r.diasAtraso, 3);
+    expect(r.atrasoTexto, '3 días');
+    final texto = lineasTicket(r: r, negocio: const NegocioRecibo(nombre: 'Prueba'), cliente: 'C')
+        .map((l) => l.texto)
+        .join('\n');
+    expect(texto, contains('Atraso al pagar'));
+    expect(texto, contains('3 días'));
+
+    // Paga el mismo día que vence: al día.
+    final aTiempo = PagoRegistrado(id: 'b', numeroRecibo: 1, fecha: DateTime(2026, 9, 2, 10), monto: 400);
+    expect(datosRecibo(p, [aTiempo], aTiempo).diasAtraso, 0);
+  });
 }

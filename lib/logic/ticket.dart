@@ -116,6 +116,7 @@ List<LineaTicket> lineasTicket({
       for (final l in _partir('(Cargo aparte: no baja el balance)', ancho - 2)) LineaTicket('  $l'),
     ],
     if (r.metodo != null) ...fila('Forma de pago', r.metodo!),
+    ...fila('Atraso al pagar', r.diasAtraso > 0 ? r.atrasoTexto : 'Al día'),
     if (r.cubre.isNotEmpty) ...[
       const LineaTicket('Cubre:'),
       for (final c in r.cubre)

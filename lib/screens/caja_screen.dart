@@ -5,7 +5,7 @@ import '../logic/caja.dart';
 import '../logic/cobradores.dart';
 import '../logic/gastos.dart';
 import '../logic/ruta.dart' show enlaceLugar;
-import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
+import '../recibos/recibo_pdf.dart' show NegocioRecibo, numeroReciboTexto;
 import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
@@ -511,7 +511,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
     final perfil = await SupabaseService.instance.obtenerMiPerfil();
     await Share.share(resumenCajaTexto(
       _d,
-      negocio: (perfil?['nombre'] as String?) ?? 'CrediSantiago',
+      negocio: NegocioRecibo.dePerfil(perfil).nombre,
       nota: _cierre?['nota'] as String?,
       gastos: _gastos,
       nombresCobradores: _nombres,

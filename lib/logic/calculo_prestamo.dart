@@ -1027,6 +1027,10 @@ class DatosRecibo {
   /// Forma de pago para el recibo ("Efectivo", "Transferencia"), o null.
   final String? metodo;
 
+  /// Días que llevaba atrasado al pagar (desde la cuota vencida más vieja
+  /// sin pagar). 0 si estaba al día.
+  final int diasAtraso;
+
   const DatosRecibo({
     required this.numero,
     required this.fecha,
@@ -1044,7 +1048,11 @@ class DatosRecibo {
     this.aCargo = 0,
     this.cargoTipo,
     this.cargoNota,
+    this.diasAtraso = 0,
   });
+
+  /// "5 días" / "1 día" (para el recibo).
+  String get atrasoTexto => diasAtraso == 1 ? '1 día' : '$diasAtraso días';
 }
 
 String _fechaCorta(DateTime f) => '${f.day}/${f.month}/${f.year}';
@@ -1114,6 +1122,7 @@ DatosRecibo datosRecibo(
     aCargo: pago.cargo,
     cargoTipo: pago.esCargo ? (tiposCargo[pago.cargoTipo] ?? 'Cargo') : null,
     cargoNota: pago.cargoNota,
+    diasAtraso: cobroDelDia(antes, pago.fecha).diasAtraso,
   );
 }
 
