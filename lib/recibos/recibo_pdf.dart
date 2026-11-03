@@ -160,8 +160,20 @@ Future<Uint8List> reciboPdf({
             fila('Cobrado por', textoPdf(cobradoPor)),
           linea(),
           fila('MONTO RECIBIDO', _rd(r.monto), estilo: negrita),
-          fila('A cuota', _rd(r.aCuota), sangria: 8),
+          if (r.aCuota > 0 || r.aCargo <= 0) fila('A cuota', _rd(r.aCuota), sangria: 8),
           if (r.aMora > 0) fila('A mora', _rd(r.aMora), sangria: 8),
+          if (r.aCargo > 0) ...[
+            fila(textoPdf(r.cargoTipo ?? 'Cargo'), _rd(r.aCargo), sangria: 8),
+            if ((r.cargoNota ?? '').trim().isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(left: 8),
+                child: pw.Text('Motivo: ${textoPdf(r.cargoNota!.trim())}', style: normal),
+              ),
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(left: 8),
+              child: pw.Text('(Cargo aparte: no baja el balance del préstamo)', style: chico),
+            ),
+          ],
           if (r.metodo != null) fila('Forma de pago', r.metodo!),
           if (r.cubre.isNotEmpty) ...[
             pw.SizedBox(height: 4),

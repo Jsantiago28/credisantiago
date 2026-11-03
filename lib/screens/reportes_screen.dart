@@ -283,11 +283,14 @@ class _ReportesScreenState extends State<ReportesScreen> {
         });
 
   /// Ganancia que ya entró de un préstamo saldado: lo cobrado a cuotas
-  /// menos el capital, más la mora.
+  /// menos el capital, más la mora y los cargos aparte.
   double _gananciaRealizada(Map<String, dynamic> p) =>
       (p['total_pagado'] as num).toDouble() -
       (p['monto'] as num).toDouble() +
-      (p['mora_cobrada'] as num).toDouble();
+      (p['mora_cobrada'] as num).toDouble() +
+      _cargos(p);
+
+  double _cargos(Map<String, dynamic> p) => (p['cargos_cobrados'] as num?)?.toDouble() ?? 0;
 
   void _abrirCliente(Map<String, dynamic> p) async {
     await Navigator.of(context).push(MaterialPageRoute(
@@ -312,7 +315,8 @@ class _ReportesScreenState extends State<ReportesScreen> {
           p['cliente_nombre'] ?? '',
           p['cliente_telefono'] ?? '',
           (p['monto'] as num).toStringAsFixed(0),
-          ((p['total_pagado'] as num) + (p['mora_cobrada'] as num)).toStringAsFixed(0),
+          ((p['total_pagado'] as num) + (p['mora_cobrada'] as num) + _cargos(p))
+              .toStringAsFixed(0),
           _gananciaRealizada(p).toStringAsFixed(0),
           (p['mora_cobrada'] as num).toStringAsFixed(0),
           p['fecha_desembolso'] ?? '',
@@ -450,6 +454,8 @@ class _ReportesScreenState extends State<ReportesScreen> {
     // Aparte de la ganancia: la mora no se proyecta, solo se cobra.
     final moraDelMes = prestamos.fold<double>(
         0, (s, p) => s + ((p['mora_cobrada_mes'] as num?)?.toDouble() ?? 0));
+    final cargosDelMes = prestamos.fold<double>(
+        0, (s, p) => s + ((p['cargos_cobrados_mes'] as num?)?.toDouble() ?? 0));
     final atrasados = _atrasados;
 
     return Scaffold(
@@ -459,13 +465,15 @@ class _ReportesScreenState extends State<ReportesScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            _tarjetaGanancia(ganancia, anterior, moraDelMes),
+            _tarjetaGanancia(ganancia, anterior, moraDelMes, cargosDelMes),
             const SizedBox(height: 12),
             _tarjetaGananciaReal(),
             OutlinedButton.icon(
               onPressed: () => _compartirResumen(
-                ganancia: _real == null ? ganancia.yaLlevas + moraDelMes : _real!.interes + _real!.mora,
-                mora: _real?.mora ?? moraDelMes,
+                ganancia: _real == null
+                    ? ganancia.yaLlevas + moraDelMes + cargosDelMes
+                    : _real!.interes + _real!.mora,
+                mora: _real?.mora ?? moraDelMes + cargosDelMes,
               ),
               icon: const Icon(Icons.share_rounded),
               label: const Text('Compartir resumen del mes'),
@@ -558,6 +566,7 @@ class _ReportesScreenState extends State<ReportesScreen> {
     ({double proyectada, double yaLlevas, double falta}) g,
     double anterior,
     double moraDelMes,
+    double cargosDelMes,
   ) {
     final cambio = anterior > 0 ? (g.proyectada - anterior) / anterior * 100 : null;
     return Panel(
@@ -627,6 +636,18 @@ class _ReportesScreenState extends State<ReportesScreen> {
                       color: moraDelMes > 0 ? AppColors.red : AppColors.grey)),
             ],
           ),
+          if (cargosDelMes > 0) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.receipt_rounded, size: 18, color: AppColors.green),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('Cargos aparte cobrados este mes')),
+                Text(rd(cargosDelMes),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.green)),
+              ],
+            ),
+          ],
         ],
       ),
     );

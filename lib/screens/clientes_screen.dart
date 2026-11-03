@@ -4,6 +4,7 @@ import '../logic/busqueda.dart';
 import '../services/errores.dart';
 import '../services/supabase_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/cobro_prestamo.dart';
 import '../widgets/ui.dart';
 import 'calculadora_screen.dart';
 import 'cliente_detalle_screen.dart';
@@ -256,6 +257,34 @@ class _ClienteCardState extends State<_ClienteCard> {
     }
   }
 
+  bool _abriendoCobro = false;
+
+  /// "Aplicar pago": trae los cobros del préstamo y abre el cobro directo.
+  Future<void> _aplicarPago() async {
+    final prestamo = _prestamo;
+    if (prestamo == null || _abriendoCobro) return;
+    setState(() => _abriendoCobro = true);
+    final mensajero = ScaffoldMessenger.of(context);
+    try {
+      final servicio = SupabaseService.instance;
+      final id = prestamo['id'] as String;
+      final datos = PrestamoConDatos(
+        prestamo: prestamo,
+        cliente: widget.cliente,
+        pagos: await servicio.obtenerPagos(id),
+        gestiones: await servicio.obtenerGestiones(id),
+      );
+      if (!mounted) return;
+      setState(() => _abriendoCobro = false);
+      await CobroPrestamo(context, datos, onCambio: _cargarPrestamo).aplicarPago();
+    } catch (e, pila) {
+      registrarError(e, pila, 'APLICAR PAGO');
+      if (mounted) setState(() => _abriendoCobro = false);
+      mensajero.showSnackBar(
+          SnackBar(content: Text('No se pudo abrir el cobro. ${mensajeError(e)}')));
+    }
+  }
+
   Future<void> _irAPrestar() async {
     if (_prestamo == null) return;
     final actualizado = await Navigator.of(context).push<bool>(
@@ -310,29 +339,38 @@ class _ClienteCardState extends State<_ClienteCard> {
         _cargarPrestamo(); // pudo prestarle o cobrarle desde la ficha
         widget.onVolver?.call();
       },
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AvatarIniciales(
-              nombre: c['nombre'] ?? '', fotoUrl: c['foto_cara_url'] as String?),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(c['nombre'] ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                Text([if (direccion.isNotEmpty) direccion, if (telefono.isNotEmpty) telefono]
-                        .join(' • '),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.grey, fontSize: 12)),
-              ],
-            ),
+          Row(
+            children: [
+              AvatarIniciales(
+                  nombre: c['nombre'] ?? '', fotoUrl: c['foto_cara_url'] as String?),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(c['nombre'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    Text([if (direccion.isNotEmpty) direccion, if (telefono.isNotEmpty) telefono]
+                            .join(' • '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: AppColors.grey, fontSize: 12)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              accion,
+            ],
           ),
-          const SizedBox(width: 8),
-          accion,
+          if (_prestamo?['estado'] == 'en_calle') ...[
+            const SizedBox(height: 8),
+            BotonAplicarPago(onPressed: _abriendoCobro ? null : _aplicarPago),
+          ],
         ],
       ),
     );

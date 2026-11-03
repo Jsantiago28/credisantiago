@@ -939,7 +939,7 @@ class SupabaseService {
 
   /// Lo que se lee de cada cobro de un préstamo. `metodo` dice si es lo que
   /// ya había pagado un cliente importado de Excel.
-  static const _columnasPago = 'id, numero_recibo, monto, monto_mora, fecha_pago, anulado, '
+  static const _columnasPago = 'id, numero_recibo, monto, monto_mora, cargo, cargo_tipo, cargo_nota, fecha_pago, anulado, '
       'anulado_en, motivo_anulacion, cobrador_id, descuento, metodo';
 
   /// Los pagos de un préstamo (también los anulados, marcados), con su
@@ -1065,6 +1065,42 @@ class SupabaseService {
     return pago;
   }
 
+  /// Cobra un cargo aparte (interés extra, gasto legal, acuerdo): es
+  /// ganancia y NO baja lo que debe, así que el préstamo no cambia. Solo el
+  /// prestamista (la base de datos se lo rechaza al cobrador). [nota] es por
+  /// qué se cobró: sale en el recibo.
+  Future<calc.PagoRegistrado> registrarCargo({
+    required String prestamoId,
+    required String prestamistaId,
+    required double monto,
+    required String tipo,
+    required String nota,
+    String metodo = 'efectivo',
+    ({double lat, double lng})? ubicacion,
+  }) async {
+    if (!calc.metodosPago.contains(metodo)) throw ArgumentError.value(metodo, 'metodo');
+    if (!calc.tiposCargo.containsKey(tipo)) throw ArgumentError.value(tipo, 'tipo');
+    if (monto <= 0 || nota.trim().isEmpty) throw ArgumentError('Falta el monto o el motivo');
+    final fila = await client
+        .from('pagos')
+        .insert({
+          'prestamo_id': prestamoId,
+          'prestamista_id': prestamistaId,
+          'monto': monto,
+          'cargo': monto,
+          'cargo_tipo': tipo,
+          'cargo_nota': nota.trim(),
+          'metodo': metodo,
+          if (ubicacion != null) ...{
+            'lat': ubicacion.lat,
+            'lng': ubicacion.lng,
+          },
+        })
+        .select(_columnasPago)
+        .single();
+    return calc.PagoRegistrado.desdeFila(fila);
+  }
+
   /// Anula un cobro mal digitado: no se borra (queda la marca, la fecha y el
   /// motivo) pero deja de contar. Recalcula el préstamo: si había quedado
   /// saldado por ese cobro, vuelve a la calle.
@@ -1154,7 +1190,7 @@ class SupabaseService {
     final filas = await _todasLasFilas(() {
       var consulta = client
           .from('pagos')
-          .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
+          .select('id, numero_recibo, monto, monto_mora, cargo, fecha_pago, anulado, metodo, '
               'cobrador_id, sin_conexion, revisar, lat, lng, prestamos(clientes(nombre))')
           .eq('prestamista_id', prestamistaId);
       if (desde != null) {
@@ -1218,7 +1254,7 @@ class SupabaseService {
   Future<List<graficas.CobroGrafica>> obtenerCobrosGraficas(
       String prestamistaId, DateTime desde) async {
     const columnas =
-        'id, prestamo_id, numero_recibo, monto, monto_mora, descuento, fecha_pago, anulado, metodo';
+        'id, prestamo_id, numero_recibo, monto, monto_mora, cargo, descuento, fecha_pago, anulado, metodo';
     final desdeIso = desde.toUtc().toIso8601String();
     final recientes = await _todasLasFilas(() => client
         .from('pagos')
@@ -1446,7 +1482,7 @@ class SupabaseService {
     final hoy = DateTime.now();
     final filas = await client
         .from('pagos')
-        .select('id, numero_recibo, monto, monto_mora, fecha_pago, anulado, metodo, '
+        .select('id, numero_recibo, monto, monto_mora, cargo, fecha_pago, anulado, metodo, '
             'prestamos(clientes(nombre))')
         .eq('cobrador_id', sesion.cobradorId)
         .gte('fecha_pago', DateTime(hoy.year, hoy.month, hoy.day).toUtc().toIso8601String())
@@ -1595,6 +1631,9 @@ class SupabaseService {
       'total_descuento': estado.descuentos,
       'mora_cobrada': estado.moraCobrada,
       'mora_cobrada_mes': calc.moraCobradaEnMes(pagos, hoy),
+      // Cargos aparte (ganancia que no baja lo que debe).
+      'cargos_cobrados': estado.cargosCobrados,
+      'cargos_cobrados_mes': calc.cargosCobradosEnMes(pagos, hoy),
       // Día del último cobro: para un préstamo pagado, es cuando se saldó.
       'fecha_ultimo_pago': validos.isEmpty
           ? null

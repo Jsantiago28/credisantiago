@@ -599,6 +599,14 @@ class PagoRegistrado {
   /// sabe (ej. un cobro guardado en el teléfono antes de esto).
   final String? metodo;
 
+  /// Cargo aparte (interés extra, gasto legal, acuerdo): dinero recibido
+  /// que NO baja lo que debe. Es ganancia. Ver [tiposCargo].
+  final double cargo;
+  final String? cargoTipo;
+
+  /// Por qué se cobró el cargo.
+  final String? cargoNota;
+
   const PagoRegistrado({
     this.id,
     this.numeroRecibo,
@@ -613,9 +621,13 @@ class PagoRegistrado {
     this.cobradorId,
     this.importado = false,
     this.metodo,
+    this.cargo = 0,
+    this.cargoTipo,
+    this.cargoNota,
   });
 
-  double get montoCuota => monto - montoMora;
+  double get montoCuota => monto - montoMora - cargo;
+  bool get esCargo => cargo > 0;
 
   /// Lo que baja de las cuotas: lo cobrado a cuota más el descuento.
   double get aCuotas => montoCuota + descuento;
@@ -637,6 +649,9 @@ class PagoRegistrado {
         cobradorId: fila['cobrador_id'] as String?,
         importado: fila['metodo'] == 'importado',
         metodo: fila['metodo'] as String?,
+        cargo: (fila['cargo'] as num?)?.toDouble() ?? 0,
+        cargoTipo: fila['cargo_tipo'] as String?,
+        cargoNota: fila['cargo_nota'] as String?,
       );
 }
 
@@ -704,8 +719,11 @@ class EstadoPrestamo {
   /// Interés perdonado al saldar antes (no es dinero recibido).
   final double descuentos;
 
-  const EstadoPrestamo._(
-      this.cuotas, this.montoTotal, this.cobradoCuotas, this.moraCobrada, this.descuentos);
+  /// Cargos aparte cobrados (ganancia que no baja lo que debe).
+  final double cargosCobrados;
+
+  const EstadoPrestamo._(this.cuotas, this.montoTotal, this.cobradoCuotas, this.moraCobrada,
+      this.descuentos, this.cargosCobrados);
 
   double get moraGenerada => cuotas.fold(0.0, (s, c) => s + c.moraGenerada);
   double get moraPendiente => cuotas.fold(0.0, (s, c) => s + c.moraPendiente);
@@ -773,6 +791,7 @@ EstadoPrestamo estadoPrestamo(
   var cobradoCuotas = 0.0;
   var descuentos = 0.0;
   var moraCobrada = 0.0;
+  var cargos = 0.0;
 
   void abonarCuotas(double monto) {
     var resto = monto;
@@ -789,6 +808,7 @@ EstadoPrestamo estadoPrestamo(
     cobradoCuotas += pago.montoCuota;
     descuentos += pago.descuento;
     moraCobrada += pago.montoMora;
+    cargos += pago.cargo;
     abonarCuotas(pago.aCuotas);
 
     var resto = pago.montoMora;
@@ -809,7 +829,7 @@ EstadoPrestamo estadoPrestamo(
   }
   generarMoraHasta(_dia(hoy));
 
-  return EstadoPrestamo._(cuotas, montoTotal, cobradoCuotas, moraCobrada, descuentos);
+  return EstadoPrestamo._(cuotas, montoTotal, cobradoCuotas, moraCobrada, descuentos, cargos);
 }
 
 /// Reparte un cobro nuevo entre cuota y mora según el orden de las reglas.
@@ -952,6 +972,27 @@ double moraCobradaEnMes(List<PagoRegistrado> pagos, DateTime hoy) => pagos
     .where((p) => !p.anulado && p.fecha.year == hoy.year && p.fecha.month == hoy.month)
     .fold(0.0, (s, p) => s + p.montoMora);
 
+/// Cargos aparte cobrados en el mes de [hoy] (sin anulados).
+double cargosCobradosEnMes(List<PagoRegistrado> pagos, DateTime hoy) => pagos
+    .where((p) => !p.anulado && p.fecha.year == hoy.year && p.fecha.month == hoy.month)
+    .fold(0.0, (s, p) => s + p.cargo);
+
+/// Los tipos de cargo aparte (pagos.cargo_tipo) y cómo se dicen.
+const tiposCargo = {
+  'interes': 'Interés',
+  'legal': 'Gasto legal',
+  'acuerdo': 'Acuerdo',
+  'otro': 'Otro cargo',
+};
+
+/// "Gasto legal: carta del abogado" (vacío si el cobro no es un cargo).
+String textoCargo(PagoRegistrado p) {
+  if (!p.esCargo) return '';
+  final nota = (p.cargoNota ?? '').trim();
+  final tipo = tiposCargo[p.cargoTipo] ?? 'Cargo';
+  return nota.isEmpty ? tipo : '$tipo: $nota';
+}
+
 // ---------------------------------------------------------------------------
 // RECIBOS
 // ---------------------------------------------------------------------------
@@ -964,6 +1005,11 @@ class DatosRecibo {
   final double monto;
   final double aCuota;
   final double aMora;
+
+  /// Cargo aparte (no baja lo que debe), su tipo ("Gasto legal") y por qué.
+  final double aCargo;
+  final String? cargoTipo;
+  final String? cargoNota;
 
   /// Ej: ["Cuota #5 (12/9/2026)", "Abono a la cuota #6: RD$ 60"].
   final List<String> cubre;
@@ -995,6 +1041,9 @@ class DatosRecibo {
     required this.saldado,
     this.pendiente = false,
     this.metodo,
+    this.aCargo = 0,
+    this.cargoTipo,
+    this.cargoNota,
   });
 }
 
@@ -1062,6 +1111,9 @@ DatosRecibo datosRecibo(
     saldado: despues.saldado,
     pendiente: pago.sinSubir,
     metodo: nombreMetodoPago(pago.metodo),
+    aCargo: pago.cargo,
+    cargoTipo: pago.esCargo ? (tiposCargo[pago.cargoTipo] ?? 'Cargo') : null,
+    cargoNota: pago.cargoNota,
   );
 }
 

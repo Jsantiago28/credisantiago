@@ -6,6 +6,9 @@ class CobroGrafica {
   final DateTime fecha;
   final double monto;
   final double montoMora;
+
+  /// Cargo aparte (no baja lo que debe): es ganancia, como la mora.
+  final double cargo;
   final bool anulado;
 
   /// Interés perdonado al saldar antes de tiempo (no es dinero).
@@ -23,13 +26,17 @@ class CobroGrafica {
     required this.fecha,
     required this.monto,
     this.montoMora = 0,
+    this.cargo = 0,
     this.anulado = false,
     this.descuento = 0,
     this.numeroRecibo,
     this.importado = false,
   });
 
-  double get montoCuota => monto - montoMora;
+  double get montoCuota => monto - montoMora - cargo;
+
+  /// Ganancia directa: la mora y los cargos aparte.
+  double get extra => montoMora + cargo;
 
   /// Dinero que entró (sin anulados ni importados).
   bool get entro => !anulado && !importado;
@@ -39,6 +46,7 @@ class CobroGrafica {
         fecha: DateTime.parse(fila['fecha_pago'] as String).toLocal(),
         monto: (fila['monto'] as num).toDouble(),
         montoMora: (fila['monto_mora'] as num?)?.toDouble() ?? 0,
+        cargo: (fila['cargo'] as num?)?.toDouble() ?? 0,
         anulado: fila['anulado'] == true,
         descuento: (fila['descuento'] as num?)?.toDouble() ?? 0,
         numeroRecibo: (fila['numero_recibo'] as num?)?.toInt(),
@@ -69,7 +77,7 @@ List<({DateTime dia, double cuotas, double mora})> cobradoPorDia(
     final d = _dia(c.fecha);
     if (!cuotas.containsKey(d)) continue;
     cuotas[d] = cuotas[d]! + c.montoCuota;
-    mora[d] = mora[d]! + c.montoMora;
+    mora[d] = mora[d]! + c.extra;
   }
   return [for (final d in lista) (dia: d, cuotas: cuotas[d]!, mora: mora[d]!)];
 }
@@ -136,7 +144,7 @@ List<({DateTime mes, double interes, double mora})> gananciaPorMes(
     final m = _mes(c.fecha);
     if (!interes.containsKey(m)) continue;
     interes[m] = interes[m]! + (porCobro[c] ?? 0);
-    mora[m] = mora[m]! + c.montoMora;
+    mora[m] = mora[m]! + c.extra;
   }
   return [for (final m in lista) (mes: m, interes: interes[m]!, mora: mora[m]!)];
 }

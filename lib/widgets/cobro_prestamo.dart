@@ -52,6 +52,29 @@ class SelectorMetodoPago extends StatelessWidget {
 /// Flujo de cobro de un préstamo: cuotas → cobrar → recibo, e historial de
 /// recibos. Se abre desde Inicio y desde Reportes. `onCambio` se llama
 /// después de registrar un cobro, para que la pantalla recargue.
+/// Botón verde "Aplicar pago" de las tarjetas (Inicio y Clientes): abre el
+/// cobro directo (ver [CobroPrestamo.aplicarPago]).
+class BotonAplicarPago extends StatelessWidget {
+  final VoidCallback? onPressed;
+  const BotonAplicarPago({super.key, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      key: const Key('aplicar_pago'),
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(0, 40),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+      ),
+      onPressed: onPressed,
+      icon: const Icon(Icons.attach_money_rounded, size: 20),
+      label: const Text('Aplicar pago'),
+    );
+  }
+}
+
 class CobroPrestamo {
   final BuildContext context;
   final PrestamoConDatos datos;
@@ -274,10 +297,23 @@ class CobroPrestamo {
     );
   }
 
+  /// "Aplicar pago" de las tarjetas: va directo a cobrar, con lo de hoy
+  /// puesto (o la próxima cuota si está al día).
+  Future<void> aplicarPago() async {
+    final hoy = DateTime.now();
+    final estado = datos.estado(hoy);
+    final delDia = cobroDelDia(estado, hoy);
+    final loDeHoy = delDia.atrasado + delDia.venceHoy;
+    final sugerido = loDeHoy >= 0.5 ? loDeHoy : proximaCuotaPorCobrar(estado);
+    await _confirmarCobro(estado, sugerido > 0 ? sugerido : estado.balance);
+  }
+
   Future<void> _confirmarCobro(EstadoPrestamo estado, double montoSugerido) async {
     String pesos(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
     final ctrl = TextEditingController(text: pesos(montoSugerido));
     var metodo = 'efectivo';
+    // Eligió "cargo aparte" en vez de un cobro normal.
+    var irACargo = false;
 
     // Botones rápidos: la próxima cuota, todo lo atrasado y todo lo de hoy.
     final delDia = cobroDelDia(estado, DateTime.now());
@@ -360,12 +396,29 @@ class CobroPrestamo {
                 },
                 child: const Text('Confirmar cobro'),
               ),
+              // Interés, gasto legal o acuerdo: lo decide el prestamista.
+              if (!SupabaseService.instance.esCobrador)
+                Center(
+                  child: TextButton.icon(
+                    key: const Key('ir_a_cargo'),
+                    onPressed: () {
+                      irACargo = true;
+                      Navigator.of(ctx).pop();
+                    },
+                    icon: const Icon(Icons.add_card_rounded, size: 18),
+                    label: const Text('Cobrar solo interés o un cargo aparte'),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
 
+    if (irACargo) {
+      if (context.mounted) await _cobrarCargo();
+      return;
+    }
     final monto = elegido?.monto;
     if (elegido == null || monto == null || monto <= 0 || !context.mounted) return;
     if (!await _confirmarMontoAlto(estado, monto) || !context.mounted) return;
@@ -398,6 +451,139 @@ class CobroPrestamo {
       }
       mensajero.showSnackBar(
           SnackBar(content: Text('No se pudo registrar el cobro. ${mensajeError(e)}')));
+    }
+  }
+
+  /// Cargo aparte (solo interés, gasto legal, acuerdo): dinero que entra
+  /// como ganancia y NO baja lo que debe. Pide el tipo y por qué se cobró
+  /// (sale en el recibo). Necesita internet: no va a la cola sin señal.
+  Future<void> _cobrarCargo() async {
+    final montoCtrl = TextEditingController();
+    final notaCtrl = TextEditingController();
+    var tipo = 'interes';
+    var metodo = 'efectivo';
+    double? leerMonto() => double.tryParse(montoCtrl.text.replaceAll(',', ''));
+
+    final confirmado = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: _forma,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setEstado) {
+          final listo = (leerMonto() ?? 0) > 0 && notaCtrl.text.trim().isNotEmpty;
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Cargo aparte a $_nombre',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(
+                      'No baja lo que debe: es ganancia tuya y el cliente sigue pagando '
+                      'sus cuotas igual.',
+                      style: TextStyle(color: AppColors.grey)),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final MapEntry(key: clave, value: nombre) in tiposCargo.entries)
+                        ChoiceChip(
+                          key: Key('cargo_$clave'),
+                          label: Text(nombre),
+                          selected: tipo == clave,
+                          selectedColor: AppColors.greenDark,
+                          labelStyle: TextStyle(
+                              color: tipo == clave ? AppColors.green : AppColors.grey,
+                              fontWeight: FontWeight.w600),
+                          onSelected: (_) => setEstado(() => tipo = clave),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    key: const Key('cargo_monto'),
+                    controller: montoCtrl,
+                    autofocus: true,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setEstado(() {}),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                      prefixText: 'RD\$ ',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const Key('cargo_nota'),
+                    controller: notaCtrl,
+                    maxLength: 300,
+                    maxLines: 2,
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (_) => setEstado(() {}),
+                    decoration: const InputDecoration(
+                      labelText: '¿Por qué se le cobra?',
+                      hintText: 'Ej.: interés por pagar tarde, carta del abogado',
+                    ),
+                  ),
+                  SelectorMetodoPago(
+                    valor: metodo,
+                    onCambio: (m) => setEstado(() => metodo = m),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      key: const Key('cargo_confirmar'),
+                      onPressed: listo ? () => Navigator.of(ctx).pop(true) : null,
+                      child: Text(listo ? 'Cobrar ${rd(leerMonto()!)} aparte' : 'Cobrar cargo'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    final monto = leerMonto();
+    final nota = notaCtrl.text.trim();
+    if (confirmado != true || monto == null || monto <= 0 || nota.isEmpty) return;
+    if (!context.mounted) return;
+    final mensajero = ScaffoldMessenger.of(context);
+    final donde = await ubicacionSinAvisar();
+    try {
+      final pago = await SupabaseService.instance.registrarCargo(
+        prestamoId: _prestamo['id'],
+        prestamistaId: _prestamo['prestamista_id'] as String,
+        monto: monto,
+        tipo: tipo,
+        nota: nota,
+        metodo: metodo,
+        ubicacion: donde,
+      );
+      onCambio();
+      if (context.mounted) await _mostrarCobroRegistrado(pago);
+    } catch (e, pila) {
+      registrarError(e, pila, 'CARGO APARTE');
+      mensajero.showSnackBar(SnackBar(
+          content: Text(SinConexion.esFaltaDeConexion(e)
+              ? 'Sin señal: el cargo aparte necesita internet. Inténtalo cuando vuelva.'
+              : 'No se pudo registrar el cargo. ${mensajeError(e)}')));
     }
   }
 
@@ -655,6 +841,9 @@ class CobroPrestamo {
             if (pago.montoMora > 0)
               Text('Cuota ${rd(pago.montoCuota)} + mora ${rd(pago.montoMora)}',
                   style: TextStyle(color: AppColors.grey)),
+            if (pago.esCargo)
+              Text('Cargo aparte (no baja lo que debe) · ${textoCargo(pago)}',
+                  style: TextStyle(color: AppColors.grey)),
             if (pago.descuento > 0)
               Text('Préstamo saldado · se descontaron ${rd(pago.descuento)} de interés',
                   style: TextStyle(color: AppColors.green)),
@@ -808,7 +997,8 @@ class CobroPrestamo {
                     subtitle: Text((pago.sinSubir ? 'Pendiente de subir · ' : '') +
                         fechaLarga(pago.fecha) +
                         (pago.metodo == 'transferencia' ? ' · transferencia' : '') +
-                        (pago.montoMora > 0 ? ' · incluye mora ${rd(pago.montoMora)}' : '')),
+                        (pago.montoMora > 0 ? ' · incluye mora ${rd(pago.montoMora)}' : '') +
+                        (pago.esCargo ? ' · ${textoCargo(pago)}' : '')),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

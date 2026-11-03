@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../logic/calculo_prestamo.dart' show textoCargo;
 import '../logic/historial_pagos.dart';
 import '../services/supabase_service.dart';
 import 'recibo_pdf.dart' show NegocioRecibo, numeroReciboTexto, textoPdf;
@@ -73,7 +74,9 @@ Future<Uint8List> historialPdf({
                       pago.montoMora > 0 ? _rd(pago.montoMora) : '-',
                       pago.anulado
                           ? textoPdf('ANULADO${(pago.motivoAnulacion ?? '').trim().isEmpty ? '' : ': ${pago.motivoAnulacion}'}')
-                          : '',
+                          : pago.esCargo
+                              ? textoPdf('Cargo aparte (no baja el balance) - ${textoCargo(pago)}')
+                              : '',
                     ],
                 ],
                 border: pw.TableBorder.all(width: 0.4, color: PdfColors.grey500),

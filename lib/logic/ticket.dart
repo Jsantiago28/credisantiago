@@ -107,8 +107,14 @@ List<LineaTicket> lineasTicket({
     if (cobradoPor != null && cobradoPor.trim().isNotEmpty) ...fila('Cobrado por', cobradoPor),
     LineaTicket(raya),
     ...fila('MONTO RECIBIDO', _rd(r.monto), negrita: true),
-    ...fila('  A cuota', _rd(r.aCuota)),
+    if (r.aCuota > 0 || r.aCargo <= 0) ...fila('  A cuota', _rd(r.aCuota)),
     if (r.aMora > 0) ...fila('  A mora', _rd(r.aMora)),
+    if (r.aCargo > 0) ...[
+      ...fila('  ${r.cargoTipo ?? 'Cargo'}', _rd(r.aCargo)),
+      if ((r.cargoNota ?? '').trim().isNotEmpty)
+        for (final l in _partir('Motivo: ${r.cargoNota!.trim()}', ancho - 2)) LineaTicket('  $l'),
+      for (final l in _partir('(Cargo aparte: no baja el balance)', ancho - 2)) LineaTicket('  $l'),
+    ],
     if (r.metodo != null) ...fila('Forma de pago', r.metodo!),
     if (r.cubre.isNotEmpty) ...[
       const LineaTicket('Cubre:'),

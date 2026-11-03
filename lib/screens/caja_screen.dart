@@ -658,6 +658,7 @@ class _CajaDiaScreenState extends State<CajaDiaScreen> {
                     'Recibo ${numeroReciboTexto(c.numeroRecibo)}'
                     '${c.esTransferencia ? ' · transferencia' : ''}'
                     '${c.montoMora > 0 ? ' · mora ${rd(c.montoMora)}' : ''}'
+                    '${c.cargo > 0 ? ' · cargo aparte ${rd(c.cargo)}' : ''}'
                     '${c.sinConexion ? ' · sin señal' : ''}'
                     '${c.anulado ? ' · ANULADO' : ''}',
                     style:

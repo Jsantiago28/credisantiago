@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(24);
+select plan(27);
 
 -- Dos prestamistas (A y B) y un cliente con préstamo de A ---------------------
 insert into auth.users (id, email, email_confirmed_at) values
@@ -68,6 +68,14 @@ select throws_ok($$
   insert into prestamos (prestamista_id, cliente_id, monto, estado, tipo_interes)
   values ('aaaaaaaa-0000-0000-0000-000000000001', 'cccccccc-0000-0000-0000-000000000001', 3000, 'borrador', 'inventado') $$,
   '23514', null, 'Un tipo de interés inventado se rechaza');
+select throws_ok($$
+  insert into pagos (prestamo_id, prestamista_id, monto, metodo, cargo, cargo_tipo)
+  values ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 500, 'efectivo', 500, 'legal') $$,
+  '23514', null, 'Un cargo sin la nota de por qué se rechaza');
+select lives_ok($$
+  insert into pagos (prestamo_id, prestamista_id, monto, metodo, cargo, cargo_tipo, cargo_nota)
+  values ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 500, 'efectivo', 500, 'legal', 'Carta del abogado') $$,
+  'El prestamista puede cobrar un cargo aparte con su nota');
 
 -- A elimina (archiva) el cliente sin préstamo: ya no se le puede prestar
 update clientes set archivado_en = now() where id = 'cccccccc-0000-0000-0000-000000000002';
@@ -109,6 +117,10 @@ do $$ begin
 exception when others then null;
 end $$;
 select throws_ok($$
+  insert into pagos (prestamo_id, prestamista_id, monto, metodo, cargo, cargo_tipo, cargo_nota)
+  values ('dddddddd-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 300, 'efectivo', 300, 'otro', 'Inventado') $$,
+  '42501', null, 'El cobrador no puede cobrar cargos');
+select throws_ok($$
   update prestamos set estado = 'pagado' where id = 'dddddddd-0000-0000-0000-000000000001' $$,
   null, 'El cobrador no puede dar por pagado un préstamo que no está cubierto');
 select throws_ok($$
@@ -120,7 +132,7 @@ reset role;
 set local request.jwt.claims to '{}';
 select is((select count(*)::int from pagos where descuento > 0 or anulado), 0,
   'El cobrador no puede meter descuentos ni cobros anulados');
-select is((select count(*)::int from pagos), 2, 'El cobrador no puede borrar cobros');
+select is((select count(*)::int from pagos), 3, 'El cobrador no puede borrar cobros');
 select is((select monto from prestamos where id = 'dddddddd-0000-0000-0000-000000000001'),
   5000::numeric, 'El préstamo sigue con su monto');
 

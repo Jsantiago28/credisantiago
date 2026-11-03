@@ -100,18 +100,18 @@ List<Widget> contenidoGraficas(
       etiquetaEje: (i) => (porDia.length - 1 - i) % 7 == 0 ? fechaCorta(porDia[i].dia) : null,
       series: [
         SerieBarras('Cuotas', colorCuotas, [for (final d in porDia) d.cuotas]),
-        SerieBarras('Mora', colorMora, [for (final d in porDia) d.mora]),
+        SerieBarras('Mora y cargos', colorMora, [for (final d in porDia) d.mora]),
       ],
     ),
     GraficaBarras(
       titulo: 'Ganancia de cada mes · ${mesLargo(ganancia.last.mes)}',
       resumen: rd(gananciaMes.roundToDouble()),
-      detalle: 'Interés de lo cobrado a cuotas, más la mora',
+      detalle: 'Interés de lo cobrado a cuotas, más la mora y los cargos aparte',
       etiquetas: [for (final m in ganancia) mesLargo(m.mes)],
       etiquetaEje: (i) => mesCorto(ganancia[i].mes),
       series: [
         SerieBarras('Interés', colorCuotas, [for (final m in ganancia) m.interes]),
-        SerieBarras('Mora', colorMora, [for (final m in ganancia) m.mora]),
+        SerieBarras('Mora y cargos', colorMora, [for (final m in ganancia) m.mora]),
       ],
     ),
     GraficaBarras(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../logic/calculo_prestamo.dart' show textoCargo;
 import '../logic/historial_pagos.dart';
 import '../recibos/historial_pdf.dart';
 import '../recibos/recibo_pdf.dart' show numeroReciboTexto;
@@ -120,6 +121,9 @@ class _HistorialPagosScreenState extends State<HistorialPagosScreen> {
                           Text(
                               'Anulado${(pago.motivoAnulacion ?? '').trim().isEmpty ? '' : ': ${pago.motivoAnulacion}'}',
                               style: TextStyle(color: AppColors.red, fontSize: 12))
+                        else if (pago.esCargo)
+                          Text('Cargo aparte · ${textoCargo(pago)}',
+                              style: TextStyle(color: AppColors.grey, fontSize: 12))
                         else if (pago.montoMora > 0)
                           Text('Incluye mora ${rd(pago.montoMora)}',
                               style: TextStyle(color: AppColors.grey, fontSize: 12)),

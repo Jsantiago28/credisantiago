@@ -11,6 +11,9 @@ class CobroCaja {
   final DateTime fecha;
   final double monto;
   final double montoMora;
+
+  /// Cargo aparte (interés extra, gasto legal...): no baja lo que debe.
+  final double cargo;
   final bool anulado;
   final String cliente;
 
@@ -36,6 +39,7 @@ class CobroCaja {
     required this.fecha,
     required this.monto,
     this.montoMora = 0,
+    this.cargo = 0,
     this.anulado = false,
     required this.cliente,
     this.cobradorId,
@@ -45,7 +49,7 @@ class CobroCaja {
     this.metodo = 'efectivo',
   });
 
-  double get montoCuota => monto - montoMora;
+  double get montoCuota => monto - montoMora - cargo;
 
   /// Pagó por transferencia: el dinero no lo trae el cobrador en la mano.
   bool get esTransferencia => metodo == 'transferencia';
@@ -61,6 +65,7 @@ class CobroCaja {
       fecha: DateTime.parse(fila['fecha_pago'] as String).toLocal(),
       monto: (fila['monto'] as num).toDouble(),
       montoMora: (fila['monto_mora'] as num?)?.toDouble() ?? 0,
+      cargo: (fila['cargo'] as num?)?.toDouble() ?? 0,
       anulado: fila['anulado'] == true,
       cliente: (cliente?['nombre'] as String?) ?? 'Cliente',
       cobradorId: fila['cobrador_id'] as String?,
@@ -89,7 +94,8 @@ class DiaCaja {
   List<CobroCaja> get validos => cobros.where((c) => !c.anulado).toList();
   double get total => validos.fold(0.0, (s, c) => s + c.monto);
   double get mora => validos.fold(0.0, (s, c) => s + c.montoMora);
-  double get cuotas => total - mora;
+  double get cargos => validos.fold(0.0, (s, c) => s + c.cargo);
+  double get cuotas => total - mora - cargos;
 
   /// Lo recibido por transferencia (llegó al banco, no a la mano).
   double get transferencia =>
@@ -146,6 +152,7 @@ String resumenCajaTexto(DiaCaja d,
     'Total recibido: ${_rd(d.total)} (${d.cantidad} cobro${d.cantidad == 1 ? '' : 's'})',
     '  A cuotas: ${_rd(d.cuotas)}',
     if (d.mora > 0) '  A mora: ${_rd(d.mora)}',
+    if (d.cargos > 0) '  Cargos aparte: ${_rd(d.cargos)}',
     if (d.transferencia > 0) '  ${efectivoYTransferencia(d.efectivo, d.transferencia)}',
     '',
     for (final c in d.validos)

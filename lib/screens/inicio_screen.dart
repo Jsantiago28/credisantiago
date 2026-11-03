@@ -785,24 +785,34 @@ class _InicioScreenState extends State<InicioScreen> {
         ],
       );
 
+    final noEstaba = _filtro != _Filtro.todos && f.aCobrar > 0;
     return Panel(
       onTap: () => _abrir(f),
-      child: _filtro == _Filtro.todos || f.aCobrar <= 0
+      child: f.estado.saldado
           ? fila
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 fila,
-                Align(
-                  alignment: Alignment.centerRight,
-                  // Un toque: anota la visita sin abrir el formulario.
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(
-                        foregroundColor: AppColors.grey, minimumSize: const Size(48, 48)),
-                    onPressed: () => _noEstaba(f),
-                    icon: const Icon(Icons.person_off_rounded, size: 18),
-                    label: const Text('No estaba'),
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Un toque: directo a cobrar, sin abrir las cuotas.
+                    BotonAplicarPago(
+                      onPressed: () =>
+                          CobroPrestamo(context, f.datos, onCambio: _cargar).aplicarPago(),
+                    ),
+                    const Spacer(),
+                    if (noEstaba)
+                      // Un toque: anota la visita sin abrir el formulario.
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                            foregroundColor: AppColors.grey, minimumSize: const Size(48, 48)),
+                        onPressed: () => _noEstaba(f),
+                        icon: const Icon(Icons.person_off_rounded, size: 18),
+                        label: const Text('No estaba'),
+                      ),
+                  ],
                 ),
               ],
             ),
